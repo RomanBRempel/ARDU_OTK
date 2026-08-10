@@ -1,0 +1,657 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ARDU_OTK.CompassCalibrationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:ARDU_OTK"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+
+        <!--
+            Карточка. Только theme-ресурсы: цеховой ПК может стоять в светлой
+            теме, а стенд наладчика — в тёмной, и оба вида обязаны читаться.
+        -->
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <Style x:Key="RowContainerStyle" TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+
+        <!--
+            Стадия процедуры. Состояние передаётся значком И словом: по одному
+            только цвету исход читать нельзя.
+        -->
+        <DataTemplate x:Key="StageTemplate" x:DataType="local:CalibrationStageRow">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid
+                    Width="20"
+                    Height="20"
+                    VerticalAlignment="Center">
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xE712;"
+                        Visibility="{x:Bind PendingVisibility, Mode=OneWay}" />
+                    <ProgressRing
+                        Width="18"
+                        Height="18"
+                        IsActive="True"
+                        Visibility="{x:Bind RunningVisibility, Mode=OneWay}" />
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind PassVisibility, Mode=OneWay}" />
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xE711;"
+                        Visibility="{x:Bind FailVisibility, Mode=OneWay}" />
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Glyph="&#xE7BA;"
+                        Visibility="{x:Bind InconclusiveVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    Text="{x:Bind Title}"
+                    TextWrapping="Wrap" />
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind StateText, Mode=OneWay}" />
+            </Grid>
+        </DataTemplate>
+
+        <!--
+            Проверка. «Нет данных» намеренно оформлено третьим видом — со своим
+            значком, своим словом и отдельной пояснительной строкой: недостаток
+            данных не является мягким «годен».
+        -->
+        <DataTemplate x:Key="CheckTemplate" x:DataType="local:CalibrationCheckRow">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid
+                    Width="20"
+                    Height="20"
+                    VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind PassVisibility}" />
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xE711;"
+                        Visibility="{x:Bind FailVisibility}" />
+                    <FontIcon
+                        FontSize="14"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Glyph="&#xE7BA;"
+                        Visibility="{x:Bind InconclusiveVisibility}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Text="{x:Bind HeaderText}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Detail}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind MeasuredText}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind MeasuredVisibility}" />
+                    <TextBlock
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Проверка не дала заключения. Это не «годен» — данных не хватило."
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind InconclusiveVisibility}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="LogTemplate" x:DataType="local:CalibrationLogRow">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    MinWidth="52"
+                    VerticalAlignment="Top"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind TimeText}" />
+
+                <Grid
+                    Grid.Column="1"
+                    Width="16"
+                    Height="16"
+                    VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="12"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xE711;"
+                        Visibility="{x:Bind CriticalVisibility}" />
+                    <FontIcon
+                        FontSize="12"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Glyph="&#xE7BA;"
+                        Visibility="{x:Bind WarningVisibility}" />
+                    <FontIcon
+                        FontSize="12"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xE946;"
+                        Visibility="{x:Bind InfoVisibility}" />
+                </Grid>
+
+                <TextBlock
+                    Grid.Column="2"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind Text}"
+                    TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="HistoryTemplate" x:DataType="local:CalibrationHistoryRow">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid
+                    Width="18"
+                    Height="18"
+                    VerticalAlignment="Center">
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind PassVisibility}" />
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xE711;"
+                        Visibility="{x:Bind FailVisibility}" />
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Glyph="&#xE7BA;"
+                        Visibility="{x:Bind UnknownVisibility}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Text="{x:Bind UnitId}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind SubtitleText}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind VerdictText}" />
+            </Grid>
+        </DataTemplate>
+
+    </Page.Resources>
+
+    <Grid x:Name="RootGrid" Padding="24">
+
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="LayoutStates">
+
+                <!--
+                    Широкие состояния объявлены первыми: при одновременно
+                    активных AdaptiveTrigger побеждает объявленный раньше.
+                -->
+                <VisualState x:Name="WideLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1000" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SideColumn.Width" Value="2*" />
+                        <Setter Target="SidePanel.(Grid.Row)" Value="0" />
+                        <Setter Target="SidePanel.(Grid.Column)" Value="1" />
+                        <Setter Target="LogCard.(Grid.Row)" Value="1" />
+                        <Setter Target="LogCard.(Grid.Column)" Value="0" />
+                        <Setter Target="HistoryCard.(Grid.Row)" Value="1" />
+                        <Setter Target="HistoryCard.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+
+                <VisualState x:Name="NarrowLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <!-- Вторая колонка схлопывается, всё встаёт в один столбец. -->
+                        <Setter Target="SideColumn.Width" Value="0" />
+                        <Setter Target="SidePanel.(Grid.Row)" Value="1" />
+                        <Setter Target="SidePanel.(Grid.Column)" Value="0" />
+                        <Setter Target="LogCard.(Grid.Row)" Value="2" />
+                        <Setter Target="LogCard.(Grid.Column)" Value="0" />
+                        <Setter Target="HistoryCard.(Grid.Row)" Value="3" />
+                        <Setter Target="HistoryCard.(Grid.Column)" Value="0" />
+                    </VisualState.Setters>
+                </VisualState>
+
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <!--
+            Страница прокручивается только по вертикали: широкое содержимое
+            (журнал, списки) обязано прокручиваться внутри своей карточки, а не
+            уезжать за правый край окна.
+        -->
+        <ScrollViewer
+            HorizontalScrollBarVisibility="Disabled"
+            HorizontalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            VerticalScrollMode="Auto"
+            ZoomMode="Disabled">
+
+            <Grid ColumnSpacing="16" RowSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="MainColumn" Width="3*" />
+                    <ColumnDefinition x:Name="SideColumn" Width="2*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  Главная панель: настройка прогона и вердикт.  -->
+                <Border
+                    x:Name="SetupCard"
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Padding="20"
+                    Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="14">
+
+                        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Калибровка компаса на стапеле" />
+
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Перенос эталонных параметров в борт, перезагрузка и калибровка курса по азимуту стапеля."
+                            TextWrapping="Wrap" />
+
+                        <InfoBar
+                            x:Name="WiringBar"
+                            IsClosable="False"
+                            IsOpen="False"
+                            Message="Обработчик прогона не задан приложением, запуск невозможен. Это сбой сборки, а не действие оператора."
+                            Severity="Error"
+                            Title="Процедура не подключена" />
+
+                        <InfoBar
+                            x:Name="ErrorBar"
+                            IsClosable="True"
+                            IsOpen="False"
+                            Severity="Error"
+                            Title="Ошибка" />
+
+                        <!--  Форма настройки: видна, пока прогон не начат.  -->
+                        <StackPanel x:Name="SetupForm" Spacing="14">
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Эталонный файл параметров (.param)" />
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox
+                                        x:Name="ReferenceFileBox"
+                                        PlaceholderText="Путь к эталонному .param"
+                                        TextChanged="OnFormFieldChanged" />
+                                    <Button
+                                        x:Name="BrowseButton"
+                                        Grid.Column="1"
+                                        Click="OnBrowseClick"
+                                        Content="Обзор…" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!--
+                                Единственное поле, непонимание которого тихо
+                                губит всю калибровку: слово «истинный» обязано
+                                стоять в самой подписи, а не только в подсказке.
+                            -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="ИСТИННЫЙ азимут стапеля, градусы (0–360)" />
+                                <TextBox
+                                    x:Name="AzimuthBox"
+                                    PlaceholderText="например 127,5"
+                                    TextChanged="OnFormFieldChanged" />
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Азимут истинный — от географического севера, НЕ магнитный. Компас телефона показывает магнитный курс: к его показанию нужно прибавить местное магнитное склонение."
+                                    TextWrapping="Wrap" />
+                                <InfoBar
+                                    x:Name="AzimuthBar"
+                                    IsClosable="False"
+                                    IsOpen="False"
+                                    Severity="Warning"
+                                    Title="Азимут введён неверно" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Серийный номер платы" />
+                                <TextBox
+                                    x:Name="UnitIdBox"
+                                    PlaceholderText="как указано на плате"
+                                    TextChanged="OnFormFieldChanged" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Оператор" />
+                                <TextBox
+                                    x:Name="OperatorBox"
+                                    PlaceholderText="фамилия"
+                                    TextChanged="OnFormFieldChanged" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="COM-порт борта" />
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox
+                                        x:Name="PortCombo"
+                                        HorizontalAlignment="Stretch"
+                                        PlaceholderText="выберите порт"
+                                        SelectionChanged="OnPortSelectionChanged" />
+                                    <Button
+                                        x:Name="RefreshPortsButton"
+                                        Grid.Column="1"
+                                        Click="OnRefreshPortsClick"
+                                        ToolTipService.ToolTip="Обновить список портов">
+                                        <FontIcon FontSize="16" Glyph="&#xE72C;" />
+                                    </Button>
+                                </Grid>
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Система отдаёт только имена портов, без описания устройства; список бывает устаревшим, а после перезагрузки борта номер порта может смениться."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!--  Вместо мёртвой кнопки — прямое указание, чего не хватает.  -->
+                            <InfoBar
+                                x:Name="GateBar"
+                                IsClosable="False"
+                                IsOpen="False"
+                                Severity="Warning"
+                                Title="Запуск пока невозможен" />
+
+                            <Button
+                                x:Name="StartButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnStartClick"
+                                Content="Начать калибровку"
+                                IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}" />
+
+                        </StackPanel>
+
+                        <!--  То же место после старта: состояние прогона и вердикт.  -->
+                        <StackPanel
+                            x:Name="RunStatusPanel"
+                            Spacing="12"
+                            Visibility="Collapsed">
+
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ProgressRing
+                                    x:Name="RunRing"
+                                    Width="32"
+                                    Height="32"
+                                    VerticalAlignment="Top"
+                                    IsActive="False" />
+                                <StackPanel Grid.Column="1" Spacing="2">
+                                    <TextBlock
+                                        x:Name="StageText"
+                                        Style="{StaticResource SubtitleTextBlockStyle}"
+                                        Text="—"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
+                                        x:Name="StageDetailText"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text=""
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock
+                                x:Name="RunSubjectText"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource BodyTextBlockStyle}"
+                                Text=""
+                                TextWrapping="Wrap" />
+
+                            <ProgressBar
+                                x:Name="RunProgress"
+                                IsIndeterminate="True"
+                                Visibility="Collapsed" />
+
+                            <InfoBar
+                                x:Name="VerdictBar"
+                                IsClosable="False"
+                                IsOpen="False"
+                                Severity="Informational"
+                                Title="—" />
+
+                            <StackPanel
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                XYFocusKeyboardNavigation="Enabled">
+                                <Button
+                                    x:Name="CancelButton"
+                                    Click="OnCancelClick"
+                                    Content="Прервать прогон" />
+                                <Button
+                                    x:Name="NewRunButton"
+                                    Click="OnNewRunClick"
+                                    Content="Новый прогон"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Visibility="Collapsed" />
+                            </StackPanel>
+
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+
+                <!--  Сопровождение: стадии и проверки.  -->
+                <StackPanel
+                    x:Name="SidePanel"
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Spacing="16">
+
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Стадии процедуры" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Порядок соответствует технологической карте. Остановка видна по последней незавершённой стадии."
+                                TextWrapping="Wrap" />
+                            <ListView
+                                x:Name="StagesList"
+                                MaxHeight="440"
+                                IsItemClickEnabled="False"
+                                ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                ItemTemplate="{StaticResource StageTemplate}"
+                                ItemsSource="{x:Bind Stages}"
+                                SelectionMode="None" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Проверки" />
+                            <TextBlock
+                                x:Name="ChecksSummaryText"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Проверки появятся по ходу прогона."
+                                TextWrapping="Wrap" />
+                            <ListView
+                                x:Name="ChecksList"
+                                MaxHeight="420"
+                                IsItemClickEnabled="False"
+                                ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                ItemTemplate="{StaticResource CheckTemplate}"
+                                ItemsSource="{x:Bind Checks}"
+                                SelectionMode="None" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+
+                <!--  Журнал.  -->
+                <Border
+                    x:Name="LogCard"
+                    Grid.Row="1"
+                    Grid.Column="0"
+                    Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Text="Журнал: STATUSTEXT и ход выполнения"
+                                TextWrapping="Wrap" />
+                            <Button
+                                Grid.Column="1"
+                                Click="OnClearLogClick"
+                                Content="Очистить" />
+                        </Grid>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Новые сообщения добавляются сверху."
+                            TextWrapping="Wrap" />
+                        <ListView
+                            x:Name="LogList"
+                            MaxHeight="320"
+                            IsItemClickEnabled="False"
+                            ItemContainerStyle="{StaticResource RowContainerStyle}"
+                            ItemTemplate="{StaticResource LogTemplate}"
+                            ItemsSource="{x:Bind LogEntries}"
+                            SelectionMode="None" />
+                    </StackPanel>
+                </Border>
+
+                <!--  История прогонов.  -->
+                <Border
+                    x:Name="HistoryCard"
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Style="{StaticResource CardBorderStyle}">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Text="Последние прогоны"
+                                TextWrapping="Wrap" />
+                            <Button
+                                x:Name="RefreshHistoryButton"
+                                Grid.Column="1"
+                                Click="OnRefreshHistoryClick"
+                                ToolTipService.ToolTip="Обновить историю">
+                                <FontIcon FontSize="16" Glyph="&#xE72C;" />
+                            </Button>
+                        </Grid>
+                        <TextBlock
+                            x:Name="HistoryHintText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Реестр прогонов не подключен."
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
+                        <ListView
+                            x:Name="HistoryList"
+                            MaxHeight="320"
+                            IsItemClickEnabled="False"
+                            ItemContainerStyle="{StaticResource RowContainerStyle}"
+                            ItemTemplate="{StaticResource HistoryTemplate}"
+                            ItemsSource="{x:Bind History}"
+                            SelectionMode="None" />
+                    </StackPanel>
+                </Border>
+
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

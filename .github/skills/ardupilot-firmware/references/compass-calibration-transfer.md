@@ -31,7 +31,7 @@ Parameter names are irregular per instance — never generate them by appending 
 | Scale factor | `COMPASS_SCALE` · `COMPASS_SCALE2` · `COMPASS_SCALE3` | **COPY** | Same block. |
 | Orientation | `COMPASS_ORIENT` · `COMPASS_ORIENT2` · `COMPASS_ORIENT3` | **COPY** | Same block; also a hard precondition for workflow (b) — see §5. |
 | External flag | `COMPASS_EXTERNAL` · `COMPASS_EXTERN2` · `COMPASS_EXTERN3` | **COPY (config)** | Part of the moved block. Note `0`/`1` can be overridden by bus auto-detection at boot; `2` (ForcedExternal) is an operator lock that `set_external()` will not override. Details in `compass-topology-and-flags.md`. |
-| Use flag | `COMPASS_USE` · `COMPASS_USE2` · `COMPASS_USE3` | **COPY (config)** | Part of the moved block; expresses operator intent, not board identity. |
+| Use flag | `COMPASS_USE` · `COMPASS_USE2` · `COMPASS_USE3` | **COPY (config)** — with an ordering caveat | Expresses operator intent, not board identity. 🔴 **Not part of the block ArduPilot swaps at boot** — that block is `external, orientation, offset, diagonals, offdiagonals, scale_factor, dev_id, motor_compensation`. Use flags follow the priority slot, not the sensor, so set them **after** any reboot that changes priority, against the re-read topology: `compass-topology-and-flags.md` §5 Phase E. |
 | Motor compensation | `COMPASS_MOT_X/_Y/_Z` · `COMPASS_MOT2_X/_Y/_Z` · `COMPASS_MOT3_X/_Y/_Z` | **COPY ONLY WITH OPT-IN** | CompassMot results. Vehicle-specific: they encode the power wiring and current path of *that* airframe. See §1.2. |
 | Motor comp type | `COMPASS_MOTCT` | **COPY ONLY WITH OPT-IN** | Global companion to `COMPASS_MOT*` (`0:Disabled, 1:Use Throttle, 2:Use Current`); parameter doc says *"Do not change manually"*. Meaningless without the matching `MOT*` values. |
 | Device IDs | `COMPASS_DEV_ID` · `COMPASS_DEV_ID2` · `COMPASS_DEV_ID3` | **NEVER COPY** | `@ReadOnly: True`, *"Automatically detected, do not set manually"*. See §1.4. |
@@ -81,7 +81,7 @@ The default of `COMPASS_DIA*` is `0` in Copter-4.1 and `1.0` in master. Conseque
 ### 2.1 The consequences for workflow (a)
 
 - 🔴 **A successful read-back comparison proves only that the parameters were stored. It does NOT prove the calibration is accepted.** The values will read back byte-identical to what you wrote while the board still refuses to arm.
-- ⇒ The transfer workflow **must** include a prearm-level check as its final acceptance criterion, not just a parameter diff. Trigger it with `MAV_CMD_RUN_PREARM_CHECKS` and read `PreArm:` STATUSTEXT and/or the `SYS_STATUS` `PREARM_CHECK` bit — mechanics and the ArduPilot 4.1+ availability constraint are in `imu-level-and-health-verification.md`.
+- ⇒ The transfer workflow **must** include a prearm-level check as its final acceptance criterion, not just a parameter diff. Trigger it with `MAV_CMD_RUN_PREARM_CHECKS`, then take the verdict from `imu-level-and-health-verification.md` §9 — which requires the `SYS_STATUS` `PREARM_CHECK` bit **and** the absence of compass prearm failures, not either one alone. Mechanics and the ArduPilot 4.1+ availability constraint are in that file.
 
 ### 2.2 The identical-hardware assumption, stated plainly
 
@@ -124,12 +124,12 @@ Each state has an explicit success condition and an explicit failure action. `WA
 | 6 | **Write** | Every parameter is written with `PARAM_SET` and the configured retry policy; no `PARAM_ERROR` returned. | WARN + STOP. Report the first failing name. Do not continue past a failed write — a partial calibration block is worse than none. Offer rollback. |
 | 7 | **Independent read-back** | Every written parameter is re-read with `PARAM_REQUEST_READ` **by name**. 🔴 Never accept the asynchronous broadcast `PARAM_SET` echo as verification — it carries `param_index = 0xFFFF` and is not a response to your request. | WARN + STOP on a read timeout after retries. |
 | 8 | **Compare #1 (pre-reboot)** | Every parameter compares equal under the comparison rules of `parameter-protocol-and-profiles.md` (type-aware: integers exact after rounding, `REAL32` with the relative/absolute epsilon). | 🔴 **WARN and STOP. Never reboot after a failed write/compare.** Report every differing name with expected vs actual. Offer rollback. |
-| 8b | **Coalesced-write exception** | For non-`INT32` parameters, the firmware's `save_sync()` skips the store when `\|v_new − v_old\| < 1e-4 × \|v_new\|`. A read-back showing the old value inside that band is **not a failure** — classify it as **"coalesced"**, show it as an informational row, and let it pass. Details in `parameter-protocol-and-profiles.md`. | n/a — this is a classification, not a gate. |
+| 8b | **Coalesced-write exception** | For non-`INT32` parameters the firmware can skip the store when the change is inside a small relative band, so the read-back shows the old value. That is **not a failure** — classify it as **"coalesced"**, show it as an informational row, and let it pass. **The band has exactly one definition, in `parameter-protocol-and-profiles.md` §3.2 — use it, do not restate the formula here.** | n/a — this is a classification, not a gate. |
 | 9 | **Reboot** | `MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN` (246) with `param1 = 1` returns `ACCEPTED`. Note the firmware acks *before* rebooting. Command and reconnect mechanics: `imu-level-and-health-verification.md`. | WARN + STOP. A `DENIED` means the wrong target component; `UNSUPPORTED` means a bad `param1`. |
-| 10 | **Wait for the board to come back** | The serial device re-enumerates and HEARTBEAT resumes. 🔴 The board drops off the USB bus and re-enumerates; **the COM number can change**. Close the port immediately on reboot and re-resolve the device from its instance path + VID/PID, never from the cached `COMn`. Cube-class boards appear twice (bootloader `…-BL`, then app). See `imu-level-and-health-verification.md`. | WARN + STOP with a "board did not come back" message and a manual-reconnect prompt. Do not report the transfer as successful. |
+| 10 | **Wait for the board to come back** | The serial device re-enumerates and HEARTBEAT resumes. 🔴 The board drops off the USB bus and re-enumerates; **the COM number can change**. Close the port immediately on reboot and re-resolve the device from its instance path + VID/PID, never from the cached `COMn`. Cube-class boards appear twice (bootloader `…-BL`, then app). Re-enumeration and reconnect are owned by `dotnet-mavlink-and-winui-integration.md` §5. | WARN + STOP with a "board did not come back" message and a manual-reconnect prompt. Do not report the transfer as successful. |
 | 11 | **Re-fetch** | 🔴 **Parameters must be re-fetched after reboot** — never reuse the pre-reboot cache. Re-read every transferred parameter by name. Also re-issue any `SET_MESSAGE_INTERVAL` stream configuration, which does not persist across reboot. | WARN + STOP on timeouts. |
 | 12 | **Compare #2 (post-reboot)** | Same comparison rules as state 8. | WARN. Report the differing names. A post-reboot difference that was equal pre-reboot usually means a `@RebootRequired` reordering swapped the per-instance blocks (§4.3) or a driver overwrote a `COMPASS_EXTERNAL*` value at detection time — say which, do not just print a diff. |
-| 13 | **Prearm check** | `MAV_CMD_RUN_PREARM_CHECKS` (401) → `ACCEPTED`, then collect `PreArm:` STATUSTEXT for ~1–2 s and/or poll the `SYS_STATUS` `PREARM_CHECK` bit. No compass-related prearm failure present. | WARN with the exact prearm string and its interpretation (§8). 🔴 This state, not state 12, is what proves the transfer was *accepted*. |
+| 13 | **Prearm check** | The verdict produced by `imu-level-and-health-verification.md` §9 is `Verified` — which requires **all** of: `MAV_CMD_RUN_PREARM_CHECKS` (401) returned `ACCEPTED`, at least one `SYS_STATUS` arrived inside the collection window, the `PREARM_CHECK` bit is present, enabled and healthy, and no compass-related prearm failure was seen. 🔴 "No message arrived" is `Inconclusive`, never success. | WARN with the exact prearm string and its interpretation (§8); an `Inconclusive` verdict is reported as such, not as a pass. 🔴 This state, not state 12, is what proves the transfer was *accepted*. |
 | 14 | **Report** | Structured result: per-parameter written/coalesced/mismatched, per-instance `DEV_ID` verdict, prearm verdict, rollback file path. | n/a |
 
 ### 3.2 The rollback snapshot
@@ -279,6 +279,7 @@ A handheld/phone magnetic compass reads the direction of the local magnetic fiel
 | Reproduce a known-good calibration from a reference vehicle | Workflow (a) **only**. Do not follow it with fixed-yaw. |
 | Vehicle too large / cannot be rotated; no reference calibration available | Workflow (b) **only**. |
 | Both are wanted | Run **(b) first, then (a)**. The transfer's `DIA`/`ODI`/`OFS` then land on top of the fixed-yaw result. Note that (b) auto-commits `COMPASS_DEV_IDx = detected_dev_id`, which is harmless and helps the §2 validity rule. Follow with the full transfer state machine including reboot and prearm check. |
+| Compass reordering is also wanted | Full order: **reorder → reboot → (b) fixed-yaw → reboot → (a) transfer → reboot → verify.** 🔴 Fixed-yaw runs `_reset_compass_id()` (§8.3), which can zero a `COMPASS_PRIOx_ID`; the next boot then auto-fills and compacts the slots, so the priority order you just established is **not guaranteed to survive step (b)**. Re-run the Phase A read and the Phase F assertions of `compass-topology-and-flags.md` §5 after (b), before starting (a). |
 | Never | (a) then (b) as a single "do everything" button. Do not offer such a button. |
 
 ### 7.3 Required pre-run warning
@@ -307,7 +308,7 @@ Offer to snapshot the current `OFS`/`DIA`/`ODI`/`SCALE` block to a `.param` file
 
 ### 8.2 STATUSTEXT strings that diagnose the failure
 
-Reassemble chunked `STATUSTEXT` before string-matching (`text` is `char[50]` without null termination; extensions `id` + `chunk_seq` carry multi-chunk messages) — see `imu-level-and-health-verification.md`.
+Reassemble chunked `STATUSTEXT` before string-matching (`text` is `char[50]` without null termination; extensions `id` + `chunk_seq` carry multi-chunk messages) — reassembly is owned by `connection-and-telemetry.md` §7.
 
 | STATUSTEXT | Cause | Operator action |
 |---|---|---|
@@ -329,6 +330,7 @@ Treat this as an **expected, informational side effect**, not a failure — but 
 1. Re-fetch `COMPASS_PRIO1_ID` / `PRIO2_ID` / `PRIO3_ID` after the command; the cached values are stale.
 2. A zeroed slot is auto-filled at the next boot and compasses compact upward — so the slot→sensor mapping may differ after the reboot in §5.5 step 7. Re-derive the mapping (§4) rather than reusing it.
 3. `MAV_CMD_DO_START_MAG_CAL` with `mask = 0` also runs `_reset_compass_id()` and produces the same message.
+4. 🔴 **The priority order itself may no longer hold.** A zeroed slot is auto-filled in detection order at the next boot, so a previously-established "external compass is priority 1" arrangement can be undone silently. After **any** command that runs `_reset_compass_id()`, re-run the Phase A read and the Phase F assertions of `compass-topology-and-flags.md` §5 before continuing — re-deriving the instance mapping (consequence 2) is not sufficient on its own.
 
 ### 8.4 Symptom → cause → action
 

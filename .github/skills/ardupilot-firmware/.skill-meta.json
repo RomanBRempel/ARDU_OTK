@@ -1,0 +1,10 @@
+{
+  "name": "ardupilot-firmware",
+  "source": "local",
+  "description": "Work with ArduPilot flight controller firmware from the native Windows app in this repo — connect over MAVLink, store and select reference profiles, compare a board's parameters against a reference ov...",
+  "whenToUse": "This repo's product is a native Windows bench tool that verifies and configures ArduPilot flight controllers against a stored known-good reference. This skill is the operational contract for every ...",
+  "categories": [],
+  "relativePath": "ardupilot-firmware",
+  "installedVia": "manual",
+  "metadataVersion": 2
+}

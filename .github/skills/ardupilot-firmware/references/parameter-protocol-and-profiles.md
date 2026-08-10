@@ -406,7 +406,7 @@ a plain JSON file the user can edit and version alongside the reference `.param`
 | `sections[].include[]` | array | **Ordered** rules. |
 | `include[].pattern` | glob | Glob over parameter names: `*` = any run of chars, `?` = one char. |
 | `include[].severity` | enum | Overrides `defaults.severity`. |
-| `include[].tolerance` | object | Overrides the default tolerance. `{"relative":…}` and/or `{"absolute":…}`. |
+| `include[].tolerance` | object | Overrides the default tolerance. **Use the same two keys as `defaults.tolerance`: `{"relative":…}` and/or `{"absoluteFloor":…}`.** Do not introduce an `absolute` alias — one spelling only, or a parser written from this table will reject valid profiles. |
 | `include[].note` | string | Shown as the row hint in the UI. |
 | `exclude[]` | array of glob | Global exclusions, applied **after** all includes. |
 | `sections[].exclude[]` | array of glob | Section-scoped exclusions. |
@@ -584,7 +584,7 @@ as `float`**.
 3. **`REAL32` ⇒ equal if** `a == b` **OR** `MathF.Abs(a - b) <= rel * MathF.Max(MathF.Abs(a), MathF.Abs(b))`,
    with an **absolute floor** so that near-zero comparisons do not collapse:
    `MathF.Abs(a - b) <= MathF.Max(absFloor, rel * MathF.Max(|a|, |b|))`.
-   Defaults `rel = 1e-6f`, `absFloor = 1e-9f`; a rule's `tolerance.relative` / `tolerance.absolute` overrides them.
+   Defaults `rel = 1e-6f`, `absFloor = 1e-9f`; a rule's `tolerance.relative` / `tolerance.absoluteFloor` overrides them (§6.1 — one spelling only, no `absolute` alias).
 4. **Normalise `-0f` → `0f`** on both sides before comparing or displaying. `-0f == 0f` is true in IEEE, but the
    two format differently and will produce a cosmetic "difference" in any string-based path.
 5. Treat `NaN` on either side as `ReadFailed`, not as `Differs` — `NaN != NaN` would otherwise report a permanent

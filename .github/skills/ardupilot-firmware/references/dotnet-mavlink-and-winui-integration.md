@@ -1,6 +1,8 @@
 # .NET MAVLink and WinUI 3 Integration
 
-How this app is assembled on Windows: which MAVLink library to take, how the code is layered, how threads and the UI thread interact, how a USB flight controller is discovered and survives a reboot, what MSIX packaging does and does not require, and the safety/UI rules a tool that writes to flight hardware must obey.
+How this app is assembled on Windows: which MAVLink library to take, how the code is layered, how threads and the UI thread interact, how a USB flight controller is discovered and survives a reboot, how the app is deployed and updated (unpackaged, self-contained, Velopack) and what that forbids, and the safety/UI rules a tool that writes to flight hardware must obey.
+
+Ground truth for this file is the app that exists in this repo: `ARDU_OTK/ARDU_OTK.csproj`, `ARDU_OTK/Program.cs` and `ARDU_OTK/Services/UpdateService.cs`. Where this file states a project setting, it is quoting that csproj — check there before contradicting it.
 
 Scope note: firmware behaviour, parameter names, message fields, calibration semantics and stream rates live in the sibling reference files. This file only covers the Windows/.NET/WinUI side and the safety envelope around it.
 
@@ -22,23 +24,34 @@ Scope note: firmware behaviour, parameter names, message fields, calibration sem
 
 1. **Take `Asv.Mavlink`.** Reason: it is the only package that ships a parameter-protocol client rather than just a codec. The parameter workflow (full fetch with gap detection, read-back verification, diff) is the largest and most failure-prone part of this app; writing that state machine yourself is the bulk of the work the second choice implies.
 2. **Second choice: vendored mavgen `--lang CS` output.** Reason to fall back to it: the code is yours, license is unambiguous, there is no transitive dependency chain (`Asv.Common`, `Asv.IO`, `Asv.Cfg`, `Asv.Store`, `ZLogger`) and no TFM coupling. Cost: you implement transport, retry/timeout, the parameter protocol and MAVFTP by hand.
-   - ⚠️ Whether mavgen `--lang CS` output compiles cleanly on .NET 8 is **UNVERIFIED** (MissionPlanner's copy targets netstandard2.0). Verify before relying on it — generate, compile, and only then commit to this path.
+   - ⚠️ Whether mavgen `--lang CS` output compiles cleanly on modern .NET is **UNVERIFIED** (MissionPlanner's copy targets netstandard2.0; the doubt was raised for .NET 8 and this project is two majors past that). Verify before relying on it — generate, compile against this project's TFM, and only then commit to this path.
 
-### 1.3 🔴 Version / TFM pinning trap — read before adding the package
+### 1.3 🔴 Version pinning — this project is `net10.0-windows10.0.26100.0`
 
-`Asv.Mavlink` moved its target framework forward inside the 4.0.x band. Taking "latest" on a .NET 8 project silently breaks the build or drags the whole app forward a runtime:
+`ARDU_OTK.csproj` targets **`net10.0-windows10.0.26100.0`** (`TargetPlatformMinVersion` `10.0.17763.0`). `Asv.Mavlink` moved its target framework forward inside the 4.0.x band, and **4.0.19, 4.2.0 and 4.3.0 are net10.0-only** — which on this project is not a constraint but a licence to take the newest release.
 
-| Your TFM | Last usable `Asv.Mavlink` |
+**Primary instruction: pin `Asv.Mavlink` to `4.3.0`** (latest, 2026-07-31, net10.0). It matches the app's TFM and there is no reason to hold the package several releases stale.
+
+```xml
+<!-- Asv.Mavlink 4.0.19+ is net10.0-only; this project is net10.0-windows10.0.26100.0.
+     Do not downgrade this pin without also retargeting the project — see §1.3. -->
+<PackageReference Include="Asv.Mavlink" Version="4.3.0" />
+```
+
+Note — **only** if someone ever retargets this project downward (there is no current reason to):
+
+| TFM | Last usable `Asv.Mavlink` |
 |---|---|
 | `net8.0-windows…` | **4.0.17** |
 | `net9.0-windows…` | **4.0.18** |
-| `net10.0-windows…` | 4.0.19 and up, through 4.3.0 |
+| `net10.0-windows…` ← **this project** | 4.0.19 and up, through **4.3.0 (take this)** |
 
 Rules:
-1. **Never** add the package without an explicit `Version=` — no floating ranges, no `*`, no "latest".
-2. Pin the version centrally (`Directory.Packages.props` / `Directory.Build.props`) so every project in the solution agrees.
-3. If you deliberately want the newest `Asv.Mavlink` features, that is a **decision to move the app's TFM**, not a package bump. Treat it as such.
-4. Record the TFM↔version pair in a comment next to the pin; the next person will otherwise "fix" it by upgrading.
+1. **Never** add the package without an explicit `Version=` — no floating ranges, no `*`, no "latest". "Latest" happens to be right here today; it must still be written down as a number.
+2. Pin the version centrally (`Directory.Packages.props` / `Directory.Build.props`) so every project in the solution agrees. Note that this repo's `Directory.Build.props` currently carries only the local build version — adding central package pinning is a deliberate act, not an assumption.
+3. Dropping to a 4.0.17/4.0.18 pin is a **decision to move the app's TFM backwards**, not a package downgrade. Treat it as such; nothing in this app needs it.
+4. Record the TFM↔version pair in a comment next to the pin (as above); the next person will otherwise "fix" it in one direction or the other.
+5. The same TFM check applies to every other package: `MavLinkSharp` ships net10 + netstandard2.0 and is fine; `MAVLink` (MissionPlanner's) is netstandard2.0 and would resolve — its problem is the licence (§1.5), not the TFM.
 
 ### 1.4 Packages that do not exist — do not reference
 
@@ -85,7 +98,21 @@ public sealed record ParameterWriteResult(string Name, float Requested, float Re
 public enum WriteVerdict { Verified, Coalesced, Mismatch, Denied, Timeout }
 ```
 
-Why this is not style pedantry: the wire types carry sentinels (`65535`, `-1`, `32767`), raw units (rad, mV, cA, mgauss, µs) and version-dependent field meanings. A binding straight onto a wire struct is how a sentinel gets rendered as a plausible number on screen (see §8.6).
+Why this is not style pedantry: the wire types carry sentinels (`65535`, `-1`, `32767`), raw units (rad, mV, cA, mgauss, µs) and version-dependent field meanings. A binding straight onto a wire struct is how a sentinel gets rendered as a plausible number on screen (see §9.6).
+
+### 2.3 🔴 Dependency rules imposed by the deployment model
+
+These constrain what any layer may depend on. They come from `ARDU_OTK.csproj` (§6.1), and they are load-bearing, not preferences.
+
+1. **`PublishTrimmed=False` is deliberate — never enable trimming.** The csproj comment states the reason: WinUI XAML and bindings resolve **by reflection**, trimming removes types that are only reached that way, and the failure does not appear at build time — it appears at runtime, on one specific screen, at a bench, as a shift's downtime.
+   Consequences for code this app adds:
+   - Any **MAVLink codec** (generated or library) may use reflection over message types; do not assume it survives trimming and do not add trim annotations as a substitute for testing.
+   - Any **reflection-based parameter mapping** (parameter name → property/record member, metadata binding from `apm.pdef`) is legitimate here precisely because trimming is off. It must not be re-engineered around a trimming plan.
+   - Any **JSON profile deserialisation** (comparison profiles, reference snapshots — see `reference-profiles-and-storage.md` and `parameter-protocol-and-profiles.md`) may use reflection-based `System.Text.Json`. Source-generated `JsonSerializerContext` is fine and often better for other reasons, but it is **not** a licence to turn trimming on.
+   - **Nobody "optimises" the publish size by setting `PublishTrimmed=True`.** If size ever becomes a real problem, the answer is the delta-update mechanism (§6.1, §7), not trimming. A library whose documentation only describes its behaviour "when trimmed" tells you nothing about this app.
+   - `PublishReadyToRun` is on for Release and off for Debug; that is unrelated to trimming and must not be conflated with it.
+2. **The app is self-contained — every added dependency ships in the installer.** `SelfContained=true` and `WindowsAppSDKSelfContained=true` mean the .NET runtime *and* the Windows App SDK are inside the package that every workstation downloads (~110 MB first time, deltas afterwards). Weigh a new dependency on licence, maintenance and transitive sprawl — `Asv.Mavlink` alone pulls `Asv.Common`/`Asv.IO`/`Asv.Cfg`/`Asv.Store` and `ZLogger` — rather than on kilobytes, but do weigh it: nothing here is "already on the machine".
+3. **No dependency may assume a packaged identity.** The process is unpackaged (§6.2), so APIs that require package identity (`Package.Current`, `Windows.Storage.ApplicationData.Current`, package-scoped storage and settings) are not available. Use `Environment.GetFolderPath(SpecialFolder.LocalApplicationData)` and plain file I/O for the run database, audit log and profiles. A library that quietly depends on identity fails at first use on the shop floor, not in the developer's build directory.
 
 ---
 
@@ -216,25 +243,126 @@ This is the single most fragile lifecycle in the app. Get it wrong and the app a
 
 ---
 
-## 6. Packaging and capabilities
+## 6. Deployment: unpackaged, self-contained, Velopack
 
-| Fact | Consequence for this app |
-|---|---|
-| A default WinUI 3 MSIX package declares `<rescap:Capability Name="runFullTrust" />` ⇒ the process runs at **medium IL, not in an AppContainer**. | Capability enforcement is AppContainer-scoped, so it does not apply. |
-| **`System.IO.Ports.SerialPort` works, and `DeviceCapability serialcommunication` is NOT required.** | Do not add the capability "to be safe". Adding it buys nothing and costs you the bug below. |
-| `serialcommunication` gates **only** `Windows.Devices.SerialCommunication.SerialDevice`. | Only if you switch to that WinRT API do you declare `<DeviceCapability Name="serialcommunication"/>` (Win10 1809+ form). |
-| Known **single-project-MSIX manifest-ordering bug**. | If a device capability is added anyway, expect manifest element-ordering validation failures at packaging time. The fix is element order in `Package.appxmanifest`, not more capabilities. |
-| `System.IO.Ports` is an **out-of-band NuGet package on .NET 8+**. | It must be referenced explicitly; it is not in the shared framework. Pin its version like every other package. |
+**This app is not an MSIX app.** Everything below is what `ARDU_OTK.csproj`, `ARDU_OTK/Program.cs` and `README.md` actually specify. Plans, prompts and reviews that assume an MSIX package, an AppContainer or a capability manifest are describing a different application.
 
-Procedure:
-1. Use `System.IO.Ports.SerialPort` for the transport. Reference the `System.IO.Ports` package explicitly.
-2. Leave `Package.appxmanifest` with the template's `runFullTrust` and **no** `serialcommunication` device capability.
-3. If a future requirement forces `Windows.Devices.SerialCommunication`, declare the capability *and* budget time for the manifest-ordering bug; re-validate packaging immediately after the edit, before writing any code against the new API.
-4. Device enumeration via `Win32_PnPEntity` / SetupAPI (§4.2) is likewise unaffected by capabilities at medium IL.
+### 6.1 The deployment settings and why each one is there
+
+| Setting (from `ARDU_OTK.csproj`) | Value | Why |
+|---|---|---|
+| `TargetFramework` | `net10.0-windows10.0.26100.0`, `TargetPlatformMinVersion` `10.0.17763.0` | Drives every package pin (§1.3, §6.3). |
+| `WindowsPackageType` | **`None`** | Unpackaged. It also enables Windows App SDK bootstrapper auto-initialisation — **without it an unpackaged WinUI 3 app fails at startup.** |
+| `SelfContained` / `WindowsAppSDKSelfContained` | `true` / `true` | The .NET runtime *and* the Windows App Runtime ship inside the installer. A shop-floor PC needs no prerequisites and **no administrator rights**. |
+| `EnableMsixTooling` | `true` — **and no MSIX is ever built** | ⚠️ Kept only because those targets copy the compiled XAML (`.xbf`), `ARDU_OTK.pri` and `Assets` into publish. With `false`, publish "succeeds" and the app dies at startup with **`0xC000027B`** — XAML cannot find its resources. **Do not "clean this up"**: its presence is not evidence of MSIX packaging. |
+| Custom entry point `Program.cs` + `DISABLE_XAML_GENERATED_MAIN` | | Required by Velopack: `VelopackApp.Build().Run()` must be the **first line of the process**, before `Application.Start`. The installer/updater relaunch the same exe with service arguments (install, first run, uninstall) and Velopack intercepts them and exits; if XAML comes up first, those service runs flash the app window. |
+| `PublishTrimmed` | **`False`**, deliberately | See §2.3.1. Load-bearing. |
+| `PublishReadyToRun` | `True` in Release, `False` in Debug | Unrelated to trimming. |
+| `Microsoft.Windows.SDK.BuildTools.WinApp` | **removed from the template on purpose** | It hooks the Run target and registers a debug *package identity*, which is meaningless for an unpackaged app and breaks `dotnet run`. Do not re-add it. |
+| Install location | `%LocalAppData%\ARDU_OTK` | Per-user, no elevation, no admin prompt. |
+| Update channel | Velopack ← GitHub Releases (public repo, no token) | §7. |
+| Installer signature | none (SmartScreen once per machine) | Not a code concern, but do not design a UI that promises a silent *first* install; updates after that are silent. |
+
+### 6.2 There is no capability question in this app
+
+- There is **no MSIX package, no `Package.appxmanifest` identity, no AppContainer, and no `runFullTrust` declaration to make.** The process is a plain Win32 process running at the user's own integrity level, launched from `%LocalAppData%`.
+- ⇒ **`System.IO.Ports.SerialPort` simply works.** There is nothing to declare, nothing to enable, nothing to "be safe" about. `serialcommunication` is **not** a question this app has to answer — do not raise it in a plan, a review or a manifest that does not exist.
+- Device enumeration via `Win32_PnPEntity` / SetupAPI (§4.2) is likewise unconstrained.
+- The manifest that *does* exist (`ARDU_OTK/app.manifest`, referenced by `ApplicationManifest`) is a classic Win32 side-by-side manifest: `PerMonitorV2` DPI awareness and the Windows 10 `supportedOS` declaration that unpackaged Windows App SDK apps need for OS-version-gated features. It has **no capability section and cannot have one** — do not confuse it with `Package.appxmanifest`.
+
+**Note for a future reader, so this is not re-introduced:** capabilities would only ever become relevant if the app moved to MSIX **and** switched from `System.IO.Ports` to the WinRT `Windows.Devices.SerialCommunication.SerialDevice` API — that WinRT API is the only thing `<DeviceCapability Name="serialcommunication"/>` gates. Both halves are required. Even inside an MSIX, a default WinUI 3 package declares `<rescap:Capability Name="runFullTrust" />` and the process runs at medium IL, where capability enforcement (AppContainer-scoped) does not apply — so `System.IO.Ports` would keep working there too and the capability would still buy nothing. And a device capability added to a single-project MSIX runs into the known **manifest element-ordering bug**, whose fix is element order, not more capabilities. None of this applies today; it is recorded only so nobody re-derives the confusion from a WinUI template.
+
+### 6.3 `System.IO.Ports`
+
+`System.IO.Ports` is an **out-of-band NuGet package** on modern .NET — it is not in the shared framework and never becomes implicit, self-contained or not. Reference it explicitly with a pinned version, like every other package (§1.3), and remember it lands in the installer (§2.3.2).
 
 ---
 
-## 7. Safety rules for a tool that writes to flight hardware
+## 7. 🔴 Update delivery and the flight-controller busy interlock
+
+`ARDU_OTK/Services/UpdateService.cs` delivers updates with Velopack from GitHub Releases (public repo — no token). The app checks at startup, downloads in the background, and applies with a restart.
+
+**This section is a hard requirement on the flight-controller code, not on the update code.** The interlock exists and is correct — and it is **inert until the session wires it up**.
+
+### 7.1 The contract, exactly as implemented
+
+| Member | Behaviour |
+|---|---|
+| `CheckAndDownloadAsync(CancellationToken)` | Checks and, if an update exists, downloads it immediately. **Safe to run at any time, including mid-operation: it does not touch the files of the running version.** Drives `State` through `Checking` → `Downloading` → `ReadyToApply`. Never restarts anything. |
+| `ApplyAndRestart()` | The **only** call that replaces files and restarts the process. Returns `false` and does nothing when there is nothing pending **or when `IsBusy()` returns `true`**. A deferred update stays downloaded and applies at the next call — in practice, at the next app start. |
+| `IsBusy` | `public Func<bool> IsBusy { get; set; } = static () => false;` — a settable delegate that **defaults to "never busy"**. |
+| `State` | `Idle, NotInstalled, Checking, UpToDate, Downloading, ReadyToApply, Failed`. `NotInstalled` = running from a build directory (development); `Failed` = the check did not succeed, typically no network. |
+| `StateChanged` / `LastError` / `CurrentVersion` / `PendingVersion` | UI inputs. `CurrentVersion` is `null` for an uninstalled build — Velopack reads it from install metadata, not from assembly attributes. |
+
+🔴 **The default is the hazard.** `IsBusy` defaults to `static () => false`. If the flight-controller code never assigns it, the bench is permanently reported as free and an update can replace the app's files and restart the process **in the middle of an operation on a real board**. Assigning it is part of bringing the session service up, not a later refinement. The `README.md` says the same thing in one line; this section says what "busy" means.
+
+### 7.2 States that MUST report busy
+
+The predicate returns `true` whenever any of the following holds. This is a **minimum**, not an exhaustive list — a new operation that touches the board is busy by default until someone argues otherwise.
+
+1. **Any parameter write batch in flight** — from *before* the first `PARAM_SET` until the last read-back verification has been recorded (§8.3, §8.6), including the pre-write snapshot of §8.7. The gap between a write and its verifying read is the single most dangerous moment in the app.
+2. **Any calibration** — level/trim calibration (`MAV_CMD_PREFLIGHT_CALIBRATION` `param5 = 2`), fixed-yaw / large-vehicle calibration (`MAV_CMD_FIXED_MAG_CAL_YAW`), and onboard mag calibration from start until accept, cancel or final report. See `imu-level-and-health-verification.md` and `compass-calibration-transfer.md`.
+3. **A reboot-and-wait window** — from *before* `MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN` is sent until §5.2 has finished or failed explicitly. The whole re-enumeration window (§5) is busy, including the period when no port is open.
+4. **A verification run in progress** — a prearm run (`MAV_CMD_RUN_PREARM_CHECKS`), a post-reboot health verdict, or any read-back sweep that produces an operator-facing verdict.
+5. **A run started but not yet committed to the database** — even when nothing is on the wire. A part is in the fixture and its results are uncommitted; see `reference-profiles-and-storage.md` for the run record. Losing the process here loses the run.
+6. **Anything holding the session's single-operation lock** (§3.3.1). That lock is the cheapest correct source of truth for 1–4; items 3 and 5 are the ones it does *not* cover on its own.
+
+Not busy: an idle connected session, live telemetry alone, browsing a diff that has not been applied, a completed and committed run, disconnected.
+
+### 7.3 The concrete damage if this is skipped
+
+**A restart between a `PARAM_SET` and its verifying read-back leaves the board partially written, in a state nobody recorded.** Some values took, some did not; the audit log (§8.8) has no closing record for the batch; and after the restart the app cannot reconstruct which writes landed. ArduPilot persists every write immediately — there is no commit step and no rollback — so the board carries the half-applied set through its own power cycles. The operator is handed a new version of the app and a board that passes some checks and fails others, **with no way to know which writes landed**.
+
+The rest of the list fails the same way:
+- A restart during a calibration abandons the procedure mid-flight; fixed-yaw calibration in particular **auto-saves offsets with no accept step**, so the board can be left holding results from a procedure that was never completed or reviewed.
+- A restart inside the reboot window destroys the §5.2 step-1 snapshot (device instance path, VID/PID, stream intervals, pending operation). The new process cannot even identify which board it was waiting for, and cannot report the pending operation as "not applied" — it does not know one existed.
+- A restart before commit loses the run entirely: the physical part has been touched, and there is no record that it was.
+
+In every case the app violates §8.5 (no silent failure) and §8.11 (unknown outcomes reported as unknown) — not through a bug in those code paths, but because the process that owed the report no longer exists.
+
+### 7.4 Wiring, and the rules the predicate must obey
+
+```csharp
+// Composition root, at the moment the session service is created — not later, not from a page.
+_updateService.IsBusy = () => _session.IsBenchBusy;
+
+// In the session service: one cheap, non-blocking, always-answerable property.
+public bool IsBenchBusy
+{
+    get
+    {
+        try
+        {
+            return _operationLock.CurrentCount == 0        // a vehicle operation holds the session lock (§3.3.1)
+                || Volatile.Read(ref _rebootWindowOpen)     // §5.2 in progress, port may be closed
+                || _activeRun is { Committed: false };      // a started run not yet in the database
+        }
+        catch
+        {
+            return true;                                    // unknown state ⇒ busy (rule 2)
+        }
+    }
+}
+```
+
+1. **Cheap and non-blocking.** It is polled from the update path and may be called on any thread. No `lock` that a long operation can hold, no I/O, no database query, no vehicle round-trip, no `await` bridged with `.Result`. Read `volatile`/`Interlocked` fields or a `SemaphoreSlim.CurrentCount`. A predicate that can block turns the updater into a source of deadlock.
+2. **Fail safe: if the session state cannot be determined, report busy.** Any exception, any partially initialised session, any "I don't know" answers `true`. Never let an unknown state resolve to "free".
+3. **Assign it once, at the composition root**, when the session service is constructed. Never from page code-behind, where navigation or a re-created view model can silently drop it back to the default.
+4. **Never assign it back to a default.** No code path writes `IsBusy = () => false`. Tearing the session down must not leave the predicate more permissive than the state it left behind — an uncommitted run keeps reporting busy.
+5. **It is a bench-state question, not a UI question.** It must be correct while the window is minimised, while a dialog is open, and while the UI thread is doing something else.
+6. It is pure logic and must be unit-tested without hardware (§10.4).
+
+### 7.5 UI rules for updates
+
+1. **A downloaded, pending update is shown but never applied silently mid-session.** Surface `ReadyToApply` as a quiet, non-modal `InfoBar` or status-bar item naming the pending version. Applying is an explicit operator action — or it simply happens at the next start.
+2. If the operator asks to restart while the bench is busy, `ApplyAndRestart()` returns `false`. The UI must say **what is holding it** (the operation in progress, the uncommitted run) and offer the action again when the bench goes idle — not a dead button, not a generic failure (§8.5, §9.7).
+3. **`UpdateState.Failed` is a normal condition on a shop-floor PC, not an error.** No network or unreachable GitHub is the expected state of an isolated bench. Render it as a quiet status ("update check unavailable"), never a dialog, never a blocking banner, never an automatic retry storm. `LastError` goes to the log and behind a "Details" expander (§9.7.2).
+4. `NotInstalled` is a developer condition (running from a build directory) — show nothing to an operator.
+5. **Never block operator work on update state.** The bench must work indefinitely offline, on any state including `Failed`.
+
+---
+
+## 8. Safety rules for a tool that writes to flight hardware
 
 Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 
@@ -250,12 +378,13 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 10. **Read-only and firmware-managed parameters are never offered for write.** Not greyed-out-but-writable, not "advanced mode" — not offered.
 11. **An operation whose outcome is unknown is reported as unknown.** Cancellation, timeout and link loss produce "unknown — the vehicle may or may not have applied this", plus the next action. They never produce a success or a rollback claim the app cannot back up.
 12. **One vehicle-mutating operation at a time**, serialised at the session (§3.3.1). Concurrent writes are refused with a clear reason, not queued silently.
+13. **The session owns the update interlock (§7).** `UpdateService.IsBusy` is assigned by the flight-controller code at the composition root, reports busy for every state in §7.2, and fails safe to busy when the state is unknown. Leaving it at its default is a defect of the same severity as fire-and-forget writes: it lets a process restart land between a write and its verification, which no other rule in this list can recover from.
 
 ---
 
-## 8. UI patterns
+## 9. UI patterns
 
-### 8.1 Surface mapping (prefer stock WinUI 3)
+### 9.1 Surface mapping (prefer stock WinUI 3)
 
 | Need | Stock surface | Notes |
 |---|---|---|
@@ -268,34 +397,35 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 | Telemetry readouts | Plain `TextBlock` bound to formatted view-model strings, in a `Grid`; `ProgressBar` for bounded scalars | Fixed-width numeric formatting so digits do not jitter at refresh rate. |
 | Top-level actions | `CommandBar` / `CommandBarFlyout` | Standard command surfaces, standard keyboard/accessibility behaviour for free. |
 | App shell | `NavigationView` | One section per domain service (parameters, compass, calibration, telemetry). |
+| Pending-update notice | Quiet `InfoBar` (`Informational`) or a status-bar item, never a dialog | Names the pending version; the action applies it only when the bench is idle. `UpdateState.Failed` is a quiet status line, not an error. Rules in §7.5. |
 
-### 8.2 Stock-first rule
+### 9.2 Stock-first rule
 
 1. Use built-in WinUI 3 controls and command surfaces. Do not build custom chrome, custom title-bar buttons, custom dialogs or a bespoke control set.
 2. Reach for `CommunityToolkit` only where the built-ins genuinely do not cover the need (the data grid for the parameter diff is the canonical example). Justify each toolkit dependency; do not pull it in for styling.
 3. Custom drawing is acceptable only where there is no control at all (e.g. an attitude/horizon indicator or a calibration-coverage sphere).
 
-### 8.3 Theming
+### 9.3 Theming
 
 1. **Light and dark must both work.** Use `{ThemeResource ...}` against the system brushes — `SystemFillColorCriticalBrush`, `SystemFillColorCautionBrush`, `SystemFillColorSuccessBrush`, `TextFillColorPrimaryBrush`, `TextFillColorSecondaryBrush`, `TextFillColorDisabledBrush`, `LayerFillColorDefaultBrush`, and the accent brushes.
 2. **No hard-coded colours** in XAML or code-behind — no literal hex, no `Colors.Red`. A status colour that is legible in dark and unreadable in light is a defect.
 3. Do not encode status by colour alone: pair every colour with an icon and text (accessibility, and it survives a theme the author did not test).
 4. Verify both themes explicitly; theme switching at runtime must not leave stale brushes.
 
-### 8.4 Long-operation UX
+### 9.4 Long-operation UX
 
 1. Disable only what the operation actually conflicts with. The whole window must not go dead.
 2. Show what is happening in domain terms ("Fetching parameters 412 / 1180"), not "Please wait".
-3. Cancellation always available, and its effect stated honestly (§3.3.2, §7.11).
+3. Cancellation always available, and its effect stated honestly (§3.3.2, §8.11).
 4. Never show a progress bar that cannot advance. If no count exists, use an indeterminate `ProgressRing` plus a status line.
 
-### 8.5 Confirmation and verdict UX
+### 9.5 Confirmation and verdict UX
 
 1. Destructive confirmations state: what will change, how many items, whether it is reversible, whether a reboot is required, and whether a snapshot was taken.
-2. Verification verdicts are per-item and visible: verified / coalesced / rejected / not attempted (§7.6). A single aggregate "Done" over a partial batch is forbidden.
+2. Verification verdicts are per-item and visible: verified / coalesced / rejected / not attempted (§8.6). A single aggregate "Done" over a partial batch is forbidden.
 3. Prearm and status-text diagnostics are shown verbatim in a scrollable log **in addition to** any interpreted verdict — the operator must be able to see what the vehicle actually said.
 
-### 8.6 Stale and unknown values
+### 9.6 Stale and unknown values
 
 **A stale or unknown telemetry value must render distinctly from a real value. Never as a plausible-looking number.**
 
@@ -305,7 +435,7 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 4. On disconnect and during `Rebooting`, all live readouts go stale at once. No readout survives a link loss looking live.
 5. The same rule applies to derived values: if any input is stale or unknown, the derived readout is stale.
 
-### 8.7 Error text
+### 9.7 Error text
 
 1. Operator-facing error text states **the cause and the next action**. Not an exception message, not a stack trace, not an error code alone.
    - Bad: `System.UnauthorizedAccessException: Access to the port 'COM7' is denied.`
@@ -317,15 +447,15 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 
 ---
 
-## 9. Testing without hardware
+## 10. Testing without hardware
 
-### 9.1 SITL as the development target
+### 10.1 SITL as the development target
 
 1. Run ArduPilot SITL and connect the app over **TCP or UDP** instead of serial. The connection/session layer (layer 3) and everything above it are transport-agnostic by design (§2) — this is one of the reasons the transport is its own layer.
 2. Keep the transport selectable in developer builds (serial / TCP / UDP) so the same session, domain and view-model code runs against SITL and against a real board.
 3. SITL is a simulated vehicle: identity that comes from simulated sensors will differ from real hardware. Expect a SITL-flavoured compass device type and bus type; never bake SITL-specific identity assumptions into production code paths.
 
-### 9.2 What SITL can exercise
+### 10.2 What SITL can exercise
 
 - MAVLink framing, heartbeat handling, session state machine, command/ack correlation, timeouts and retries.
 - The full parameter workflow: list fetch with gap detection, read-by-name, write + read-back verification, diff, file import/export.
@@ -333,8 +463,9 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 - Calibration command dispatch and result handling, status-text reassembly and prearm-string parsing.
 - Reboot **command** dispatch, the ack-before-reboot behaviour, session-state transitions, stream-interval re-issue and parameter re-fetch after the link returns.
 - Threading, cancellation, UI responsiveness and the stale-value rendering (simply stop the simulator to produce staleness).
+- **The busy interlock (§7.2) against a fake update path**: drive a SITL operation, assert `IsBusy()` is `true` for the whole of it — including the reboot window and an uncommitted run — and assert `ApplyAndRestart()` returns `false` throughout and `true` only once the bench is idle.
 
-### 9.3 What SITL cannot exercise
+### 10.3 What SITL cannot exercise
 
 | Not testable on SITL | Why |
 |---|---|
@@ -345,11 +476,13 @@ Non-negotiable. Each is a requirement on the implementation, not a suggestion.
 | Baud being a no-op over USB CDC | No CDC layer. |
 | Real sensor identity: `DEV_ID` bus/address/devtype decoding for physical compasses | Simulated sensors report simulated identity. |
 | Real calibration outcomes and timing, real prearm failures from real hardware | Simulated dynamics. |
-| MSIX packaging behaviour and capability effects | Independent of the vehicle; test by packaging and running the packaged app. |
+| Deployment and update behaviour: the unpackaged self-contained publish, the Velopack installer, `%LocalAppData%\ARDU_OTK` install, delta updates, and the `EnableMsixTooling` resource-copy dependency (`0xC000027B` if it regresses) | Nothing to do with the vehicle. Test it by publishing, packing with `vpk`, installing on a clean machine and publishing a test release — a run from the build directory reports `UpdateState.NotInstalled` and exercises none of it. There is **no MSIX package and no capability behaviour to test** (§6). |
 
-### 9.4 Consequences for the test plan
+### 10.4 Consequences for the test plan
 
 1. Unit-test the pure logic against recorded byte streams and fixtures: parameter diff, float comparison, unit conversion, sentinel handling, staleness, status-text reassembly, mode mapping. These need neither SITL nor hardware.
-2. Integration-test layers 3–5 against SITL.
-3. **Hardware is mandatory before release** for: enumeration and identification (§4), the entire reboot-survival lifecycle (§5), calibration end-to-end, and every unverified item flagged in this file and its siblings. Ship no reboot-recovery code that has never met a real board.
-4. Fake the device layer for automated tests of §5's *state machine* (a scriptable `IDeviceWatcher`/`ISerialPortFactory` can replay "port vanished → `-BL` arrived → application arrived on a different `COMn`"), but treat that as a test of your logic, not evidence the real behaviour is handled.
+2. **Unit-test the busy predicate (§7.4) — it is pure logic and there is no excuse for it being untested.** Cover: every state in §7.2 returns busy; an idle session returns free; a thrown exception inside the predicate returns **busy**, not free; and the delegate is actually assigned by the composition root (a test that constructs the app's services and asserts `IsBusy` is not the default `static () => false` catches the whole class of failure in §7.3).
+3. Integration-test layers 3–5 against SITL.
+4. **Hardware is mandatory before release** for: enumeration and identification (§4), the entire reboot-survival lifecycle (§5), calibration end-to-end, and every unverified item flagged in this file and its siblings. Ship no reboot-recovery code that has never met a real board.
+5. Fake the device layer for automated tests of §5's *state machine* (a scriptable `IDeviceWatcher`/`ISerialPortFactory` can replay "port vanished → `-BL` arrived → application arrived on a different `COMn`"), but treat that as a test of your logic, not evidence the real behaviour is handled.
+6. **An installed build is its own test target.** The startup path (`Program.cs` → `VelopackApp.Build().Run()` → `Application.Start`), the resource copy that `EnableMsixTooling` performs, and the whole update cycle only exist in a published, installed copy — none of them are covered by `dotnet run` or by any SITL test.

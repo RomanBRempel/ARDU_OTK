@@ -1,0 +1,13 @@
+# Reference Index
+
+Read this file first, then load only the references that match the task. Do not load all of them.
+
+| Reference | Owns | Load when |
+| --- | --- | --- |
+| `reference-profiles-and-storage.md` | The local reference-snapshot database, multiple selectable reference profiles, the pre-connection selection workflow, the large top-left primary panel, and run records. | Capturing or importing a reference, managing profiles, designing the app shell, deciding what a run stores. |
+| `parameter-protocol-and-profiles.md` | MAVLink parameter read/write/verify mechanics, `MAV_PARAM_TYPE` handling, `.param`/`.parm`/`.params` file formats, the configurable comparison profile schema, comparison epsilons, the diff result model. | Fetching, writing or comparing parameters; defining or editing the configurable comparison block. |
+| `connection-and-telemetry.md` | Link setup and board identification, the connect handshake, stream-rate policy via `MAV_CMD_SET_MESSAGE_INTERVAL`, the telemetry data model (attitude on three axes, voltage, current, flight mode, per-instance magnetometer), `STATUSTEXT` ingestion, freshness and link-loss rules. | Connecting, requesting streams, building any live readout, or parsing `STATUSTEXT`. |
+| `compass-topology-and-flags.md` | Compass parameter map, priority model, `COMPASS_DEV_ID` decoding, external-vs-internal classification, the procedure to make the external compass primary and set the use flags, the compass panel model. | Reading compass topology, reordering compasses, setting use flags, building the compass panel. |
+| `compass-calibration-transfer.md` | Transferring compass calibration from a reference into a board (write, verify, reboot, re-verify), fixed-yaw / large-vehicle calibration with an operator-entered azimuth, onboard calibration commands. | Any compass calibration workflow. |
+| `imu-level-and-health-verification.md` | Level calibration via `MAV_CMD_PREFLIGHT_CALIBRATION` `param5 = 2`, the reboot command, and proving the board is actually calibrated via `MAV_CMD_RUN_PREARM_CHECKS` and the prearm catalogue. | Running level calibration, rebooting the board, or producing a post-restart verification verdict. |
+| `dotnet-mavlink-and-winui-integration.md` | MAVLink library choice and version pinning for this repo's TFM, application layering, threading, device discovery, reboot survival and COM re-enumeration, the unpackaged/Velopack deployment model and the `UpdateService.IsBusy` interlock, safety rules, WinUI 3 UI patterns. | Choosing dependencies, structuring the app, handling device lifecycle, wiring the update interlock, or designing any UI surface. |

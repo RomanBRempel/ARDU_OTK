@@ -17,67 +17,27 @@ Everything here is operational. Message and command names, parameter names, fiel
 
 ### 1.2 UDP / TCP alternative
 
-MAVLink is transport-agnostic; the same framing runs over UDP and TCP (companion computer, SITL, WiFi telemetry bridge). `Asv.Mavlink` supports serial, UDP and TCP. Keep the transport behind one interface so the handshake, stream-rate and decode layers are identical across all three. Nothing in sections 2–8 depends on the transport.
+MAVLink is transport-agnostic; the same framing runs over UDP and TCP (companion computer, SITL, WiFi telemetry bridge). Keep the transport behind one interface so the handshake, stream-rate and decode layers are identical across all three. **Nothing in sections 2–8 depends on the transport.**
 
-Recommended .NET codec/transport (verified on nuget.org):
+Library choice, version and TFM pinning, and the package names that must not be used, are owned by `dotnet-mavlink-and-winui-integration.md` §1. Do not restate that table here — two copies of a version pin will drift.
 
-| Option | License | Notes |
-|---|---|---|
-| `Asv.Mavlink` | MIT | **Recommended.** Only option with a real parameter-protocol client (`IParamsClient`/`IParamsClientEx`), MAVLink v2, `ardupilotmega` dialect, serial + UDP + TCP. **Pin the version to your TFM: `4.0.17` is the last net8 build; `4.0.18` = net9; `4.0.19+` = net10 only.** |
-| mavgen `--lang CS` (vendored) | your code | Second choice. Pure codec, no transport and no param state machine — you write those. |
-| `MAVLink` (Mission Planner's) | GPL-3.0 source, no NuGet license metadata | **Avoid** for a non-GPL product. Codec only, stale since 2021. |
-| `MavLinkSharp` | unclear | Viable fallback; runtime XML dialect parsing. |
+### 1.3 Board identification — what the handshake needs
 
-MAVSDK C# is **dead** (`mavlink/MAVSDK-CSharp` archived 2024-04-10). Do not reference `MavLinkNet`, `MAVLink.NET`, `Asv.Mavlink.Minimal` or `MAVSDK` — they do not exist on nuget.org.
-
-### 1.3 Board identification — VID/PID **plus** manufacturer string
-
-| Vendor | VID | PIDs / notes |
-|---|---|---|
-| pid.codes generic (hwdef declares none) | `0x1209` | `0x5740` composite/dual-CDC, `0x5741` single CDC. MatekH743/F405 and Pixhawk6X ship these generic IDs. |
-| CubePilot | `0x2DAE` | `0x1016` CubeOrange, `0x1058` CubeOrange+, `0x1011` CubeBlack, … |
-| Holybro | `0x3162` | `0x0053` Pixhawk6C, `0x004B` Durandal |
-| 3DR (pre-2018) | `0x26AC` | — |
-| ST Micro (early ChibiOS) | `0x0483` | `0x5740` |
-
-Rules:
+The VID/PID table and the enumeration mechanics are owned by `dotnet-mavlink-and-winui-integration.md` §4. Three rules from it are repeated here because the handshake in §2 depends on them:
 
 1. Match on the **VID set _and_ the manufacturer string `ArduPilot`**. Never on VID alone — `0x1209`/`0x0483` are shared with unrelated hardware.
 2. Product string = board name. **The bootloader appends `-BL`** — a `…-BL` product string means the board is in DFU/bootloader mode, not running firmware; do not attempt a MAVLink handshake against it.
 3. Cube-class boards **enumerate twice** after a reboot (bootloader first, then the app). Wait for the non-`-BL` entry.
 
-### 1.4 Why `SerialPort.GetPortNames()` is insufficient
+### 1.4 Enumeration, reconnect and packaging — owned elsewhere
 
-`GetPortNames()` returns **names only** — no VID, no PID, no manufacturer, no device instance path. It reads `HKLM\HARDWARE\DEVICEMAP\SERIALCOMM` and **can return stale entries** for devices that are already gone. It cannot distinguish a flight controller from a USB-serial dongle or a Bluetooth virtual port.
+| Topic | Owner |
+|---|---|
+| Why `SerialPort.GetPortNames()` is insufficient, and what to query instead | `dotnet-mavlink-and-winui-integration.md` §4 |
+| Reconnect after a reboot, USB re-enumeration, device-change watching | `dotnet-mavlink-and-winui-integration.md` §5 |
+| MSIX packaging, `runFullTrust`, the `serialcommunication` capability | `dotnet-mavlink-and-winui-integration.md` §6 |
 
-Use instead:
-
-- **`Win32_PnPEntity`** (WMI), reading `PNPDeviceID`, `Name`, `Manufacturer`, `HardwareID`, filtered by the Ports class GUID `{4d36e978-e325-11ce-bfc1-08002be10318}`; **or**
-- **SetupAPI** enumeration on `GUID_DEVINTERFACE_COMPORT`.
-
-Both give you VID/PID, the manufacturer string, and the stable device instance path.
-
-```csharp
-// Illustrative shape only.
-const string PortsClassGuid = "{4d36e978-e325-11ce-bfc1-08002be10318}";
-// query Win32_PnPEntity WHERE ClassGuid = PortsClassGuid
-// keep entries whose PNPDeviceID contains an accepted VID_xxxx&PID_xxxx
-// AND whose Manufacturer == "ArduPilot";
-// carry PNPDeviceID (device instance path) forward as the identity, not the COMn name.
-```
-
-### 1.5 Reconnect after reboot — never trust the cached `COMn`
-
-`MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN` makes the device **drop off the USB bus and re-enumerate** (`port_disable(); NVIC_SystemReset();` — there is no graceful detach). Consequences you must handle:
-
-1. **Close the port immediately** when you send the reboot command; do not wait for I/O errors.
-2. Watch `WM_DEVICECHANGE` / a `DeviceWatcher` for arrival. Mission Planner's own approach is a ~500 ms sleep then reopen; event-driven is better.
-3. **The COM number can change** on composite F7/H7 boards. **Re-resolve the port from the device instance path + VID/PID — never from the cached `COMn`.**
-4. Expect the board to appear twice on Cube-class hardware (bootloader `…-BL`, then app).
-
-### 1.6 WinUI 3 packaging constraint
-
-A default WinUI 3 MSIX package declares `<rescap:Capability Name="runFullTrust" />`, so the app runs at **medium IL, not in an AppContainer**. Capability enforcement is AppContainer-scoped ⇒ **`System.IO.Ports.SerialPort` works and `DeviceCapability serialcommunication` is NOT required.** The `serialcommunication` capability gates only `Windows.Devices.SerialCommunication.SerialDevice`; if you switch to that API, declare it (`<DeviceCapability Name="serialcommunication"/>`, Win10 1809+ form) and note the known single-project-MSIX manifest-ordering bug.
+One consequence is repeated here because §3 depends on it: **after a reboot the device re-enumerates and the COM number can change** — re-resolve from the device instance path, never from the cached `COMn` — and **stream intervals do not survive the reboot**, so §3 must be re-run on every reconnect.
 
 ---
 
@@ -202,7 +162,7 @@ One row per readout the UI shows. Never render a raw field without applying the 
 | Readout | Message | Field | Raw unit | Sentinel / invalid | UI unit | Conversion |
 |---|---|---|---|---|---|---|
 | Pack voltage (preferred) | `BATTERY_STATUS` (147) | `voltages[10]` | mV per entry | entry `65535` (`UINT16_MAX`) = unused | V | `V = (Σ entries where e != 65535) / 1000` |
-| Pack voltage (extension) | `BATTERY_STATUS` (147) | `voltages_ext[4]` | mV | **unused = `0`** (different sentinel!) | V | sum non-zero entries, `/1000` |
+| Pack voltage, cells 11–14 — **added to the row above, not a separate readout** | `BATTERY_STATUS` (147) | `voltages_ext[4]` | mV | **unused = `0`** (different sentinel!) | V | sum non-zero entries into the same total, `/1000` |
 | Current (preferred) | `BATTERY_STATUS` (147) | `current_battery` | cA (10 mA) | `-1` = not sent | A | `A = cA / 100` |
 | Consumed | `BATTERY_STATUS` (147) | `current_consumed` | mAh | — | mAh | as-is |
 | Battery temperature | `BATTERY_STATUS` (147) | `temperature` | cdegC | `32767` = unknown | °C | `°C = cdegC / 100` |

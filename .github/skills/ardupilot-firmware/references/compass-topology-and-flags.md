@@ -385,6 +385,12 @@ so a run interrupted at any point can be started again from step 1.
    **Never proceed on a guess.** An incorrect priority-1 choice puts a wrongly-oriented or wrongly-calibrated
    sensor in charge of yaw.
 7. Let `E` = the chosen external compass, `devIdE = COMPASS_DEV_IDx` of `E`. Sanity-check `devIdE != 0`.
+7a. **Assert the vehicle is disarmed** — `(HEARTBEAT.base_mode & 0x80) == 0`. If it is armed, stop. Never
+    write parameters to an armed vehicle; this is a skill-wide hard rule, not a local preference.
+7b. **Snapshot `COMPASS_PRIO1_ID`/`PRIO2_ID`/`PRIO3_ID` and `COMPASS_USE`/`USE2`/`USE3` to the session
+    folder before the first write is issued** — on disk, not only in memory — so the operator can restore
+    the board if the operation aborts part-way. See the snapshot rule in
+    `dotnet-mavlink-and-winui-integration.md`.
 
 ### Phase C — write the priority order
 
@@ -401,41 +407,48 @@ so a run interrupted at any point can be started again from step 1.
     `(int)MathF.Round(v)`, **exact, no epsilon**. Retry the set up to 2 times on mismatch, then abort and
     report which parameter would not take the value.
 
-### Phase D — set the use flags
+### Phase D — reboot
 
-12. Set the use flag on the external compass: `COMPASS_USE*` for `E` ⇒ `1`.
-13. Clear the use flag on the internal compass/compasses: `COMPASS_USE*` ⇒ `0`.
+12. Require a reboot (`COMPASS_PRIOx_ID` is `@RebootRequired: True`). Tell the operator explicitly that a
+    reboot is part of this operation, not an optional follow-up.
+13. Issue the reboot through the project's reboot path (owned by `imu-level-and-health-verification.md`).
+    **The board drops off the USB bus and re-enumerates; the COM number can change.** Close the port
+    immediately and re-resolve the device — never reconnect to the cached `COMn`. Re-enumeration handling
+    is owned by `dotnet-mavlink-and-winui-integration.md`.
+14. **Discard the entire compass parameter cache** (§2.3). Anything read in Phase A is now untrustworthy.
+
+### Phase E — re-read, then set the use flags
+
+15. Re-run Phase A in full against the rebooted board and rebuild the topology table from scratch.
+16. Assert `COMPASS_DEV_ID` (unsuffixed, i.e. the priority-1 slot) now decodes to the external compass.
+    If it does not, the reorder did not take effect — return to Phase C rather than writing use flags.
+17. 🔴 **Set the use flags only now, after the reboot, against the re-read topology.** The boot-time block
+    swap of §2.3 moves exactly `external, orientation, offset, diagonals, offdiagonals, scale_factor,
+    dev_id, motor_compensation` between slots — **`COMPASS_USE*` is not in that list.** Writing use flags
+    against the pre-reboot slot numbering therefore depends on an assumption about which slot they follow;
+    writing them after the reboot removes that ambiguity entirely. Do not "optimise" this back into
+    Phase C.
+18. Set the use flag on the external compass: `COMPASS_USE*` for `E` ⇒ `1`.
+19. Clear the use flag on the internal compass/compasses: `COMPASS_USE*` ⇒ `0`.
     **Before writing, assert that at least one compass will still have `COMPASS_USE* == 1`.** If the
     assertion fails, abort the whole operation and leave the board as found.
-14. Verify each use-flag write by read-back, by name, exact integer compare.
-    - If a read-back shows the old value on a **float** parameter, remember `save_sync()` can coalesce a
-      write whose relative change is `< 1e-4` — report that as **"coalesced"**, not as a failure. This does
-      **not** apply to `COMPASS_USE*` / `COMPASS_PRIOx_ID` (integer-typed): there a mismatch is a real
-      failure.
-15. Note that the use flags are **not** `@RebootRequired` — but the priority change is, and the block swap
-    of §2.3 will move the flags with their compass, so do not report success yet.
+20. Verify each use-flag write by read-back, by name, exact integer compare. `COMPASS_USE*` and
+    `COMPASS_PRIOx_ID` are integer-typed, so the float write-coalescing exception does not apply to them —
+    a mismatch here is a real failure.
 
-### Phase E — reboot
+### Phase F — verify
 
-16. Require a reboot (`COMPASS_PRIOx_ID` is `@RebootRequired: True`). Tell the operator explicitly that a
-    reboot is part of this operation, not an optional follow-up.
-17. Issue the reboot through the project's reboot path. **The board drops off the USB bus and
-    re-enumerates; the COM number can change.** Close the port immediately and re-resolve the device —
-    never reconnect to the cached `COMn`.
-18. **Discard the entire compass parameter cache** (§2.3). Anything read in Phase A is now untrustworthy.
-
-### Phase F — re-read and re-verify
-
-19. Re-run Phase A in full against the rebooted board.
-20. Assert all of the following; any failure is a **failed operation**, reported with the topology table:
+21. Assert all of the following; any failure is a **failed operation**, reported with the topology table:
     - `COMPASS_DEV_ID` (unsuffixed, i.e. priority-1 slot) decodes to the external compass — this is the
       block swap having happened.
     - `COMPASS_EXTERNAL` (unsuffixed) is `1` or `2`.
     - `COMPASS_USE` (unsuffixed) is `1`.
     - The internal compass's `COMPASS_USE*` is `0`.
     - At least one `COMPASS_USE*` is `1`.
-21. Run the prearm checks and collect `PreArm:` STATUSTEXT (reassembling chunks first). Treat these as
-    **the operation is incomplete**:
+22. Run the prearm checks and produce a verdict using the `VerificationVerdict` model in
+    `imu-level-and-health-verification.md` §9 — do not invent a local success rule here. The following
+    compass strings specifically mean **the operation is incomplete** (reassemble `STATUSTEXT` chunks
+    first — see `connection-and-telemetry.md`):
     - **`PreArm: Compass order change requires reboot`** — the reboot did not take effect, or a further
       priority write happened after it. Return to Phase E.
     - **`PreArm: Compass %d not found`** — a `COMPASS_PRIOx_ID` names a device that is not present.
@@ -443,7 +456,12 @@ so a run interrupted at any point can be started again from step 1.
       offending slot and restart from Phase A.
     - STATUSTEXT **`Compass cal requires reboot after priority change`** (ERROR, **no `PreArm:` prefix**)
       if a calibration is started before the reboot — same remedy.
-22. Only after step 20 passes and none of the strings in step 21 are present, report success.
+23. 🔴 **Report success only on positive evidence.** Step 21 passing plus "no bad strings arrived" is not
+    sufficient — silence is also what a board that never ran the checks looks like. Success requires the
+    verdict from step 22 to be `Verified`: `MAV_CMD_RUN_PREARM_CHECKS` returned `ACCEPTED`, at least one
+    `SYS_STATUS` arrived inside the collection window, the `PREARM_CHECK` bit is present, enabled and
+    healthy, and none of the strings above were seen. Any other outcome is `Inconclusive` or a failure —
+    never success. Report which checks were actually enabled alongside the verdict.
 
 ---
 
