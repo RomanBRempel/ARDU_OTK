@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ARDU_OTK (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "ARDU_OTK (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

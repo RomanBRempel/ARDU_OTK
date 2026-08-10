@@ -1,0 +1,94 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>ARDU_OTK</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    Модель развёртывания: unpackaged (без MSIX).
+
+    Обновления доставляет Velopack через GitHub Releases, поэтому пакет
+    идентичности MSIX не нужен, а сертификат подписи не требуется вовсе.
+    WindowsPackageType=None включает автоинициализацию бутстрапера
+    Windows App SDK — без неё unpackaged-приложение падает на старте.
+
+    Оба SelfContained дают установку без предварительных условий: на цеховом
+    ПК не нужны ни .NET Desktop Runtime, ни Windows App Runtime, ни права
+    администратора. Первая загрузка тяжелее, дальше Velopack шлёт дельты.
+  -->
+  <PropertyGroup>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!--
+      EnableMsixTooling остаётся true, хотя MSIX не собирается. Именно эти
+      targets копируют в publish скомпилированный XAML (.xbf), ARDU_OTK.pri и
+      Assets. С false публикация «успешна», но приложение падает на старте
+      с 0xC000027B: XAML не находит свои ресурсы.
+    -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <SelfContained>true</SelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <!-- Точка входа своя (Program.cs) — этого требует Velopack. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <!--
+    Assets нужны в publish отдельными файлами, а не только внутри .pri:
+    MainWindow вызывает AppWindow.SetIcon("Assets/AppIcon.ico"), а это чтение
+    с диска, не ресурс XAML.
+  -->
+  <ItemGroup>
+    <Content Update="Assets\**" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.SDK.BuildTools.WinApp из шаблона убран намеренно: он
+    цепляется к цели Run и регистрирует debug-идентичность пакета, что для
+    unpackaged-приложения бессмысленно и ломает `dotnet run`.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <!--
+      Тримминг выключен осознанно, вопреки дефолту шаблона: XAML и биндинги
+      WinUI разрешаются рефлексией, тримминг вырезает нужные типы, и падает
+      это не на сборке, а в рантайме на конкретном экране. Для цехового
+      инструмента цена такой ошибки — простой смены. Размер здесь не критичен:
+      полный пакет качается один раз, дальше идут дельты.
+    -->
+    <PublishTrimmed>False</PublishTrimmed>
+  </PropertyGroup>
+</Project>

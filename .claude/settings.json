@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/mavlink/master/message_definitions/v1.0/ardupilotmega.xml' -UseBasicParsing\\).Content; $lines = $x -split \"`n\"; foreach \\($p in @\\('value=\"42424\"','value=\"42425\"','value=\"42426\"','id=\"191\"'\\)\\) { $m = $lines | Select-String -Pattern \\([regex]::Escape\\($p\\)\\) | Select-Object -First 1; if \\($m\\) { \"=== $p ===\"; $lines[\\($m.LineNumber-1\\)..\\([Math]::Min\\($m.LineNumber+22,$lines.Count-1\\)\\)] -join \"`n\"; \"\" } else { \"=== $p NOT FOUND ===\" } })",
+      "Bash(curl -s https://raw.githubusercontent.com/ArduPilot/ardupilot/master/ArduCopter/GCS_MAVLink_Copter.cpp)",
+      "Bash(curl -s https://raw.githubusercontent.com/ArduPilot/ardupilot/master/ArduCopter/Parameters.cpp)",
+      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/ardupilot/master/libraries/AP_Compass/AP_Compass_Calibration.cpp' -UseBasicParsing\\).Content; $x)",
+      "WebFetch(domain:grep.app)",
+      "Bash(curl -sL \"https://ardupilot.org/copter/docs/parameters.html\")",
+      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/ardupilot/master/libraries/AP_Compass/AP_Compass.cpp' -UseBasicParsing\\).Content; \\($x -split \"`n\" | Select-String -Pattern 'AP_GROUPINFO|AP_SUBGROUPINFO' | ForEach-Object { $_.Line.Trim\\(\\) }\\) -join \"`n\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

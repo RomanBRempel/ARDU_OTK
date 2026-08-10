@@ -1,0 +1,65 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+
+## Velopack output
+[Rr]eleases/
+.vpk/
+
+## Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## MSIX / packaging
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.appxupload
+*.msix
+*.msixbundle
+*.msixupload
+*.cer
+*.pfx
+*.pvk
+*.snk
+
+## .NET
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+.packages/
+BenchmarkDotNet.Artifacts/
+
+## Test / coverage
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+## OS noise
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.DS_Store
+
+## Local secrets — never commit
+*.local.json
+appsettings.Development.json
+secrets.json
+
+## Локальные артефакты инструментов
+graphify-out/

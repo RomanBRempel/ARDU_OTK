@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ARDU_OTK.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:ARDU_OTK"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="32">
+        <StackPanel
+            MaxWidth="720"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Spacing="16">
+
+            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="ARDU ОТК" />
+
+            <TextBlock
+                x:Name="VersionText"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource BodyTextBlockStyle}"
+                Text="Версия —" />
+
+            <InfoBar
+                x:Name="UpdateBar"
+                IsClosable="False"
+                IsOpen="True"
+                Message="Проверка обновлений не выполнялась."
+                Severity="Informational"
+                Title="Обновления">
+                <InfoBar.ActionButton>
+                    <Button
+                        x:Name="UpdateActionButton"
+                        Click="OnUpdateActionClick"
+                        Content="Проверить обновления" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
+            <ProgressBar
+                x:Name="UpdateProgress"
+                IsIndeterminate="True"
+                Visibility="Collapsed" />
+
+        </StackPanel>
+    </Grid>
+</Page>

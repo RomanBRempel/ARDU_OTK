@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Единый источник версии для всего решения.
+
+    Локально версия берётся отсюда. В CI она перезаписывается из git-тега
+    (`dotnet build -p:Version=1.2.0`) — глобальные свойства MSBuild
+    перекрывают заданные в файле, поэтому править здесь при релизе не нужно.
+
+    Формат — SemVer: Velopack сравнивает версии именно по нему и без
+    корректного SemVer не сможет решить, какое обновление новее.
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>ARDU OTK</Product>
+    <Company>ARDU</Company>
+    <Authors>ARDU</Authors>
+    <Copyright>Copyright © ARDU</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>
