@@ -11,7 +11,11 @@
       "Skill(schedule)",
       "Skill(schedule:*)",
       "PowerShell(Get-Process ARDU_OTK -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }; Start-Sleep 2; \"остановлено\")",
-      "PowerShell(Remove-Item \"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\" -ErrorAction SilentlyContinue; $exe=\"C:\\\\#Data\\\\ARDU_OTK\\\\ARDU_OTK\\\\bin\\\\x64\\\\Debug\\\\net10.0-windows10.0.26100.0\\\\win-x64\\\\ARDU_OTK.exe\"; $p=Start-Process $exe -PassThru; Start-Sleep 15; if \\($p.HasExited\\) { \"EXITED 0x{0:X8}\" -f $p.ExitCode } else { \"RUNNING — оставлено открытым\" }; $l=\"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\"; if \\(Test-Path $l\\) { \"ошибка:\"; \\(Get-Content $l -TotalCount 4\\) -join \"`n\" } else { \"ошибок нет\" })"
+      "PowerShell(Remove-Item \"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\" -ErrorAction SilentlyContinue; $exe=\"C:\\\\#Data\\\\ARDU_OTK\\\\ARDU_OTK\\\\bin\\\\x64\\\\Debug\\\\net10.0-windows10.0.26100.0\\\\win-x64\\\\ARDU_OTK.exe\"; $p=Start-Process $exe -PassThru; Start-Sleep 15; if \\($p.HasExited\\) { \"EXITED 0x{0:X8}\" -f $p.ExitCode } else { \"RUNNING — оставлено открытым\" }; $l=\"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\"; if \\(Test-Path $l\\) { \"ошибка:\"; \\(Get-Content $l -TotalCount 4\\) -join \"`n\" } else { \"ошибок нет\" })",
+      "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\fix_mojibake2.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\fix_lines.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\watched_panel.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\single_block.py\")"
     ]
   },
   "hooks": {

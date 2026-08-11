@@ -91,6 +91,35 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
     private Visibility _outcomeVisibility = Visibility.Collapsed;
     private bool _canWrite;
 
+    /// <summary>
+    /// Совпавший параметр, который эталон помечен показывать.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Совпавшие и разошедшиеся имена живут в одном списке намеренно. Это
+    /// две стороны одного вопроса «сходится ли борт с эталоном», и разнесённые
+    /// по разным спискам они заставляют сверять их памятью: оператор смотрит на
+    /// расхождения, потом ищет глазами, а что там с наблюдаемыми, и обратно.
+    /// </remarks>
+    public ParameterDifferenceRow(string name, double expected, double? actual)
+    {
+        Name = name;
+        Detail = string.Empty;
+        _canWrite = false;
+
+        ExpectedText = "эталон " + ReferenceParamFile.FormatCanonical(expected);
+        ActualText = actual is { } value
+            ? string.Create(CultureInfo.InvariantCulture, $"борт {value:G9}")
+            : "на борту нет";
+
+        // Помеченные показывать и так все на виду: значок «показываемый» рядом
+        // с каждой строкой был бы шумом.
+        VisibleBadgeVisibility = Visibility.Collapsed;
+        WriteButtonVisibility = Visibility.Collapsed;
+
+        MatchVisibility = Visibility.Visible;
+        DiffVisibility = Visibility.Collapsed;
+    }
+
     public ParameterDifferenceRow(ParameterDifference difference)
     {
         ArgumentNullException.ThrowIfNull(difference);
@@ -99,6 +128,9 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         Name = difference.Name;
         Detail = difference.Detail;
         _canWrite = difference.Writable;
+
+        MatchVisibility = Visibility.Collapsed;
+        DiffVisibility = Visibility.Visible;
 
         ExpectedText = difference.Expected is { } expected
             ? "эталон " + ReferenceParamFile.FormatCanonical(expected)
@@ -117,7 +149,13 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ParameterDifference Source { get; }
+    public ParameterDifference? Source { get; }
+
+    /// <summary>Строка о совпавшем параметре — значок согласия.</summary>
+    public Visibility MatchVisibility { get; }
+
+    /// <summary>Строка о расхождении — значок несогласия.</summary>
+    public Visibility DiffVisibility { get; }
 
     public string Name { get; }
 

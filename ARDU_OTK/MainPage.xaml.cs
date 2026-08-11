@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,100 +20,184 @@ using Windows.Foundation;
 
 namespace ARDU_OTK;
 
-/// <summary>РЎС‚СЂРѕРєР° РїР°РЅРµР»Рё РєРѕРјРїР°СЃРѕРІ.</summary>
-public sealed class CompassRow
+/// <summary>Строка панели компасов.</summary>
+/// <remarks>
+/// 🔴 Строка обновляется на месте, а не пересоздаётся. Показания приходят
+/// несколько раз в секунду, и подмена объекта в списке заставляла список
+/// пересобирать контейнер на каждом такте: панель мерцала, а добавленные
+/// анимации появления это подчёркивали. Уведомления об изменении свойств
+/// меняют только текст, оставляя контейнер на месте.
+/// </remarks>
+public sealed class CompassRow : INotifyPropertyChanged
 {
-    /// <summary>РќРѕСЂРјР° РјРѕРґСѓР»СЏ РјР°РіРЅРёС‚РЅРѕРіРѕ РїРѕР»СЏ, РјР“СЃ, Рё РіСЂР°РЅРёС†С‹ РїСЂРµРґРїРѕР»С‘С‚РЅРѕР№ РїСЂРѕРІРµСЂРєРё.</summary>
+    /// <summary>Норма модуля магнитного поля, мГс, и границы предполётной проверки.</summary>
     public const double FieldExpected = 530;
 
     public const double FieldMin = 185;
 
     public const double FieldMax = 875;
 
-    /// <param name="sample">РџРѕРєР°Р·Р°РЅРёСЏ РјР°РіРЅРёС‚РѕРјРµС‚СЂР° РёР· С‚РµР»РµРјРµС‚СЂРёРё.</param>
+    /// <param name="sample">Показания магнитометра из телеметрии.</param>
     /// <param name="identity">
-    /// РћРїРѕР·РЅР°РЅРёРµ РґР°С‚С‡РёРєР°: РІРЅРµС€РЅРёР№ РёР»Рё РІРЅСѓС‚СЂРµРЅРЅРёР№ Рё С‡С‚Рѕ Р·Р° Р¶РµР»РµР·Рѕ.
-    /// <c>null</c> вЂ” РїР°СЂР°РјРµС‚СЂС‹ РѕРїРѕР·РЅР°РЅРёСЏ РµС‰С‘ РЅРµ РїСЂРѕС‡РёС‚Р°РЅС‹ Р»РёР±Рѕ Р±РѕСЂС‚ РёС… РЅРµ РѕС‚РґР°Р».
+    /// Опознание датчика: внешний или внутренний и что за железо.
+    /// <c>null</c> — параметры опознания ещё не прочитаны либо борт их не отдал.
     /// </param>
     /// <remarks>
-    /// рџ”ґ В«Р’РЅРµС€РЅРѕСЃС‚СЊВ» РїСЂРёС…РѕРґРёС‚ РЅРµ РёР· С‚РµР»РµРјРµС‚СЂРёРё, Р° РёР· РїР°СЂР°РјРµС‚СЂРѕРІ
-    /// <c>COMPASS_DEV_ID*</c> Рё <c>COMPASS_EXTERNAL*</c>. РЎСѓРґРёС‚СЊ Рѕ РЅРµР№ РїРѕ
-    /// РЅРѕРјРµСЂСѓ СЃР»РѕС‚Р° Р·Р°РїСЂРµС‰РµРЅРѕ: РїРѕСЂСЏРґРѕРє СЃР»РѕС‚РѕРІ Р·Р°РґР°С‘С‚СЃСЏ С‚Р°Р±Р»РёС†РµР№ РїСЂРёРѕСЂРёС‚РµС‚РѕРІ Рё
-    /// РјРµРЅСЏРµС‚СЃСЏ РїСЂРё РїРµСЂРµСЃС‚Р°РЅРѕРІРєРµ, С‚Р°Рє С‡С‚Рѕ В«РїРµСЂРІС‹Р№ вЂ” Р·РЅР°С‡РёС‚ РІРЅРµС€РЅРёР№В» РЅРµРІРµСЂРЅРѕ
-    /// СЂРѕРІРЅРѕ РЅР° С‚РµС… Р±РѕСЂС‚Р°С…, СЂР°РґРё РєРѕС‚РѕСЂС‹С… РїСЂРѕРІРµСЂРєР° Рё СЃСѓС‰РµСЃС‚РІСѓРµС‚.
+    /// 🔴 «Внешность» приходит не из телеметрии, а из параметров
+    /// <c>COMPASS_DEV_ID*</c> и <c>COMPASS_EXTERNAL*</c>. Судить о ней по
+    /// номеру слота запрещено: порядок слотов задаётся таблицей приоритетов и
+    /// меняется при перестановке, так что «первый — значит внешний» неверно
+    /// ровно на тех бортах, ради которых проверка и существует.
     /// </remarks>
     public CompassRow(MagSample sample, CompassIdentityRow? identity = null)
+    {
+        Instance = sample.Instance;
+        Title = $"Компас {sample.Instance + 1}";
+        Update(sample, identity);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Номер экземпляра телеметрии, с нуля. По нему строка опознаётся при перестановке.</summary>
+    public int Instance { get; }
+
+    public string Title { get; }
+
+    public string Detail { get; private set; } = string.Empty;
+
+    public string FieldText { get; private set; } = string.Empty;
+
+    /// <summary>Внешний, внутренний либо «судить нельзя» — словом.</summary>
+    public string KindText { get; private set; } = string.Empty;
+
+    /// <summary>Что за датчик: шина, адрес, тип. Пусто, если опознание не прочитано.</summary>
+    public string DeviceText { get; private set; } = string.Empty;
+
+    public Visibility OkVisibility { get; private set; }
+
+    public Visibility WarnVisibility { get; private set; }
+
+    public Visibility ExternalVisibility { get; private set; }
+
+    public Visibility InternalVisibility { get; private set; }
+
+    public Visibility UnknownKindVisibility { get; private set; }
+
+    /// <summary>
+    /// Обновляет показания и опознание, не пересоздавая строку.
+    /// </summary>
+    /// <remarks>
+    /// Уведомление рассылается только по действительно изменившимся свойствам:
+    /// показания магнитометра дрожат в последнем разряде, а метка «внешний» и
+    /// описание датчика между тактами не меняются вовсе, и перерисовывать их
+    /// несколько раз в секунду незачем.
+    /// </remarks>
+    public void Update(MagSample sample, CompassIdentityRow? identity)
     {
         var magnitude = sample.Magnitude;
         var inBand = magnitude is >= FieldMin and <= FieldMax;
 
-        Title = $"РљРѕРјРїР°СЃ {sample.Instance + 1}";
-
-        KindText = identity?.KindText ?? "РѕРїРѕР·РЅР°РЅРёРµ РЅРµ РїСЂРѕС‡РёС‚Р°РЅРѕ";
-        DeviceText = identity?.DeviceText ?? string.Empty;
-
-        // Р’РЅРµС€РЅРёР№, РІРЅСѓС‚СЂРµРЅРЅРёР№ Рё В«СЃСѓРґРёС‚СЊ РЅРµР»СЊР·СЏВ» РѕРєСЂР°С€РµРЅС‹ РїРѕ-СЂР°Р·РЅРѕРјСѓ: РїРѕСЃР»РµРґРЅРµРµ
-        // РЅРµ РґРѕР»Р¶РЅРѕ РІС‹РіР»СЏРґРµС‚СЊ РєР°Рє РёСЃРїСЂР°РІРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ.
-        ExternalVisibility = identity?.IsExternal == true ? Visibility.Visible : Visibility.Collapsed;
-        InternalVisibility = identity?.IsExternal == false ? Visibility.Visible : Visibility.Collapsed;
-        UnknownKindVisibility = identity?.IsExternal is null ? Visibility.Visible : Visibility.Collapsed;
-
-        Detail = string.Create(CultureInfo.InvariantCulture, $"X {sample.X}  Y {sample.Y}  Z {sample.Z}");
-        FieldText = string.Create(CultureInfo.InvariantCulture, $"{magnitude:0}");
-
-        OkVisibility = inBand ? Visibility.Visible : Visibility.Collapsed;
-        WarnVisibility = inBand ? Visibility.Collapsed : Visibility.Visible;
-
+        var detail = string.Create(CultureInfo.InvariantCulture, $"X {sample.X}  Y {sample.Y}  Z {sample.Z}");
         if (!inBand)
         {
-            Detail += magnitude < FieldMin ? "  В· РїРѕР»Рµ СЃР»Р°Р±РµРµ РЅРѕСЂРјС‹" : "  В· РїРѕР»Рµ СЃРёР»СЊРЅРµРµ РЅРѕСЂРјС‹";
+            detail += magnitude < FieldMin ? "  · поле слабее нормы" : "  · поле сильнее нормы";
         }
+
+        var field = string.Create(CultureInfo.InvariantCulture, $"{magnitude:0}");
+        var kind = identity?.KindText ?? "опознание не прочитано";
+        var device = identity?.DeviceText ?? string.Empty;
+
+        if (Detail != detail) { Detail = detail; Raise(nameof(Detail)); }
+        if (FieldText != field) { FieldText = field; Raise(nameof(FieldText)); }
+        if (KindText != kind) { KindText = kind; Raise(nameof(KindText)); }
+        if (DeviceText != device) { DeviceText = device; Raise(nameof(DeviceText)); }
+
+        // Внешний, внутренний и «судить нельзя» окрашены по-разному: последнее
+        // не должно выглядеть как исправное состояние.
+        SetVisibility(identity?.IsExternal == true, ExternalVisibility,
+            v => ExternalVisibility = v, nameof(ExternalVisibility));
+        SetVisibility(identity?.IsExternal == false, InternalVisibility,
+            v => InternalVisibility = v, nameof(InternalVisibility));
+        SetVisibility(identity?.IsExternal is null, UnknownKindVisibility,
+            v => UnknownKindVisibility = v, nameof(UnknownKindVisibility));
+
+        SetVisibility(inBand, OkVisibility, v => OkVisibility = v, nameof(OkVisibility));
+        SetVisibility(!inBand, WarnVisibility, v => WarnVisibility = v, nameof(WarnVisibility));
     }
 
-    public string Title { get; }
+    private void SetVisibility(bool visible, Visibility current, Action<Visibility> assign, string name)
+    {
+        var wanted = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (current == wanted)
+        {
+            return;
+        }
 
-    public string Detail { get; }
+        assign(wanted);
+        Raise(name);
+    }
 
-    public string FieldText { get; }
-
-    /// <summary>Р’РЅРµС€РЅРёР№, РІРЅСѓС‚СЂРµРЅРЅРёР№ Р»РёР±Рѕ В«СЃСѓРґРёС‚СЊ РЅРµР»СЊР·СЏВ» вЂ” СЃР»РѕРІРѕРј.</summary>
-    public string KindText { get; }
-
-    /// <summary>Р§С‚Рѕ Р·Р° РґР°С‚С‡РёРє: С€РёРЅР°, Р°РґСЂРµСЃ, С‚РёРї. РџСѓСЃС‚Рѕ, РµСЃР»Рё РѕРїРѕР·РЅР°РЅРёРµ РЅРµ РїСЂРѕС‡РёС‚Р°РЅРѕ.</summary>
-    public string DeviceText { get; }
-
-    public Visibility OkVisibility { get; }
-
-    public Visibility WarnVisibility { get; }
-
-    public Visibility ExternalVisibility { get; }
-
-    public Visibility InternalVisibility { get; }
-
-    public Visibility UnknownKindVisibility { get; }
+    private void Raise(string name) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 /// <summary>
-/// РћРїРѕР·РЅР°РЅРёРµ РѕРґРЅРѕРіРѕ РєРѕРјРїР°СЃР°: РІРЅРµС€РЅРёР№ РёР»Рё РІРЅСѓС‚СЂРµРЅРЅРёР№ Рё С‡С‚Рѕ Р·Р° Р¶РµР»РµР·Рѕ.
+/// Опознание одного компаса: внешний или внутренний и что за железо.
 /// </summary>
 /// <remarks>
-/// Р§РёС‚Р°РµС‚СЃСЏ СЃ Р±РѕСЂС‚Р° РѕРґРёРЅ СЂР°Р· РЅР° СЃРѕРµРґРёРЅРµРЅРёРµ Рё РЅРµ РїРµСЂРµСЃС‡РёС‚С‹РІР°РµС‚СЃСЏ РїРѕ РєР°Р¶РґРѕРјСѓ
-/// РєР°РґСЂСѓ С‚РµР»РµРјРµС‚СЂРёРё: <c>COMPASS_DEV_ID*</c> РјРµРЅСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РїСЂРё РїРµСЂРµСЃС‚Р°РЅРѕРІРєРµ
-/// СЃР»РѕС‚РѕРІ, Р° С‡С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ РЅР° РєР°Р¶РґРѕРј С‚Р°РєС‚Рµ РёРЅРґРёРєР°С‚РѕСЂР° Р·Р°Р±РёР»Рѕ Р±С‹ РєР°РЅР°Р».
+/// Читается с борта один раз на соединение и не пересчитывается по каждому
+/// кадру телеметрии: <c>COMPASS_DEV_ID*</c> меняется только при перестановке
+/// слотов, а чтение параметров на каждом такте индикатора забило бы канал.
 /// </remarks>
-/// <param name="Slot">РќРѕРјРµСЂ СЃР»РѕС‚Р° 1..3.</param>
-/// <param name="IsExternal">Р’РЅРµС€РЅРёР№ РєРѕРјРїР°СЃ. <c>null</c> вЂ” СЃСѓРґРёС‚СЊ РЅРµР»СЊР·СЏ.</param>
-/// <param name="KindText">Р СѓСЃСЃРєРѕРµ РЅР°Р·РІР°РЅРёРµ РІРёРґР°.</param>
-/// <param name="DeviceText">РћРїРёСЃР°РЅРёРµ РґР°С‚С‡РёРєР°.</param>
+/// <param name="Slot">Номер слота 1..3.</param>
+/// <param name="IsExternal">Внешний компас. <c>null</c> — судить нельзя.</param>
+/// <param name="KindText">Русское название вида.</param>
+/// <param name="DeviceText">Описание датчика.</param>
 public sealed record CompassIdentityRow(int Slot, bool? IsExternal, string KindText, string DeviceText);
 
 /// <summary>
-/// Р Р°Р±РѕС‡РёР№ СЌРєСЂР°РЅ СЃС‚РµРЅРґР°: РІС‹Р±РѕСЂ Р±РѕСЂС‚Р° Рё СЌС‚Р°Р»РѕРЅР° РїР»Р°С€РєР°РјРё, РёРЅРґРёРєР°С‚РѕСЂ Рё РїР°РЅРµР»Рё.
+/// Строка отображаемого параметра: то, что технолог поднял в секцию
+/// «контроль и показ» настройками эталона.
 /// </summary>
 /// <remarks>
-/// Р’С‹РїР°РґР°СЋС‰РёС… СЃРїРёСЃРєРѕРІ Р·РґРµСЃСЊ РЅРµС‚ РЅР°РјРµСЂРµРЅРЅРѕ: РІС‹Р±РѕСЂ вЂ” СЌС‚Рѕ РїР»Р°С€РєРё, РєРѕС‚РѕСЂС‹Рµ
-/// СЂР°СЃРєСЂС‹РІР°СЋС‚СЃСЏ РѕРґРЅР° РІРІРµСЂС… Рё РѕСЃС‚Р°Р»СЊРЅС‹Рµ РІРЅРёР· РѕС‚ С‚РµРєСѓС‰РµР№, Р° РЅР°Р¶Р°С‚РёРµ РЅР° РїР»Р°С€РєСѓ
-/// СЃСЂР°Р·Сѓ РІС‹РїРѕР»РЅСЏРµС‚ РґРµР№СЃС‚РІРёРµ, Р±РµР· РѕС‚РґРµР»СЊРЅРѕР№ РєРЅРѕРїРєРё РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ.
+/// 🔴 Панель существует затем, чтобы решение технолога было видно на рабочем
+/// экране. Раскладка, которую можно задать в мастере эталона и нигде не
+/// увидеть при сдаче, — это настройка ни на что не влияющая: оператор о ней не
+/// знает, и поднятые имена ничем не отличаются от скрытых.
+/// </remarks>
+public sealed class WatchedParameterRow
+{
+    public WatchedParameterRow(string name, double expected, double? actual, bool matches)
+    {
+        Name = name;
+        ExpectedText = ReferenceParamFile.FormatCanonical(expected);
+
+        ActualText = actual is { } value
+            ? string.Create(CultureInfo.InvariantCulture, $"{value:G9}")
+            : "нет на борту";
+
+        MatchVisibility = matches ? Visibility.Visible : Visibility.Collapsed;
+        DiffVisibility = matches ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public string Name { get; }
+
+    public string ExpectedText { get; }
+
+    public string ActualText { get; }
+
+    public Visibility MatchVisibility { get; }
+
+    public Visibility DiffVisibility { get; }
+}
+
+/// <summary>
+/// Рабочий экран стенда: выбор борта и эталона плашками, индикатор и панели.
+/// </summary>
+/// <remarks>
+/// Выпадающих списков здесь нет намеренно: выбор — это плашки, которые
+/// раскрываются одна вверх и остальные вниз от текущей, а нажатие на плашку
+/// сразу выполняет действие, без отдельной кнопки подтверждения.
 /// </remarks>
 public sealed partial class MainPage : Page
 {
@@ -120,12 +205,12 @@ public sealed partial class MainPage : Page
     private readonly DispatcherTimer _hudTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
 
     /// <summary>
-    /// РЎР»РµР¶РµРЅРёРµ Р·Р° СЃРѕСЃС‚Р°РІРѕРј COM-РїРѕСЂС‚РѕРІ: РїР»Р°С‚Сѓ РјРѕРіСѓС‚ РІРѕС‚РєРЅСѓС‚СЊ Рё РІС‹РЅСѓС‚СЊ РїСЂРё
-    /// СЂР°Р±РѕС‚Р°СЋС‰РµРј РїСЂРёР»РѕР¶РµРЅРёРё, Рё СЃРїРёСЃРѕРє РѕР±СЏР·Р°РЅ РјРµРЅСЏС‚СЊСЃСЏ СЃР°Рј.
+    /// Слежение за составом COM-портов: плату могут воткнуть и вынуть при
+    /// работающем приложении, и список обязан меняться сам.
     /// </summary>
     /// <remarks>
-    /// РћРїСЂР°С€РёРІР°РµС‚СЃСЏ РґРµС€С‘РІС‹Р№ <c>GetPortNames</c>; РїРѕР»РЅРѕРµ РїРµСЂРµС‡РёСЃР»РµРЅРёРµ СЃ РѕРїРёСЃР°РЅРёРµРј
-    /// СѓСЃС‚СЂРѕР№СЃС‚РІ С‡РµСЂРµР· WMI Р·Р°РїСѓСЃРєР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєРѕРіРґР° РЅР°Р±РѕСЂ РёРјС‘РЅ РёР·РјРµРЅРёР»СЃСЏ.
+    /// Опрашивается дешёвый <c>GetPortNames</c>; полное перечисление с описанием
+    /// устройств через WMI запускается только когда набор имён изменился.
     /// </remarks>
     private readonly DispatcherTimer _portsTimer = new() { Interval = TimeSpan.FromSeconds(2) };
 
@@ -155,8 +240,8 @@ public sealed partial class MainPage : Page
         _hudTimer.Tick += OnHudTick;
         _portsTimer.Tick += OnPortsTick;
 
-        // Р—Р°РєСЂС‹С‚РёРµ С‰РµР»С‡РєРѕРј РјРёРјРѕ вЂ” СЌС‚Рѕ С‚РѕР¶Рµ Р·Р°РєСЂС‹С‚РёРµ: Р±РµР· СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё С„Р»Р°РіР°
-        // СЃР»РµРґСѓСЋС‰РµРµ РЅР°Р¶Р°С‚РёРµ РЅР° РєР°СЂС‚РѕС‡РєСѓ В«СЃС…Р»РѕРїРЅСѓР»РѕВ» Р±С‹ СѓР¶Рµ Р·Р°РєСЂС‹С‚С‹Р№ СЃРїРёСЃРѕРє.
+        // Закрытие щелчком мимо — это тоже закрытие: без синхронизации флага
+        // следующее нажатие на карточку «схлопнуло» бы уже закрытый список.
         PortPopup.Closed += (_, _) => _portsExpanded = false;
         ReferencePopup.Closed += (_, _) => _referencesExpanded = false;
         Loaded += OnLoaded;
@@ -167,10 +252,10 @@ public sealed partial class MainPage : Page
 
     public ObservableCollection<CalibrationLogRow> LogEntries { get; } = [];
 
-    /// <summary>Р’С‹Р±СЂР°РЅРЅС‹Р№ СЌС‚Р°Р»РѕРЅ.</summary>
+    /// <summary>Выбранный эталон.</summary>
     public CalibrationReference? SelectedReference => _selectedReference;
 
-    /// <summary>Р’С‹Р±СЂР°РЅРЅС‹Р№ РїРѕСЂС‚ Р±РѕСЂС‚Р°.</summary>
+    /// <summary>Выбранный порт борта.</summary>
     public string? SelectedPort => _selectedPort?.PortName;
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -189,22 +274,22 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             ReferenceBar.Severity = InfoBarSeverity.Error;
-            ReferenceBar.Message = "Р РµРµСЃС‚СЂ РЅРµРґРѕСЃС‚СѓРїРµРЅ: " + ex.Message;
+            ReferenceBar.Message = "Реестр недоступен: " + ex.Message;
             ReferenceBar.IsOpen = true;
         }
 
         if (_storeReady)
         {
-            // РќР°СЃС‚СЂРѕР№РєРё СЂР°Р±РѕС‡РµРіРѕ РјРµСЃС‚Р° Р¶РёРІСѓС‚ РІ СЂРµРµСЃС‚СЂРµ, Р° РЅРµ РІ РїР°РјСЏС‚Рё СЃС‚СЂР°РЅРёС†С‹:
-            // РїРµСЂРµС…РѕРґ РјРµР¶РґСѓ РІРєР»Р°РґРєР°РјРё РїРµСЂРµСЃРѕР·РґР°С‘С‚ СЃС‚СЂР°РЅРёС†Сѓ, Рё С„Р»Р°Рі, С…СЂР°РЅРёРјС‹Р№
-            // С‚РѕР»СЊРєРѕ РІ РїРѕР»Рµ, РєР°Р¶РґС‹Р№ СЂР°Р· С‚РµСЂСЏР»СЃСЏ Р±С‹.
+            // Настройки рабочего места живут в реестре, а не в памяти страницы:
+            // переход между вкладками пересоздаёт страницу, и флаг, хранимый
+            // только в поле, каждый раз терялся бы.
             try
             {
                 _settings = await _services.LoadSettingsAsync().ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                Log("РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё СЂР°Р±РѕС‡РµРіРѕ РјРµСЃС‚Р°: " + ex.Message);
+                Log("Не удалось прочитать настройки рабочего места: " + ex.Message);
             }
 
             AutoConnectCheck.IsChecked = _settings.AutoConnect;
@@ -220,16 +305,16 @@ public sealed partial class MainPage : Page
 
         RenderAll();
 
-        // РџСЂРѕРІРµСЂРєР° СЃРІСЏР·Рё РѕР±СЏР·Р°С‚РµР»СЊРЅР°: СЃС‚СЂР°РЅРёС†Р° РїРµСЂРµСЃРѕР·РґР°С‘С‚СЃСЏ РїСЂРё РєР°Р¶РґРѕРј РІРѕР·РІСЂР°С‚Рµ
-        // СЃ СЌРєСЂР°РЅР° СЌС‚Р°Р»РѕРЅРѕРІ, Р° СЃРѕРµРґРёРЅРµРЅРёРµ Р¶РёРІС‘С‚ РІ AppServices Рё РїРµСЂРµР¶РёРІР°РµС‚ СЌС‚Рѕ.
-        // Р‘РµР· РїСЂРѕРІРµСЂРєРё РІРѕР·РІСЂР°С‚ СЂРІР°Р» Р±С‹ Р¶РёРІРѕР№ РєР°РЅР°Р» Рё РїРѕРґРЅРёРјР°Р» РµРіРѕ Р·Р°РЅРѕРІРѕ.
+        // Проверка связи обязательна: страница пересоздаётся при каждом возврате
+        // с экрана эталонов, а соединение живёт в AppServices и переживает это.
+        // Без проверки возврат рвал бы живой канал и поднимал его заново.
         if (AutoConnectCheck.IsChecked == true && !_services.IsLinkConnected)
         {
             await TryAutoConnectAsync().ConfigureAwait(true);
         }
     }
 
-    /// <summary>РЎРѕС…СЂР°РЅСЏРµС‚ РЅР°СЃС‚СЂРѕР№РєРё СЃС‚РµРЅРґР°, РЅРµ СЂРѕРЅСЏСЏ СЌРєСЂР°РЅ РїСЂРё РѕС‚РєР°Р·Рµ СЂРµРµСЃС‚СЂР°.</summary>
+    /// <summary>Сохраняет настройки стенда, не роняя экран при отказе реестра.</summary>
     private async Task PersistSettingsAsync()
     {
         if (!_storeReady)
@@ -250,7 +335,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            Log("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё: " + ex.Message);
+            Log("Не удалось сохранить настройки: " + ex.Message);
         }
     }
 
@@ -263,12 +348,12 @@ public sealed partial class MainPage : Page
         _portsTimer.Tick -= OnPortsTick;
     }
 
-    /// <summary>Р—Р°РјРµС‡Р°РµС‚ РїРѕСЏРІР»РµРЅРёРµ Рё РїСЂРѕРїР°Р¶Сѓ СѓСЃС‚СЂРѕР№СЃС‚РІ, РїРѕРєР° РїСЂРёР»РѕР¶РµРЅРёРµ РѕС‚РєСЂС‹С‚Рѕ.</summary>
+    /// <summary>Замечает появление и пропажу устройств, пока приложение открыто.</summary>
     private async void OnPortsTick(object? sender, object e)
     {
         if (_portsScanBusy || _portsExpanded)
         {
-            // РџРѕРєР° СЃРїРёСЃРѕРє СЂР°СЃРєСЂС‹С‚, РЅРµ РїРѕРґРјРµРЅСЏРµРј РїР»Р°С€РєРё РїРѕРґ СЂСѓРєРѕР№ РѕРїРµСЂР°С‚РѕСЂР°.
+            // Пока список раскрыт, не подменяем плашки под рукой оператора.
             return;
         }
 
@@ -291,20 +376,20 @@ public sealed partial class MainPage : Page
 
             foreach (var port in appeared)
             {
-                Log($"РћР±РЅР°СЂСѓР¶РµРЅРѕ СѓСЃС‚СЂРѕР№СЃС‚РІРѕ: {port}.");
+                Log($"Обнаружено устройство: {port}.");
             }
 
             foreach (var port in vanished)
             {
-                Log($"РЈСЃС‚СЂРѕР№СЃС‚РІРѕ РѕС‚РєР»СЋС‡РµРЅРѕ: {port}.");
+                Log($"Устройство отключено: {port}.");
             }
 
-            // РџСЂРѕРїР°Р» РїРѕСЂС‚, РЅР° РєРѕС‚РѕСЂРѕРј РґРµСЂР¶Р°Р»Р°СЃСЊ СЃРІСЏР·СЊ, вЂ” СЃРѕРѕР±С‰Р°РµРј РїСЂСЏРјРѕ: Р±РѕСЂС‚
-            // РІС‹РґРµСЂРЅСѓР»Рё РёР»Рё РѕРЅ СѓС€С‘Р» РІ РїРµСЂРµР·Р°РіСЂСѓР·РєСѓ.
+            // Пропал порт, на котором держалась связь, — сообщаем прямо: борт
+            // выдернули или он ушёл в перезагрузку.
             if (_services.ConnectedPort is { } active
                 && vanished.Contains(active, StringComparer.OrdinalIgnoreCase))
             {
-                ShowLinkMessage(InfoBarSeverity.Warning, $"РџРѕСЂС‚ {active} РёСЃС‡РµР· вЂ” СЃРІСЏР·СЊ СЃ Р±РѕСЂС‚РѕРј РїРѕС‚РµСЂСЏРЅР°.");
+                ShowLinkMessage(InfoBarSeverity.Warning, $"Порт {active} исчез — связь с бортом потеряна.");
                 await _services.DisconnectAsync().ConfigureAwait(true);
             }
             else if (AutoConnectCheck.IsChecked == true && !_services.IsLinkConnected && appeared.Count > 0)
@@ -314,7 +399,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            Log("РћРїСЂРѕСЃ РїРѕСЂС‚РѕРІ РЅРµ СѓРґР°Р»СЃСЏ: " + ex.Message);
+            Log("Опрос портов не удался: " + ex.Message);
         }
         finally
         {
@@ -322,15 +407,15 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // --- РџР»Р°С€РєРё ------------------------------------------------------------
+    // --- Плашки ------------------------------------------------------------
 
     /// <summary>
-    /// РЎС‚СЂРѕРёС‚ РїР»Р°С€РєРё РІРѕРєСЂСѓРі РІС‹Р±СЂР°РЅРЅРѕР№: РѕРґРЅР° РІС‹С€Рµ, РѕСЃС‚Р°Р»СЊРЅС‹Рµ РЅРёР¶Рµ.
+    /// Строит плашки вокруг выбранной: одна выше, остальные ниже.
     /// </summary>
     /// <param name="putPreviousAbove">
-    /// РћС‚РґР°РІР°С‚СЊ Р»Рё РІРµСЂС…РЅСЋСЋ РїРѕР·РёС†РёСЋ РїСЂРµРґС‹РґСѓС‰РµР№ РїРѕ СЃРїРёСЃРєСѓ РїР»Р°С€РєРµ. РЈ СЌС‚Р°Р»РѕРЅРѕРІ РѕРЅР°
-    /// Р·Р°РЅСЏС‚Р° РґРµР№СЃС‚РІРёРµРј В«Р”РѕР±Р°РІРёС‚СЊ СЌС‚Р°Р»РѕРЅВ», РїРѕСЌС‚РѕРјСѓ С‚Р°Рј <c>false</c>: РґРµР№СЃС‚РІРёРµ Рё
-    /// РІС‹Р±РѕСЂ РЅРµ СЃРјРµС€РёРІР°СЋС‚СЃСЏ РІ РѕРґРЅРѕРј СЃС‚РѕР»Р±С†Рµ.
+    /// Отдавать ли верхнюю позицию предыдущей по списку плашке. У эталонов она
+    /// занята действием «Добавить эталон», поэтому там <c>false</c>: действие и
+    /// выбор не смешиваются в одном столбце.
     /// </param>
     private void BuildTiles<T>(
         StackPanel above,
@@ -358,7 +443,7 @@ public sealed partial class MainPage : Page
             var item = items[i];
             var tile = CreateTile(title(item), detail(item), () => pick(item));
 
-            // РћРґРЅР° РїР»Р°С€РєР° СЂР°СЃРєСЂС‹РІР°РµС‚СЃСЏ РІРІРµСЂС… вЂ” СЌС‚Рѕ РїСЂРµРґС‹РґСѓС‰Р°СЏ РїРѕ СЃРїРёСЃРєСѓ.
+            // Одна плашка раскрывается вверх — это предыдущая по списку.
             if (putPreviousAbove && index > 0 && i == index - 1)
             {
                 above.Children.Add(tile);
@@ -371,21 +456,21 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РџР»Р°С€РєР° В«Р”РѕР±Р°РІРёС‚СЊ СЌС‚Р°Р»РѕРЅВ»: С‚Рѕ Р¶Рµ РѕС„РѕСЂРјР»РµРЅРёРµ, С‡С‚Рѕ Сѓ СЌС‚Р°Р»РѕРЅРѕРІ, РїР»СЋСЃ
-    /// РїРѕРґСЃРІРµС‚РєР° СЃРЅРёР·Сѓ Рё Р°РєС†РµРЅС‚РЅС‹Р№ РєР°РЅС‚.
+    /// Плашка «Добавить эталон»: то же оформление, что у эталонов, плюс
+    /// подсветка снизу и акцентный кант.
     /// </summary>
     /// <remarks>
-    /// Р’С‹РіР»СЏРґРёС‚ РєР°Рє РїР°РЅРµР»СЊ РЅР°РјРµСЂРµРЅРЅРѕ вЂ” СЌС‚Рѕ РЅРµ РєРЅРѕРїРєР° РІ РѕС‚РґРµР»СЊРЅРѕРј СЂСЏРґСѓ, Р° С‚Р°РєРѕР№
-    /// Р¶Рµ СЌР»РµРјРµРЅС‚ СЂР°СЃРєСЂС‹С‚РѕРіРѕ СЃС‚РѕР»Р±С†Р°. РќРѕ РєР°РЅС‚ Рё СЃРІРµС‡РµРЅРёРµ РѕС‚Р»РёС‡Р°СЋС‚ РґРµР№СЃС‚РІРёРµ РѕС‚
-    /// РІС‹Р±РѕСЂР°: РЅР°Р¶Р°С‚РёРµ СѓРІРѕРґРёС‚ РЅР° СЌРєСЂР°РЅ Р·Р°РІРµРґРµРЅРёСЏ, Р° РЅРµ РјРµРЅСЏРµС‚ С‚РµРєСѓС‰РёР№ СЌС‚Р°Р»РѕРЅ.
+    /// Выглядит как панель намеренно — это не кнопка в отдельном ряду, а такой
+    /// же элемент раскрытого столбца. Но кант и свечение отличают действие от
+    /// выбора: нажатие уводит на экран заведения, а не меняет текущий эталон.
     /// </remarks>
     private UIElement CreateAddReferenceTile()
     {
         var tile = CreateTile(
-            "Р”РѕР±Р°РІРёС‚СЊ СЌС‚Р°Р»РѕРЅ",
+            "Добавить эталон",
             _services.IsLinkConnected
-                ? "РІС‹Р±СЂР°С‚СЊ СЌС‚Р°Р»РѕРЅ РІ С„Р°Р№Р»Рµ РёР»Рё СЃРЅСЏС‚СЊ СЃ РїРѕРґРєР»СЋС‡С‘РЅРЅРѕРіРѕ Р±РѕСЂС‚Р°"
-                : "РІС‹Р±СЂР°С‚СЊ СЌС‚Р°Р»РѕРЅ РІ С„Р°Р№Р»Рµ",
+                ? "выбрать эталон в файле или снять с подключённого борта"
+                : "выбрать эталон в файле",
             OpenReferenceEditor);
 
         tile.Style = (Style)Resources["ActiveTileStyle"];
@@ -405,11 +490,11 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РЈРІРѕРґРёС‚ РЅР° СЌРєСЂР°РЅ Р·Р°РІРµРґРµРЅРёСЏ СЌС‚Р°Р»РѕРЅР°.
+    /// Уводит на экран заведения эталона.
     /// </summary>
     /// <remarks>
-    /// Р–РёРІРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ РїСЂРё СЌС‚РѕРј РЅРµ СЂРІС‘С‚СЃСЏ: СЃРЅРёРјРѕРє СЌС‚Р°Р»РѕРЅР° С‡РёС‚Р°РµС‚СЃСЏ РїРѕ С‚РѕРјСѓ Р¶Рµ
-    /// РєР°РЅР°Р»Сѓ, Рё РїРѕРґРєР»СЋС‡С‘РЅРЅС‹Р№ РѕР±СЂР°Р·РµС† РѕР±СЏР·Р°РЅ РѕСЃС‚Р°С‚СЊСЃСЏ РїРѕРґРєР»СЋС‡С‘РЅРЅС‹Рј.
+    /// Живое соединение при этом не рвётся: снимок эталона читается по тому же
+    /// каналу, и подключённый образец обязан остаться подключённым.
     /// </remarks>
     private void OpenReferenceEditor()
     {
@@ -420,13 +505,13 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РџСЂР°РІРєР° С‚РµРєСѓС‰РµРіРѕ СЌС‚Р°Р»РѕРЅР°.
+    /// Правка текущего эталона.
     /// </summary>
     /// <remarks>
-    /// Р—РґРµСЃСЊ РїСЂР°РІСЏС‚СЃСЏ С‚РѕР»СЊРєРѕ РёРјСЏ, РѕРїРёСЃР°РЅРёРµ Рё вЂ” РїРѕРєР° РїРѕ СЌС‚Р°Р»РѕРЅСѓ РЅРµ СЃРґР°РІР°Р»Рё РїР»Р°С‚ вЂ”
-    /// РґРѕРїСѓСЃРєРё. РЎР°Рј СЌС‚Р°Р»РѕРЅ РЅРµРёР·РјРµРЅСЏРµРј, Р° РІС‹РІРѕРґ РёР· РѕР±СЂР°С‰РµРЅРёСЏ Рё РїСЂРѕС‡Р°СЏ СЂР°Р±РѕС‚Р° СЃРѕ
-    /// СЃРїРёСЃРєРѕРј Р¶РёРІСѓС‚ РІ СЂР°Р·РґРµР»Рµ РЅР°СЃС‚СЂРѕРµРє: РЅР° СЂР°Р±РѕС‡РµРј СЌРєСЂР°РЅРµ РёРј РЅРµ РјРµСЃС‚Рѕ, РѕРїРµСЂР°С‚РѕСЂ
-    /// Сѓ СЃС‚РµРЅРґР° Р·Р°РЅСЏС‚ Р±РѕСЂС‚РѕРј, Р° РЅРµ РІРµРґРµРЅРёРµРј СЃРїСЂР°РІРѕС‡РЅРёРєР°.
+    /// Здесь правятся только имя, описание и — пока по эталону не сдавали плат —
+    /// допуски. Сам эталон неизменяем, а вывод из обращения и прочая работа со
+    /// списком живут в разделе настроек: на рабочем экране им не место, оператор
+    /// у стенда занят бортом, а не ведением справочника.
     /// </remarks>
     private void OnEditReferenceClick(object sender, RoutedEventArgs e)
     {
@@ -441,16 +526,19 @@ public sealed partial class MainPage : Page
         Frame.Navigate(typeof(ReferenceEditorPage), new ReferenceEditorArgs(_services, profile));
     }
 
-    // --- РџСЂРёС‘РјРєР° РїСЂСЏРјРѕ РЅР° СЂР°Р±РѕС‡РµРј СЌРєСЂР°РЅРµ ------------------------------------
+    // --- Приёмка прямо на рабочем экране ------------------------------------
 
-    /// <summary>Р Р°СЃС…РѕР¶РґРµРЅРёСЏ РїРѕСЃР»РµРґРЅРµР№ СЃРІРµСЂРєРё.</summary>
+    /// <summary>Расхождения последней сверки.</summary>
     /// <remarks>
-    /// РџСЂРёС‘РјРєР° Р¶РёРІС‘С‚ РЅР° СЂР°Р±РѕС‡РµРј СЌРєСЂР°РЅРµ, Р° РЅРµ РІ РѕС‚РґРµР»СЊРЅРѕРј РѕРєРЅРµ: РѕРїРµСЂР°С‚РѕСЂ Сѓ
-    /// СЃС‚РµРЅРґР° СЃРјРѕС‚СЂРёС‚ РЅР° РїСЂРёР±РѕСЂС‹, РєРѕРјРїР°СЃС‹ Рё СЂР°СЃС…РѕР¶РґРµРЅРёСЏ РѕРґРЅРѕРІСЂРµРјРµРЅРЅРѕ, Рё
-    /// РѕС‚РґРµР»СЊРЅРѕРµ РѕРєРЅРѕ Р·Р°СЃС‚Р°РІР»СЏР»Рѕ Р±С‹ РµРіРѕ РїРµСЂРµРєР»СЋС‡Р°С‚СЊСЃСЏ РјРµР¶РґСѓ РЅРёРјРё РІ РјРѕРјРµРЅС‚,
-    /// РєРѕРіРґР° РѕРЅ СЂРµС€Р°РµС‚ СЃСѓРґСЊР±Сѓ РїР»Р°С‚С‹.
+    /// Приёмка живёт на рабочем экране, а не в отдельном окне: оператор у
+    /// стенда смотрит на приборы, компасы и расхождения одновременно, и
+    /// отдельное окно заставляло бы его переключаться между ними в момент,
+    /// когда он решает судьбу платы.
     /// </remarks>
     public ObservableCollection<ParameterDifferenceRow> Differences { get; } = new();
+
+    /// <summary>Параметры, которые эталон помечен показывать оператору.</summary>
+    public ObservableCollection<WatchedParameterRow> Watched { get; } = new();
 
     private AcceptanceSession? _session;
     private CancellationTokenSource? _acceptanceCts;
@@ -469,13 +557,13 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ С‡Р°СЃС‚СЊ РїСЂРёС‘РјРєРё: СЃРІРµСЂРєР°, РѕС‡РµСЂРµРґСЊ РєРѕРјРїР°СЃРѕРІ, РїРµСЂРµРЅРѕСЃ,
-    /// РїРµСЂРµР·Р°РіСЂСѓР·РєР°, РїРѕРІС‚РѕСЂРЅР°СЏ СЃРІРµСЂРєР°.
+    /// Автоматическая часть приёмки: сверка, очередь компасов, перенос,
+    /// перезагрузка, повторная сверка.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ РћСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ РЅР° РїРѕРєР°Р·Рµ СЂР°СЃС…РѕР¶РґРµРЅРёР№ Рё РґР°Р»СЊС€Рµ РЅРµ РёРґС‘С‚. Р Р°Р·РІРёР»РєСѓ
-    /// В«РїСЂР°РІРёС‚СЊ РёР»Рё РїСЂРёРЅСЏС‚СЊВ» РїСЂРѕС…РѕРґРёС‚ С‡РµР»РѕРІРµРє: Р°РІС‚РѕРјР°С‚, СЂРµС€Р°СЋС‰РёР№ Р·Р° РЅРµРіРѕ, Р»РёР±Рѕ
-    /// РѕСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РіРѕРґРЅРѕРµ РёР·РґРµР»РёРµ, Р»РёР±Рѕ РїСЂРѕРїСѓСЃРєР°РµС‚ РЅРµРіРѕРґРЅРѕРµ.
+    /// 🔴 Останавливается на показе расхождений и дальше не идёт. Развилку
+    /// «править или принять» проходит человек: автомат, решающий за него, либо
+    /// останавливает годное изделие, либо пропускает негодное.
     /// </remarks>
     private async Task RunAcceptanceAsync()
     {
@@ -503,72 +591,75 @@ public sealed partial class MainPage : Page
         });
 
         var detail = new Progress<ParameterProgress>(ShowReadTick);
+        var aborted = false;
 
         try
         {
             await CloseSessionAsync().ConfigureAwait(true);
 
-            AppendLog(MavSeverity.Info, "РџСЂРёС‘РјРєР°: РѕС‚РєСЂС‹РІР°СЋ РєР°РЅР°Р» СЃРІСЏР·РёвЂ¦");
+            AppendLog(MavSeverity.Info, "Приёмка: открываю канал связи…");
             _session = await _services.BeginAcceptanceAsync(port, ct).ConfigureAwait(true);
 
             var expected = reference.ParseParameters().Values;
             var roles = reference.ToRoleMap();
 
-            CompareStateText.Text = "Р’С‹С‡РёС‚С‹РІР°СЋ РїСЂРѕС€РёРІРєСѓ Р±РѕСЂС‚Р°вЂ¦";
+            CompareStateText.Text = "Вычитываю прошивку борта…";
             var plan = await _session.CompareAsync(expected, roles, progress, ct, detail).ConfigureAwait(true);
             AppendLog(MavSeverity.Info,
-                $"РЎРІРµСЂРєР°: СЃРѕРїРѕСЃС‚Р°РІР»РµРЅРѕ {plan.Compared}, СЃРѕРІРїР°Р»Рѕ {plan.Matched}, СЂР°СЃС…РѕРґРёС‚СЃСЏ {plan.Differences.Count}.");
+                $"Сверка: сопоставлено {plan.Compared}, совпало {plan.Matched}, расходится {plan.Differences.Count}.");
 
-            SetCompassBusy(true, "РѕС‡РµСЂРµРґСЊ РєРѕРјРїР°СЃРѕРІвЂ¦");
+            SetCompassBusy(true, "очередь компасов…");
             var primary = await _session.MakeExternalCompassPrimaryAsync(progress, ct).ConfigureAwait(true);
             SetCompassBusy(false);
 
             AppendLog(primary.Ok ? MavSeverity.Info : MavSeverity.Error, primary.Message);
             if (!primary.Ok)
             {
-                ShowCompare(plan, "РџСЂРёС‘РјРєР° РѕСЃС‚Р°РЅРѕРІР»РµРЅР°: " + primary.Message);
+                ShowCompare(plan, "Приёмка остановлена: " + primary.Message);
                 return;
             }
 
-            // РћРїРѕР·РЅР°РЅРёРµ РєРѕРјРїР°СЃРѕРІ РїРѕСЃР»Рµ РїРµСЂРµСЃС‚Р°РЅРѕРІРєРё СѓСЃС‚Р°СЂРµР»Рѕ вЂ” РїРµСЂРµС‡РёС‚С‹РІР°РµРј.
+            // Опознание компасов после перестановки устарело — перечитываем.
             await LoadCompassIdentityAsync().ConfigureAwait(true);
 
             if (plan.Writable.Count > 0)
             {
-                CompareStateText.Text = $"РџРµСЂРµРЅРѕС€Сѓ СЂР°СЃС…РѕР¶РґРµРЅРёСЏ: {plan.Writable.Count}вЂ¦";
+                CompareStateText.Text = $"Переношу расхождения: {plan.Writable.Count}…";
                 var records = await _session.ApplyAsync(plan.Writable, progress, ct).ConfigureAwait(true);
                 var ok = records.Count(static r => r.Outcome == WriteOutcome.Verified);
-                AppendLog(MavSeverity.Info, $"РџРµСЂРµРЅРѕСЃ: Р·Р°РїРёСЃР°РЅРѕ {ok}, РѕС‚РєР»РѕРЅРµРЅРѕ {records.Count - ok}.");
+                AppendLog(MavSeverity.Info, $"Перенос: записано {ok}, отклонено {records.Count - ok}.");
             }
 
             var reboot = await _session.RebootAsync(progress, ct).ConfigureAwait(true);
             AppendLog(reboot.Ok ? MavSeverity.Info : MavSeverity.Error, reboot.Message);
             if (!reboot.Ok)
             {
-                ShowCompare(plan, "РџСЂРёС‘РјРєР° РѕСЃС‚Р°РЅРѕРІР»РµРЅР°: " + reboot.Message);
+                ShowCompare(plan, "Приёмка остановлена: " + reboot.Message);
                 return;
             }
 
-            CompareStateText.Text = "РџРѕРІС‚РѕСЂРЅР°СЏ СЃРІРµСЂРєР° РїРѕСЃР»Рµ РїРµСЂРµР·Р°РіСЂСѓР·РєРёвЂ¦";
+            CompareStateText.Text = "Повторная сверка после перезагрузки…";
             var after = await _session.CompareAsync(expected, roles, progress, ct, detail).ConfigureAwait(true);
             await LoadCompassIdentityAsync().ConfigureAwait(true);
 
             ShowCompare(after, after.IsClean
-                ? "Р‘РѕСЂС‚ СЃРѕРІРїР°Р» СЃ СЌС‚Р°Р»РѕРЅРѕРј РїРѕ РІСЃРµРј РєРѕРЅС‚СЂРѕР»РёСЂСѓРµРјС‹Рј РїР°СЂР°РјРµС‚СЂР°Рј."
-                : $"РћСЃС‚Р°Р»РѕСЃСЊ СЂР°СЃС…РѕР¶РґРµРЅРёР№: {after.Differences.Count}. РСЃРїСЂР°РІСЊС‚Рµ Р·Р°РїРёСЃСЊСЋ РёР»Рё РїСЂРёРјРёС‚Рµ РєР°Рє РµСЃС‚СЊ вЂ” "
-                  + "РґРѕ СЌС‚РѕРіРѕ РєР°Р»РёР±СЂРѕРІРєРё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅС‹.");
+                ? "Борт совпал с эталоном по всем контролируемым параметрам."
+                : $"Осталось расхождений: {after.Differences.Count}. Исправьте записью или примите как есть — "
+                  + "до этого калибровки заблокированы.");
 
-            AppendLog(MavSeverity.Info, $"РџРѕРІС‚РѕСЂРЅР°СЏ СЃРІРµСЂРєР°: СЂР°СЃС…РѕР¶РґРµРЅРёР№ {after.Differences.Count}.");
+            AppendLog(MavSeverity.Info, $"Повторная сверка: расхождений {after.Differences.Count}.");
         }
         catch (OperationCanceledException)
         {
-            CompareStateText.Text = "РџСЂРёС‘РјРєР° РѕС‚РјРµРЅРµРЅР° РѕРїРµСЂР°С‚РѕСЂРѕРј.";
-            AppendLog(MavSeverity.Warning, "РџСЂРёС‘РјРєР° РѕС‚РјРµРЅРµРЅР° РѕРїРµСЂР°С‚РѕСЂРѕРј. РЎРѕСЃС‚РѕСЏРЅРёРµ Р±РѕСЂС‚Р° РјРѕРіР»Рѕ РѕСЃС‚Р°С‚СЊСЃСЏ РёР·РјРµРЅС‘РЅРЅС‹Рј.");
+            CompareStateText.Text = "Приёмка отменена оператором.";
+            AppendLog(MavSeverity.Warning, "Приёмка отменена оператором. Состояние борта могло остаться изменённым.");
+            aborted = true;
         }
         catch (Exception ex)
         {
-            CompareStateText.Text = "РЎР±РѕР№: " + ex.Message;
-            AppendLog(MavSeverity.Error, $"РџСЂРёС‘РјРєР° РїСЂРµСЂРІР°РЅР°: {ex.GetType().Name}: {ex.Message}");
+            CompareStateText.Text = "Сбой: " + ex.Message;
+            AppendLog(MavSeverity.Error, $"Приёмка прервана: {ex.GetType().Name}: {ex.Message}");
+            aborted = true;
         }
         finally
         {
@@ -576,18 +667,28 @@ public sealed partial class MainPage : Page
             _acceptanceCts = null;
             SetCompassBusy(false);
             SetAcceptanceBusy(false);
+
+            // 🔴 Оборванная приёмка обязана отпустить порт. Иначе сессия держит
+            // его монопольно, автоподключение молчит по её вине, и связь не
+            // вернётся до перезапуска приложения — при подключённом борте на
+            // столе. Успешно прошедшая автоматическая часть порт сохраняет:
+            // дальше по нему пойдут команды оператора.
+            if (aborted)
+            {
+                await ReleaseAcceptanceAsync().ConfigureAwait(true);
+            }
         }
     }
 
     /// <summary>
-    /// Р—Р°РєСЂС‹РІР°РµС‚ РїСЂРёС‘РјРєСѓ Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РЅР°Р±Р»СЋРґР°С‚РµР»СЊРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ.
+    /// Закрывает приёмку и возвращает наблюдательное соединение.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ Р’РѕР·РІСЂР°С‚ РѕР±СЏР·Р°С‚РµР»РµРЅ Рё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕСЃС‚Р°РІР»РµРЅ Р°РІС‚РѕРїРѕРґРєР»СЋС‡РµРЅРёСЋ. РџРѕСЂС‚ РІСЃСЋ
-    /// РїСЂРёС‘РјРєСѓ РїСЂРёРЅР°РґР»РµР¶Р°Р» СЃРµСЃСЃРёРё, Р°РІС‚РѕРїРѕРґРєР»СЋС‡РµРЅРёРµ РїСЂРё СЌС‚РѕРј РЅР°РјРµСЂРµРЅРЅРѕ РјРѕР»С‡Р°Р»Рѕ,
-    /// Рё РїРѕСЃР»Рµ РѕСЃРІРѕР±РѕР¶РґРµРЅРёСЏ РїРѕСЂС‚Р° РµРіРѕ РЅРёРєС‚Рѕ РЅРµ СЂР°Р·Р±СѓРґРёС‚: РїСЂРёР±РѕСЂС‹ РѕСЃС‚Р°Р»РёСЃСЊ Р±С‹
-    /// РјС‘СЂС‚РІС‹РјРё, Р° В«РЎС‚Р°СЂС‚ РїСЂРёС‘РјРєРёВ» вЂ” Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅС‹Рј РїРѕ РїСЂРёС‡РёРЅРµ В«РЅРµС‚ СЃРІСЏР·РёВ»,
-    /// С…РѕС‚СЏ Р±РѕСЂС‚ СЃС‚РѕРёС‚ РЅР° СЃС‚РѕР»Рµ РїРѕРґРєР»СЋС‡С‘РЅРЅС‹Рј.
+    /// 🔴 Возврат обязателен и не может быть оставлен автоподключению. Порт всю
+    /// приёмку принадлежал сессии, автоподключение при этом намеренно молчало,
+    /// и после освобождения порта его никто не разбудит: приборы остались бы
+    /// мёртвыми, а «Старт приёмки» — заблокированным по причине «нет связи»,
+    /// хотя борт стоит на столе подключённым.
     /// </remarks>
     private async Task ReleaseAcceptanceAsync()
     {
@@ -601,10 +702,10 @@ public sealed partial class MainPage : Page
 
         try
         {
-            AppendLog(MavSeverity.Info, "РџСЂРёС‘РјРєР° Р·Р°РєСЂС‹С‚Р°, РІРѕР·РІСЂР°С‰Р°СЋ РЅР°Р±Р»СЋРґР°С‚РµР»СЊРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµвЂ¦");
+            AppendLog(MavSeverity.Info, "Приёмка закрыта, возвращаю наблюдательное соединение…");
 
-            // РРјСЏ РїРѕСЂС‚Р° РїРѕСЃР»Рµ РїРµСЂРµР·Р°РіСЂСѓР·РѕРє РјРѕРіР»Рѕ СЃРјРµРЅРёС‚СЊСЃСЏ, РїРѕСЌС‚РѕРјСѓ СЃРЅР°С‡Р°Р»Р°
-            // РїСЂРѕР±СѓРµРј С‚Рѕ, РЅР° РєРѕС‚РѕСЂРѕРј РїСЂРёС‘РјРєР° Р·Р°РєРѕРЅС‡РёР»Р°СЃСЊ, Р° Р·Р°С‚РµРј РѕР±С‰РёР№ РѕС‚Р±РѕСЂ.
+            // Имя порта после перезагрузок могло смениться, поэтому сначала
+            // пробуем то, на котором приёмка закончилась, а затем общий отбор.
             await _services.ConnectAsync(port).ConfigureAwait(true);
         }
         catch (Exception)
@@ -622,16 +723,16 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// Р”РІРёРіР°РµС‚ РїРѕР»РѕСЃСѓ РїРѕ СЃРѕРѕР±С‰РµРЅРёСЏРј Рѕ С…РѕРґРµ С‡С‚РµРЅРёСЏ.
+    /// Двигает полосу по сообщениям о ходе чтения.
     /// </summary>
     /// <remarks>
-    /// РџРѕР»РѕСЃР° Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РїРѕ С‡РёСЃР»Р°Рј В«РїСЂРёРЅСЏС‚Рѕ N РёР· MВ» РёР· СЃР°РјРѕРіРѕ РєР°РЅР°Р»Р°, Р° РЅРµ РїРѕ
-    /// С‚Р°Р№РјРµСЂСѓ: РІС‹РґСѓРјР°РЅРЅС‹Р№ С…РѕРґ, РЅРµ СЃРІСЏР·Р°РЅРЅС‹Р№ СЃ СЂР°Р±РѕС‚РѕР№, РїРѕРєР°Р·С‹РІР°РµС‚ РґРІРёР¶РµРЅРёРµ
-    /// С‚Р°Рј, РіРґРµ РµРіРѕ РЅРµС‚, Рё СЌС‚Рѕ С…СѓР¶Рµ РЅРµРїРѕРґРІРёР¶РЅРѕР№ РїРѕР»РѕСЃС‹.
+    /// Полоса заполняется по числам «принято N из M» из самого канала, а не по
+    /// таймеру: выдуманный ход, не связанный с работой, показывает движение
+    /// там, где его нет, и это хуже неподвижной полосы.
     /// </remarks>
     private void AnimateCompareProgress(string text)
     {
-        var of = text.IndexOf(" РёР· ", StringComparison.Ordinal);
+        var of = text.IndexOf(" из ", StringComparison.Ordinal);
         if (of < 0)
         {
             CompareProgress.IsIndeterminate = true;
@@ -735,7 +836,81 @@ public sealed partial class MainPage : Page
         CompareCountsPanel.Visibility = Visibility.Visible;
         CompareActionsPanel.Visibility = Visibility.Visible;
 
+        RenderWatched();
         UpdateAcceptanceCommands();
+    }
+
+    /// <summary>
+    /// Показывает параметры, поднятые эталоном в секцию «контроль и показ».
+    /// </summary>
+    /// <remarks>
+    /// Значения берутся из таблицы, прочитанной сверкой, а не отдельным
+    /// чтением: повторный проход по тысяче имён ради одной панели — это пять
+    /// секунд занятого канала на каждое обновление экрана.
+    /// </remarks>
+    /// <summary>
+    /// Дописывает в список наблюдаемые имена со значениями эталона.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Показываются с эталонными значениями сразу после выбора эталона, до
+    /// всякой сверки. Эталон — это и есть то, каким изделие должно быть; ждать
+    /// подключения борта, чтобы узнать, что от него требуется, оператору
+    /// незачем. Значение борта подставляется рядом, когда сверка выполнена.
+    /// </remarks>
+    private void RenderWatched()
+    {
+        if (_selectedReference is not { } reference)
+        {
+            return;
+        }
+
+        IReadOnlyDictionary<string, double> expected;
+        ParameterRoleMap roles;
+        try
+        {
+            expected = reference.ParseParameters().Values;
+            roles = reference.ToRoleMap();
+        }
+        catch (Exception)
+        {
+            // Неразбираемый эталон — забота мастера эталона, а не рабочего
+            // экрана: здесь он просто не даёт наблюдаемого списка.
+            return;
+        }
+
+        var board = _session?.LastBoard;
+        var shown = Differences.Select(static d => d.Name).ToHashSet(StringComparer.Ordinal);
+        var added = 0;
+
+        foreach (var pair in expected.OrderBy(static p => p.Key, StringComparer.Ordinal))
+        {
+            if (roles.Classify(pair.Key).Control != ParameterControl.ControlledVisible
+                || shown.Contains(pair.Key))
+            {
+                // Разошедшееся имя уже в списке строкой расхождения — вторая
+                // строка о том же имени только сбивала бы счёт.
+                continue;
+            }
+
+            double? actual = null;
+            if (board is not null && board.Values.TryGetValue(pair.Key, out var value))
+            {
+                actual = value.Value;
+            }
+
+            Differences.Add(new ParameterDifferenceRow(pair.Key, pair.Value, actual));
+            added++;
+        }
+
+        if (added == 0)
+        {
+            return;
+        }
+
+        CompareStateText.Text = board is null
+            ? $"Эталон помечен показывать {added} имён — их эталонные значения ниже. "
+              + "Значения борта появятся после сверки."
+            : CompareStateText.Text + $" Ниже расхождений — {added} наблюдаемых имён, они сошлись.";
     }
 
     private async void OnWriteOneClick(object sender, RoutedEventArgs e)
@@ -778,14 +953,14 @@ public sealed partial class MainPage : Page
             }
 
             var ok = records.Count(static r => r.Outcome == WriteOutcome.Verified);
-            CompareStateText.Text = $"Р—Р°РїРёСЃР°РЅРѕ {ok}, РѕС‚РєР»РѕРЅРµРЅРѕ {records.Count - ok}. "
-                + "Р§Р°СЃС‚СЊ Р·РЅР°С‡РµРЅРёР№ РІСЃС‚СѓРїРёС‚ РІ СЃРёР»Сѓ РїРѕСЃР»Рµ РїРµСЂРµР·Р°РіСЂСѓР·РєРё Р±РѕСЂС‚Р°.";
-            AppendLog(MavSeverity.Info, $"Р—Р°РїРёСЃСЊ РїРѕ С‚СЂРµР±РѕРІР°РЅРёСЋ: РїСЂРёРЅСЏС‚Рѕ {ok}, РѕС‚РєР»РѕРЅРµРЅРѕ {records.Count - ok}.");
+            CompareStateText.Text = $"Записано {ok}, отклонено {records.Count - ok}. "
+                + "Часть значений вступит в силу после перезагрузки борта.";
+            AppendLog(MavSeverity.Info, $"Запись по требованию: принято {ok}, отклонено {records.Count - ok}.");
         }
         catch (Exception ex)
         {
-            CompareStateText.Text = "Р—Р°РїРёСЃСЊ РЅРµ РІС‹РїРѕР»РЅРµРЅР°: " + ex.Message;
-            AppendLog(MavSeverity.Error, "Р—Р°РїРёСЃСЊ РЅРµ РІС‹РїРѕР»РЅРµРЅР°: " + ex.Message);
+            CompareStateText.Text = "Запись не выполнена: " + ex.Message;
+            AppendLog(MavSeverity.Error, "Запись не выполнена: " + ex.Message);
         }
         finally
         {
@@ -795,8 +970,8 @@ public sealed partial class MainPage : Page
     }
 
     /// <remarks>
-    /// рџ”ґ РџСЂРёРЅСЏС‚С‹Рµ СЂР°СЃС…РѕР¶РґРµРЅРёСЏ РїРµСЂРµС‡РёСЃР»СЏСЋС‚СЃСЏ РІ Р¶СѓСЂРЅР°Р»Рµ РїРѕРёРјС‘РЅРЅРѕ. В«РџСЂРёРЅСЏС‚Рѕ РєР°Рє
-    /// РµСЃС‚СЊВ» Р±РµР· СЃРїРёСЃРєР° РёРјС‘РЅ С‡РµСЂРµР· РїРѕР»РіРѕРґР° РЅРµРѕС‚Р»РёС‡РёРјРѕ РѕС‚ В«СЃРѕС€Р»РѕСЃСЊ СЃР°РјРѕВ».
+    /// 🔴 Принятые расхождения перечисляются в журнале поимённо. «Принято как
+    /// есть» без списка имён через полгода неотличимо от «сошлось само».
     /// </remarks>
     private void OnAcceptDiffClick(object sender, RoutedEventArgs e)
     {
@@ -808,17 +983,17 @@ public sealed partial class MainPage : Page
         _diffAccepted = true;
 
         AppendLog(MavSeverity.Warning, outstanding.Length == 0
-            ? "РћРїРµСЂР°С‚РѕСЂ РїСЂРёРЅСЏР» СЃРѕСЃС‚РѕСЏРЅРёРµ Р±РѕСЂС‚Р°: РЅРµСЂР°Р·РѕР±СЂР°РЅРЅС‹С… СЂР°СЃС…РѕР¶РґРµРЅРёР№ РЅРµС‚."
-            : "РћРїРµСЂР°С‚РѕСЂ РїСЂРёРЅСЏР» СЂР°СЃС…РѕР¶РґРµРЅРёСЏ РєР°Рє РµСЃС‚СЊ: " + string.Join(", ", outstanding));
+            ? "Оператор принял состояние борта: неразобранных расхождений нет."
+            : "Оператор принял расхождения как есть: " + string.Join(", ", outstanding));
 
         CompareStateText.Text = outstanding.Length == 0
-            ? "Р Р°СЃС…РѕР¶РґРµРЅРёСЏ СЂР°Р·РѕР±СЂР°РЅС‹. РљР°Р»РёР±СЂРѕРІРєРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°РЅС‹."
-            : $"РџСЂРёРЅСЏС‚Рѕ РєР°Рє РµСЃС‚СЊ: {outstanding.Length}. РРјРµРЅР° РїРµСЂРµС‡РёСЃР»РµРЅС‹ РІ Р¶СѓСЂРЅР°Р»Рµ. РљР°Р»РёР±СЂРѕРІРєРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°РЅС‹.";
+            ? "Расхождения разобраны. Калибровки разблокированы."
+            : $"Принято как есть: {outstanding.Length}. Имена перечислены в журнале. Калибровки разблокированы.";
 
         UpdateAcceptanceCommands();
     }
 
-    // --- РљРѕРјР°РЅРґС‹ РѕРїРµСЂР°С‚РѕСЂР° --------------------------------------------------
+    // --- Команды оператора --------------------------------------------------
 
     private async void OnLevelClick(object sender, RoutedEventArgs e)
     {
@@ -839,7 +1014,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            AppendLog(MavSeverity.Error, "РљР°Р»РёР±СЂРѕРІРєР° СѓСЂРѕРІРЅСЏ РЅРµ РІС‹РїРѕР»РЅРµРЅР°: " + ex.Message);
+            AppendLog(MavSeverity.Error, "Калибровка уровня не выполнена: " + ex.Message);
         }
         finally
         {
@@ -858,13 +1033,13 @@ public sealed partial class MainPage : Page
         if (double.IsNaN(heading))
         {
             AppendLog(MavSeverity.Error,
-                "РљСѓСЂСЃ Р±РѕСЂС‚Р° РЅРµ Р·Р°РґР°РЅ. РљР°Р»РёР±СЂРѕРІРєР° РїРѕ РЅРµРІРµСЂРЅРѕРјСѓ РєСѓСЂСЃСѓ РѕСЃС‚Р°РІРёС‚ РєРѕРјРїР°СЃ В«СѓСЃРїРµС€РЅРѕВ» РѕС‚РєР°Р»РёР±СЂРѕРІР°РЅРЅС‹Рј "
-              + "РЅР° С‡СѓР¶РѕРµ РЅР°РїСЂР°РІР»РµРЅРёРµ, Рё СЌС‚Рѕ РЅРµ РїРѕРєР°Р¶РµС‚ РЅРё РѕРґРЅР° РїСЂРѕРІРµСЂРєР°.");
+                "Курс борта не задан. Калибровка по неверному курсу оставит компас «успешно» откалиброванным "
+              + "на чужое направление, и это не покажет ни одна проверка.");
             return;
         }
 
         SetAcceptanceBusy(true);
-        SetCompassBusy(true, "РєР°Р»РёР±СЂРѕРІРєР°вЂ¦");
+        SetCompassBusy(true, "калибровка…");
         try
         {
             var progress = new Progress<string>(text => CompassBusyText.Text = text);
@@ -878,7 +1053,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            AppendLog(MavSeverity.Error, "РљР°Р»РёР±СЂРѕРІРєР° РєРѕРјРїР°СЃР° РЅРµ РІС‹РїРѕР»РЅРµРЅР°: " + ex.Message);
+            AppendLog(MavSeverity.Error, "Калибровка компаса не выполнена: " + ex.Message);
         }
         finally
         {
@@ -904,43 +1079,43 @@ public sealed partial class MainPage : Page
             AppendLog(readiness.Ready ? MavSeverity.Info : MavSeverity.Error, readiness.Detail);
             foreach (var blocker in readiness.Blockers)
             {
-                AppendLog(MavSeverity.Warning, "РњРµС€Р°РµС‚ РІР·РІРµРґРµРЅРёСЋ: " + blocker);
+                AppendLog(MavSeverity.Warning, "Мешает взведению: " + blocker);
             }
 
             ReadyBar.Severity = readiness.Ready ? InfoBarSeverity.Success : InfoBarSeverity.Error;
             ReadyBar.Message = readiness.Ready
-                ? "Р“РћР”Р•Рќ: Р±РѕСЂС‚ РіРѕС‚РѕРІ Р±С‹С‚СЊ РІР·РІРµРґС‘РЅРЅС‹Рј."
+                ? "ГОДЕН: борт готов быть взведённым."
                 : readiness.Detail;
         }
         catch (Exception ex)
         {
-            AppendLog(MavSeverity.Error, "РџСЂРѕРІРµСЂРєР° РіРѕС‚РѕРІРЅРѕСЃС‚Рё РЅРµ РІС‹РїРѕР»РЅРµРЅР°: " + ex.Message);
+            AppendLog(MavSeverity.Error, "Проверка готовности не выполнена: " + ex.Message);
         }
         finally
         {
             SetAcceptanceBusy(false);
 
-            // РџСЂРѕРІРµСЂРєР° РіРѕС‚РѕРІРЅРѕСЃС‚Рё вЂ” РїРѕСЃР»РµРґРЅРёР№ С€Р°Рі РїСЂРёС‘РјРєРё. РџРѕСЂС‚ РѕСЃРІРѕР±РѕР¶РґР°РµС‚СЃСЏ
-            // Р·РґРµСЃСЊ, РёРЅР°С‡Рµ РѕРЅ РѕСЃС‚Р°Р»СЃСЏ Р±С‹ Р·Р°РЅСЏС‚С‹Рј СЃРµСЃСЃРёРµР№ РґРѕ РїРµСЂРµР·Р°РїСѓСЃРєР°
-            // РїСЂРёР»РѕР¶РµРЅРёСЏ, Р° РїСЂРёР±РѕСЂС‹ вЂ” РјС‘СЂС‚РІС‹РјРё.
+            // Проверка готовности — последний шаг приёмки. Порт освобождается
+            // здесь, иначе он остался бы занятым сессией до перезапуска
+            // приложения, а приборы — мёртвыми.
             await ReleaseAcceptanceAsync().ConfigureAwait(true);
         }
     }
 
-    // --- РЎРѕСЃС‚РѕСЏРЅРёРµ РїСЂРёС‘РјРєРё --------------------------------------------------
+    // --- Состояние приёмки --------------------------------------------------
 
     private void SetAcceptanceBusy(bool busy)
     {
         _acceptanceBusy = busy;
 
-        StartAcceptanceButton.Content = busy ? "РћС‚РјРµРЅРёС‚СЊ РїСЂРёС‘РјРєСѓ" : "РЎС‚Р°СЂС‚ РїСЂРёС‘РјРєРё";
+        StartAcceptanceButton.Content = busy ? "Отменить приёмку" : "Старт приёмки";
         StartAcceptanceButton.IsEnabled = busy
             || (_services.IsLinkConnected && _selectedReference is not null);
 
         UpdateAcceptanceCommands();
     }
 
-    /// <summary>Р”РІРёР¶РµРЅРёРµ РЅР° РїР°РЅРµР»Рё РєРѕРјРїР°СЃРѕРІ, РїРѕРєР° РёРґС‘С‚ СЂР°Р±РѕС‚Р° СЃ РЅРёРјРё.</summary>
+    /// <summary>Движение на панели компасов, пока идёт работа с ними.</summary>
     private void SetCompassBusy(bool busy, string text = "")
     {
         CompassBusyRing.IsActive = busy;
@@ -949,9 +1124,9 @@ public sealed partial class MainPage : Page
     }
 
     /// <remarks>
-    /// рџ”ґ РљР°Р»РёР±СЂРѕРІРєРё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°РЅС‹ С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ СЂР°Р·Р±РѕСЂР° СЂР°СЃС…РѕР¶РґРµРЅРёР№.
-    /// РљР°Р»РёР±СЂРѕРІР°С‚СЊ Р±РѕСЂС‚, РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ РєРѕС‚РѕСЂРѕРіРѕ СЂР°СЃС…РѕРґРёС‚СЃСЏ СЃ СЌС‚Р°Р»РѕРЅРѕРј Рё РЅРµ
-    /// СЂР°Р·РѕР±СЂР°РЅР°, Р·РЅР°С‡РёС‚ РїРѕРґС‚РІРµСЂРґРёС‚СЊ РЅРµ С‚Рѕ РёР·РґРµР»РёРµ, РєРѕС‚РѕСЂРѕРµ СЃРґР°С‘С‚СЃСЏ.
+    /// 🔴 Калибровки разблокированы только после разбора расхождений.
+    /// Калибровать борт, конфигурация которого расходится с эталоном и не
+    /// разобрана, значит подтвердить не то изделие, которое сдаётся.
     /// </remarks>
     private void UpdateAcceptanceCommands()
     {
@@ -1036,7 +1211,7 @@ public sealed partial class MainPage : Page
 
         await PersistSettingsAsync().ConfigureAwait(true);
 
-        // РќР°Р¶Р°С‚РёРµ РЅР° РїР»Р°С€РєСѓ вЂ” СЌС‚Рѕ СѓР¶Рµ РґРµР№СЃС‚РІРёРµ: РѕС‚РґРµР»СЊРЅРѕР№ РєРЅРѕРїРєРё В«РїРѕРґРєР»СЋС‡РёС‚СЊВ» РЅРµС‚.
+        // Нажатие на плашку — это уже действие: отдельной кнопки «подключить» нет.
         await ConnectAsync().ConfigureAwait(true);
     }
 
@@ -1067,15 +1242,15 @@ public sealed partial class MainPage : Page
     {
         _selectedReference = profile;
         _referencesExpanded = false;
-        Log($"Р’С‹Р±СЂР°РЅ СЌС‚Р°Р»РѕРЅ В«{profile.Name}В».");
+        Log($"Выбран эталон «{profile.Name}».");
         RenderExpansion();
         RenderAll();
         await PersistSettingsAsync().ConfigureAwait(true);
     }
 
     /// <summary>
-    /// РћС‚РєСЂС‹РІР°РµС‚ РёР»Рё Р·Р°РєСЂС‹РІР°РµС‚ СЂР°СЃРєСЂС‹С‚РёСЏ. РЎРїРёСЃРєРё Р¶РёРІСѓС‚ РІ <c>Popup</c>, РїРѕСЌС‚РѕРјСѓ
-    /// РЅРµ Р·Р°РЅРёРјР°СЋС‚ РјРµСЃС‚Р° РІ СЂР°Р·РјРµС‚РєРµ Рё РЅРµ РґРІРёРіР°СЋС‚ РѕСЃС‚Р°Р»СЊРЅС‹Рµ РїР°РЅРµР»Рё РѕРєРЅР°.
+    /// Открывает или закрывает раскрытия. Списки живут в <c>Popup</c>, поэтому
+    /// не занимают места в разметке и не двигают остальные панели окна.
     /// </summary>
     private void RenderExpansion()
     {
@@ -1084,9 +1259,9 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РЎС‚Р°РІРёС‚ РІСЃРїР»С‹РІР°СЋС‰РёР№ СЃР»РѕР№ С‚Р°Рє, С‡С‚РѕР±С‹ РєР°СЂС‚РѕС‡РєР° РѕСЃС‚Р°Р»Р°СЃСЊ РЅР° СЃРІРѕС‘Рј РјРµСЃС‚Рµ:
-    /// РїР»Р°С€РєРё В«РІС‹С€РµВ» СѓС…РѕРґСЏС‚ РЅР°Рґ РЅРµР№, В«РЅРёР¶РµВ» вЂ” РїРѕРґ РЅРµС‘, Р° РїСЂРѕР·СЂР°С‡РЅР°СЏ РїСЂРѕРєР»Р°РґРєР°
-    /// Р·Р°РЅРёРјР°РµС‚ СЂРѕРІРЅРѕ РјРµСЃС‚Рѕ СЃР°РјРѕР№ РєР°СЂС‚РѕС‡РєРё.
+    /// Ставит всплывающий слой так, чтобы карточка осталась на своём месте:
+    /// плашки «выше» уходят над ней, «ниже» — под неё, а прозрачная прокладка
+    /// занимает ровно место самой карточки.
     /// </summary>
     private static void PlacePopup(
         bool open,
@@ -1106,7 +1281,7 @@ public sealed partial class MainPage : Page
         var width = card.ActualWidth;
         if (width <= 0)
         {
-            // РљР°СЂС‚РѕС‡РєР° РµС‰С‘ РЅРµ РёР·РјРµСЂРµРЅР° вЂ” РѕС‚РєСЂС‹РІР°С‚СЊ РЅРµС‡РµРіРѕ Рё РЅРµ РѕС‚ С‡РµРіРѕ СЃС‡РёС‚Р°С‚СЊ.
+            // Карточка ещё не измерена — открывать нечего и не от чего считать.
             popup.IsOpen = false;
             return;
         }
@@ -1114,7 +1289,7 @@ public sealed partial class MainPage : Page
         root.Width = width;
         spacer.Height = card.ActualHeight;
 
-        // Р’С‹СЃРѕС‚Р° РІРµСЂС…РЅРµР№ С‡Р°СЃС‚Рё РЅСѓР¶РЅР° РґРѕ РїРѕРєР°Р·Р°: РЅР° РЅРµС‘ РїРѕРґРЅРёРјР°РµС‚СЃСЏ РІРµСЃСЊ СЃР»РѕР№.
+        // Высота верхней части нужна до показа: на неё поднимается весь слой.
         above.Measure(new Size(width, double.PositiveInfinity));
 
         var offset = card.TransformToVisual(origin).TransformPoint(new Point(0, 0));
@@ -1123,7 +1298,7 @@ public sealed partial class MainPage : Page
         popup.IsOpen = true;
     }
 
-    // --- РџРѕСЂС‚С‹ Рё СЃРІСЏР·СЊ -----------------------------------------------------
+    // --- Порты и связь -----------------------------------------------------
 
     private async Task ReloadPortsAsync()
     {
@@ -1133,7 +1308,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            ShowLinkMessage(InfoBarSeverity.Warning, "РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµС‡РёСЃР»РёС‚СЊ РїРѕСЂС‚С‹: " + ex.Message);
+            ShowLinkMessage(InfoBarSeverity.Warning, "Не удалось перечислить порты: " + ex.Message);
             return;
         }
 
@@ -1159,14 +1334,14 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РџРѕРґРєР»СЋС‡Р°РµС‚ РЅР°Р±Р»СЋРґР°С‚РµР»СЊРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ, РµСЃР»Рё Р±РѕСЂС‚ РѕРїРѕР·РЅР°РЅ РѕРґРЅРѕР·РЅР°С‡РЅРѕ.
+    /// Подключает наблюдательное соединение, если борт опознан однозначно.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ Р’Рѕ РІСЂРµРјСЏ РїСЂРёС‘РјРєРё РЅРµ РїРѕРґРєР»СЋС‡Р°РµС‚СЃСЏ РЅРёРєРѕРіРґР°. COM-РїРѕСЂС‚ РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ
-    /// РјРѕРЅРѕРїРѕР»СЊРЅРѕ Рё РЅР° РІСЃСЋ РїСЂРёС‘РјРєСѓ РїСЂРёРЅР°РґР»РµР¶РёС‚ СЃРµСЃСЃРёРё; РЅР°Р±Р»СЋРґР°С‚РµР»СЊРЅРѕРµ
-    /// СЃРѕРµРґРёРЅРµРЅРёРµ, РїРѕР»РµР·С€РµРµ С‚СѓРґР° РїРѕСЃР»Рµ РїРµСЂРµР·Р°РіСЂСѓР·РєРё Р±РѕСЂС‚Р°, РѕС‚Р±РёСЂР°РµС‚ РїРѕСЂС‚ Сѓ
-    /// РїСЂРѕС†РµРґСѓСЂС‹ Р»РёР±Рѕ РїРѕР»СѓС‡Р°РµС‚ РѕС‚РєР°Р· Рё Р·Р°СЃРѕСЂСЏРµС‚ Р¶СѓСЂРЅР°Р» СЃРѕРѕР±С‰РµРЅРёРµРј В«РїРѕСЂС‚ Р·Р°РЅСЏС‚
-    /// РґСЂСѓРіРѕР№ РїСЂРѕРіСЂР°РјРјРѕР№В» вЂ” РїСЂРѕ СЃР°РјРѕРіРѕ СЃРµР±СЏ.
+    /// 🔴 Во время приёмки не подключается никогда. COM-порт открывается
+    /// монопольно и на всю приёмку принадлежит сессии; наблюдательное
+    /// соединение, полезшее туда после перезагрузки борта, отбирает порт у
+    /// процедуры либо получает отказ и засоряет журнал сообщением «порт занят
+    /// другой программой» — про самого себя.
     /// </remarks>
     private async Task TryAutoConnectAsync()
     {
@@ -1177,7 +1352,7 @@ public sealed partial class MainPage : Page
 
         if (_ports.Count == 0)
         {
-            ShowLinkMessage(InfoBarSeverity.Informational, "COM-РїРѕСЂС‚РѕРІ РЅРµ РЅР°Р№РґРµРЅРѕ вЂ” РїРѕРґРєР»СЋС‡РёС‚Рµ Р±РѕСЂС‚ РєР°Р±РµР»РµРј.");
+            ShowLinkMessage(InfoBarSeverity.Informational, "COM-портов не найдено — подключите борт кабелем.");
             return;
         }
 
@@ -1187,8 +1362,8 @@ public sealed partial class MainPage : Page
             ShowLinkMessage(
                 InfoBarSeverity.Informational,
                 candidates.Count == 0
-                    ? "РџР»Р°С‚Р° ArduPilot СЃСЂРµРґРё РїРѕСЂС‚РѕРІ РЅРµ РѕРїРѕР·РЅР°РЅР° вЂ” РІС‹Р±РµСЂРёС‚Рµ РїРѕСЂС‚ РІСЂСѓС‡РЅСѓСЋ."
-                    : "РћРїРѕР·РЅР°РЅРѕ РЅРµСЃРєРѕР»СЊРєРѕ РїР»Р°С‚ вЂ” РІС‹Р±РµСЂРёС‚Рµ РЅСѓР¶РЅСѓСЋ РІСЂСѓС‡РЅСѓСЋ.");
+                    ? "Плата ArduPilot среди портов не опознана — выберите порт вручную."
+                    : "Опознано несколько плат — выберите нужную вручную.");
             return;
         }
 
@@ -1197,11 +1372,11 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РћС‚Р±РёСЂР°РµС‚ РїРѕСЂС‚С‹, РЅР° РєРѕС‚РѕСЂС‹С… РјРѕР¶РµС‚ РѕС‚РІРµС‡Р°С‚СЊ MAVLink.
+    /// Отбирает порты, на которых может отвечать MAVLink.
     /// </summary>
     /// <remarks>
-    /// РљРѕРјРїРѕР·РёС‚РЅС‹Рµ РїР»Р°С‚С‹ F7/H7 РїРѕРєР°Р·С‹РІР°СЋС‚ РґРІР° CDC-РїРѕСЂС‚Р° СЃ РѕРґРёРЅР°РєРѕРІС‹РјРё VID/PID:
-    /// РЅР° РЅСѓР»РµРІРѕРј РёРЅС‚РµСЂС„РµР№СЃРµ Р¶РёРІС‘С‚ MAVLink, РЅР° РІС‚РѕСЂРѕРј вЂ” SLCAN.
+    /// Композитные платы F7/H7 показывают два CDC-порта с одинаковыми VID/PID:
+    /// на нулевом интерфейсе живёт MAVLink, на втором — SLCAN.
     /// </remarks>
     private static List<SerialPortDescription> PickCandidates(IReadOnlyList<SerialPortDescription> ports)
     {
@@ -1232,12 +1407,12 @@ public sealed partial class MainPage : Page
         try
         {
             await _services.ConnectAsync(port.PortName).ConfigureAwait(true);
-            Log($"РЈСЃС‚Р°РЅРѕРІР»РµРЅР° СЃРІСЏР·СЊ СЃ Р±РѕСЂС‚РѕРј РЅР° {port.PortName}.");
+            Log($"Установлена связь с бортом на {port.PortName}.");
         }
         catch (Exception ex)
         {
             ShowLinkMessage(InfoBarSeverity.Error, ex.Message);
-            Log($"РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє {port.PortName} РЅРµ СѓРґР°Р»РѕСЃСЊ: {ex.Message}");
+            Log($"Подключение к {port.PortName} не удалось: {ex.Message}");
         }
         finally
         {
@@ -1250,8 +1425,8 @@ public sealed partial class MainPage : Page
     {
         RenderAll();
 
-        // РћРїРѕР·РЅР°РЅРёРµ РєРѕРјРїР°СЃРѕРІ РїСЂРёРІСЏР·Р°РЅРѕ Рє СЃРѕРµРґРёРЅРµРЅРёСЋ, Р° РЅРµ Рє С‚Р°РєС‚Сѓ РёРЅРґРёРєР°С‚РѕСЂР°:
-        // РїСЂРё РѕР±СЂС‹РІРµ РѕРЅРѕ СѓСЃС‚Р°СЂРµРІР°РµС‚, РїСЂРё РЅРѕРІРѕРј РїРѕРґРєР»СЋС‡РµРЅРёРё С‡РёС‚Р°РµС‚СЃСЏ Р·Р°РЅРѕРІРѕ.
+        // Опознание компасов привязано к соединению, а не к такту индикатора:
+        // при обрыве оно устаревает, при новом подключении читается заново.
         if (_services.IsLinkConnected)
         {
             _ = LoadCompassIdentityAsync();
@@ -1276,7 +1451,7 @@ public sealed partial class MainPage : Page
         LinkRing.IsActive = busy;
     }
 
-    // --- Р­С‚Р°Р»РѕРЅС‹ -----------------------------------------------------------
+    // --- Эталоны -----------------------------------------------------------
 
     private async Task ReloadReferencesAsync()
     {
@@ -1300,7 +1475,7 @@ public sealed partial class MainPage : Page
             {
                 ReferenceBar.Severity = InfoBarSeverity.Warning;
                 ReferenceBar.Message =
-                    "Р­С‚Р°Р»РѕРЅРѕРІ РЅРµС‚ вЂ” Р·Р°РїСѓСЃС‚РёС‚СЊ РєР°Р»РёР±СЂРѕРІРєСѓ РЅРµС‡РµРј. РќР°Р¶РјРёС‚Рµ РїР°РЅРµР»СЊ СЌС‚Р°Р»РѕРЅР°, С‡С‚РѕР±С‹ Р·Р°РІРµСЃС‚Рё РїРµСЂРІС‹Р№.";
+                    "Эталонов нет — запустить калибровку нечем. Нажмите панель эталона, чтобы завести первый.";
                 ReferenceBar.IsOpen = true;
             }
             else
@@ -1311,76 +1486,85 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             ReferenceBar.Severity = InfoBarSeverity.Error;
-            ReferenceBar.Message = "РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ СЃРїРёСЃРѕРє СЌС‚Р°Р»РѕРЅРѕРІ: " + ex.Message;
+            ReferenceBar.Message = "Не удалось прочитать список эталонов: " + ex.Message;
             ReferenceBar.IsOpen = true;
         }
     }
 
-    // --- РћС‚СЂРёСЃРѕРІРєР° ---------------------------------------------------------
+    // --- Отрисовка ---------------------------------------------------------
 
     private void RenderAll()
     {
         var connected = _services.IsLinkConnected;
 
-        PortCardTitle.Text = _selectedPort?.Caption ?? "РџРѕСЂС‚ РЅРµ РІС‹Р±СЂР°РЅ";
+        PortCardTitle.Text = _selectedPort?.Caption ?? "Порт не выбран";
         PortCardDetail.Text = connected
-            ? $"СЃРІСЏР·СЊ РµСЃС‚СЊ В· {_services.ConnectedFirmware ?? "РІРµСЂСЃРёСЏ РїСЂРѕС€РёРІРєРё РЅРµ РїРѕР»СѓС‡РµРЅР°"}"
+            ? $"связь есть · {_services.ConnectedFirmware ?? "версия прошивки не получена"}"
             : _selectedPort?.Details is { Length: > 0 } d
                 ? d
-                : "РќР°Р¶РјРёС‚Рµ, С‡С‚РѕР±С‹ РІС‹Р±СЂР°С‚СЊ";
+                : "Нажмите, чтобы выбрать";
 
-        // РЎРІСЏР·СЊ РїРѕРєР°Р·С‹РІР°РµС‚СЃСЏ РїРѕРґСЃРІРµС‚РєРѕР№ СЃРЅРёР·Сѓ Рё Р°РєС†РµРЅС‚РЅС‹Рј РєР°РЅС‚РѕРј СЃР»РµРІР°. Р”РІР°
-        // РїСЂРёР·РЅР°РєР°, Р° РЅРµ РѕРґРёРЅ: РїРѕРґСЃРІРµС‚РєР° вЂ” РјСЏРіРєРёР№ РіСЂР°РґРёРµРЅС‚, РЅР° СЃРІРµС‚Р»РѕР№ С‚РµРјРµ Рё РЅР°
-        // РґРµС€С‘РІРѕР№ С†РµС…РѕРІРѕР№ РјР°С‚СЂРёС†Рµ РѕРЅР° РІРёРґРЅР° С…СѓР¶Рµ, С‡РµРј С…РѕС‚РµР»РѕСЃСЊ Р±С‹.
-        // РџРѕРґСЃРІРµС‚РєР° СЃРЅРёР·Сѓ РіРѕСЂРёС‚ РІСЃРµРіРґР°: Р·РµР»С‘РЅР°СЏ вЂ” РіРѕС‚РѕРІРѕ, РєСЂР°СЃРЅР°СЏ вЂ” РЅРµ Р·Р°РїРѕР»РЅРµРЅРѕ.
-        // РџРѕРіР°С€РµРЅРЅР°СЏ РїР°РЅРµР»СЊ С‡РёС‚Р°Р»Р°СЃСЊ РєР°Рє В«РµС‰С‘ РЅРµ РґРѕС€Р»Рё СЂСѓРєРёВ», С…РѕС‚СЏ РЅР° РґРµР»Рµ СЌС‚Рѕ
-        // РЅРµР·Р°РІРµСЂС€С‘РЅРЅР°СЏ РїРѕРґРіРѕС‚РѕРІРєР° СЃС‚РµРЅРґР°.
+        // Связь показывается подсветкой снизу и акцентным кантом слева. Два
+        // признака, а не один: подсветка — мягкий градиент, на светлой теме и на
+        // дешёвой цеховой матрице она видна хуже, чем хотелось бы.
+        // Подсветка снизу горит всегда: зелёная — готово, красная — не заполнено.
+        // Погашенная панель читалась как «ещё не дошли руки», хотя на деле это
+        // незавершённая подготовка стенда.
         PortGlow.Visibility = Visibility.Visible;
         PortGlow.Background = (Brush)Resources[connected ? "GlowBrush" : "GlowDangerBrush"];
         PortCard.Style = (Style)Resources[connected ? "ActiveTileStyle" : "DangerTileStyle"];
 
-        ReferenceCardTitle.Text = _selectedReference?.Name ?? "Р­С‚Р°Р»РѕРЅ РЅРµ РІС‹Р±СЂР°РЅ";
+        ReferenceCardTitle.Text = _selectedReference?.Name ?? "Эталон не выбран";
         ReferenceCardDetail.Text = _selectedReference is { } profile
             ? ReferenceCaption.Describe(profile)
             : _references.Count == 0
-                ? "РќР°Р¶РјРёС‚Рµ, С‡С‚РѕР±С‹ РґРѕР±Р°РІРёС‚СЊ РїРµСЂРІС‹Р№"
-                : "РќР°Р¶РјРёС‚Рµ, С‡С‚РѕР±С‹ РІС‹Р±СЂР°С‚СЊ";
+                ? "Нажмите, чтобы добавить первый"
+                : "Нажмите, чтобы выбрать";
 
         var hasProfile = _selectedReference is not null;
         ReferenceGlow.Visibility = Visibility.Visible;
         ReferenceGlow.Background = (Brush)Resources[hasProfile ? "GlowBrush" : "GlowDangerBrush"];
         ReferenceCard.Style = (Style)Resources[hasProfile ? "ActiveTileStyle" : "DangerTileStyle"];
 
-        // РџСЂР°РІРёС‚СЊ РЅРµС‡РµРіРѕ, РїРѕРєР° СЌС‚Р°Р»РѕРЅ РЅРµ РІС‹Р±СЂР°РЅ: РєР°СЂР°РЅРґР°С€ Р±РµР· С†РµР»Рё С‚РѕР»СЊРєРѕ
-        // РїСЂРµРґР»Р°РіР°РµС‚ РЅР°Р¶Р°С‚СЊ Рё РїРѕР»СѓС‡РёС‚СЊ РѕС‚РєР°Р·.
+        // Править нечего, пока эталон не выбран: карандаш без цели только
+        // предлагает нажать и получить отказ.
         EditReferenceButton.Visibility = hasProfile ? Visibility.Visible : Visibility.Collapsed;
 
         var problems = new List<string>();
         if (!connected)
         {
-            problems.Add("РЅРµС‚ СЃРІСЏР·Рё СЃ РїРѕР»С‘С‚РЅРёРєРѕРј");
+            problems.Add("нет связи с полётником");
         }
 
         if (_selectedReference is null)
         {
-            problems.Add("РЅРµ РІС‹Р±СЂР°РЅ СЌС‚Р°Р»РѕРЅ");
+            problems.Add("не выбран эталон");
         }
 
         if (problems.Count == 0)
         {
             ReadyBar.Severity = InfoBarSeverity.Success;
-            ReadyBar.Message = "Р‘РѕСЂС‚ РЅР° СЃРІСЏР·Рё, СЌС‚Р°Р»РѕРЅ РІС‹Р±СЂР°РЅ. РњРѕР¶РЅРѕ Р·Р°РїСѓСЃРєР°С‚СЊ РїСЂРёС‘РјРєСѓ.";
+            ReadyBar.Message = "Борт на связи, эталон выбран. Можно запускать приёмку.";
         }
         else
         {
             ReadyBar.Severity = InfoBarSeverity.Informational;
-            ReadyBar.Message = "РќРµ РіРѕС‚РѕРІРѕ: " + string.Join(", ", problems) + ".";
+            ReadyBar.Message = "Не готово: " + string.Join(", ", problems) + ".";
         }
 
         StartAcceptanceButton.IsEnabled = problems.Count == 0;
 
-        // РРЅРґРёРєР°С‚РѕСЂ СЂР°Р±РѕС‚Р°РµС‚ РѕС‚ СЃРІСЏР·Рё СЃ Р±РѕСЂС‚РѕРј Рё РЅРµ Р¶РґС‘С‚ РІС‹Р±РѕСЂР° СЌС‚Р°Р»РѕРЅР°:
-        // РїСЂРёР±РѕСЂС‹ РЅСѓР¶РЅС‹ РѕРїРµСЂР°С‚РѕСЂСѓ СЂР°РЅСЊС€Рµ, С‡РµРј СЌС‚Р°Р»РѕРЅ.
+        // Наблюдаемые имена показываются сразу после выбора эталона: пока
+        // сверки не было, в списке стоят эталонные значения. Пересобирается
+        // только когда сверка ещё не выполнялась — иначе затёрло бы её итог.
+        if (_session is null)
+        {
+            Differences.Clear();
+            RenderWatched();
+        }
+
+        // Индикатор работает от связи с бортом и не ждёт выбора эталона:
+        // приборы нужны оператору раньше, чем эталон.
         if (connected && !_hudTimer.IsEnabled)
         {
             _hudTimer.Start();
@@ -1397,12 +1581,12 @@ public sealed partial class MainPage : Page
     private void Log(string message) => AppendLog(MavSeverity.Info, message);
 
     /// <summary>
-    /// РЎС‚СЂРѕРєР° Р¶СѓСЂРЅР°Р»Р° СЃ СЏРІРЅРѕР№ РІР°Р¶РЅРѕСЃС‚СЊСЋ.
+    /// Строка журнала с явной важностью.
     /// </summary>
     /// <remarks>
-    /// Р’Р°Р¶РЅРѕСЃС‚СЊ Р·Р°РґР°С‘С‚СЃСЏ РІС‹Р·С‹РІР°СЋС‰РёРј, Р° РЅРµ РІС‹РІРѕРґРёС‚СЃСЏ РёР· С‚РµРєСЃС‚Р°: РѕС‚РєР°Р· РїСЂРёС‘РјРєРё Рё
-    /// СЃРѕРѕР±С‰РµРЅРёРµ Рѕ С…РѕРґРµ РІС‹РіР»СЏРґСЏС‚ РІ Р¶СѓСЂРЅР°Р»Рµ РѕРґРёРЅР°РєРѕРІРѕ, РµСЃР»Рё РѕР±Р° Р·Р°РїРёСЃР°РЅС‹ РєР°Рє
-    /// В«СЃРІРµРґРµРЅРёСЏВ», Рё РѕРїРµСЂР°С‚РѕСЂ РїСЂРѕР»РёСЃС‚С‹РІР°РµС‚ РѕС‚РєР°Р· РЅРµ Р·Р°РјРµС‚РёРІ.
+    /// Важность задаётся вызывающим, а не выводится из текста: отказ приёмки и
+    /// сообщение о ходе выглядят в журнале одинаково, если оба записаны как
+    /// «сведения», и оператор пролистывает отказ не заметив.
     /// </remarks>
     private void AppendLog(MavSeverity severity, string message) => DispatcherQueue.TryEnqueue(() =>
     {
@@ -1416,15 +1600,35 @@ public sealed partial class MainPage : Page
     private void OnClearLogClick(object sender, RoutedEventArgs e) => LogEntries.Clear();
 
 
-    private void OnHudTick(object? sender, object e) => RenderHud();
+    /// <summary>Состояние связи, отражённое на экране последней перерисовкой.</summary>
+    private bool? _renderedConnected;
 
-    // --- РЈРєР°Р·Р°С‚РµР»СЊ РїРѕР»РѕР¶РµРЅРёСЏ -----------------------------------------------
-
-    /// <summary>РњР°СЃС€С‚Р°Р± С€РєР°Р»С‹ С‚Р°РЅРіР°Р¶Р°, РїРёРєСЃРµР»РµР№ РЅР° РіСЂР°РґСѓСЃ.</summary>
     /// <remarks>
-    /// РљСЂСѓРїРЅС‹Р№ РјР°СЃС€С‚Р°Р± РІС‹Р±СЂР°РЅ РЅР°РјРµСЂРµРЅРЅРѕ: РІ РѕРєРЅРµ РІС‹СЃРѕС‚РѕР№ 170 С‚РѕС‡РµРє РѕРЅ РѕСЃС‚Р°РІР»СЏРµС‚
-    /// РІ РїРѕР»Рµ Р·СЂРµРЅРёСЏ В±21В°, С‚Рѕ РµСЃС‚СЊ С‚СЂРё-С‡РµС‚С‹СЂРµ СЃС‚СѓРїРµРЅРё. РњРµР»РєРёР№ РјР°СЃС€С‚Р°Р± РЅР°Р±РёРІР°Р»
-    /// РїРѕР»Рµ РґРµСЃСЏС‚РєРѕРј Р»РёРЅРёР№, Рё С€РєР°Р»Р° РїРµСЂРµСЃС‚Р°РІР°Р»Р° С‡РёС‚Р°С‚СЊСЃСЏ.
+    /// 🔴 Состояние связи проверяется на каждом такте. Сессия приёмки
+    /// переподключается к борту сама — после каждой перезагрузки, — и события
+    /// об этом не возникает. Без сверки экран остаётся с надписью «нет связи с
+    /// полётником» на живом борту с бегущими приборами, и оператор верит
+    /// надписи, а не приборам.
+    /// </remarks>
+    private void OnHudTick(object? sender, object e)
+    {
+        RenderHud();
+
+        var connected = _services.IsLinkConnected;
+        if (_renderedConnected != connected)
+        {
+            _renderedConnected = connected;
+            RenderAll();
+        }
+    }
+
+    // --- Указатель положения -----------------------------------------------
+
+    /// <summary>Масштаб шкалы тангажа, пикселей на градус.</summary>
+    /// <remarks>
+    /// Крупный масштаб выбран намеренно: в окне высотой 170 точек он оставляет
+    /// в поле зрения ±21°, то есть три-четыре ступени. Мелкий масштаб набивал
+    /// поле десятком линий, и шкала переставала читаться.
     /// </remarks>
     private const double PitchScale = 4.0;
 
@@ -1435,8 +1639,8 @@ public sealed partial class MainPage : Page
     private void OnHudSizeChanged(object sender, SizeChangedEventArgs e) => BuildHudGeometry();
 
     /// <summary>
-    /// РџРµСЂРµСЃС‚СЂР°РёРІР°РµС‚ С€РєР°Р»Сѓ РїРѕРґ С‚РµРєСѓС‰РёР№ СЂР°Р·РјРµСЂ. Р’С‹Р·С‹РІР°РµС‚СЃСЏ РЅР° РёР·РјРµРЅРµРЅРёРµ СЂР°Р·РјРµСЂР°,
-    /// Р° РЅРµ РЅР° РєР°Р¶РґС‹Р№ РєР°РґСЂ: РїРѕ С‚Р°Р№РјРµСЂСѓ РјРµРЅСЏСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РґРІР° РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ.
+    /// Перестраивает шкалу под текущий размер. Вызывается на изменение размера,
+    /// а не на каждый кадр: по таймеру меняются только два преобразования.
     /// </summary>
     private void BuildHudGeometry()
     {
@@ -1452,7 +1656,7 @@ public sealed partial class MainPage : Page
         BuildMarker(w, h);
     }
 
-    /// <summary>РЁРєР°Р»Р° С‚Р°РЅРіР°Р¶Р°: РіРѕСЂРёР·РѕРЅС‚ Рё СЃС‚СѓРїРµРЅРё С‡РµСЂРµР· 10В°, РїРѕРґРїРёСЃРё СЃР»РµРІР°.</summary>
+    /// <summary>Шкала тангажа: горизонт и ступени через 10°, подписи слева.</summary>
     private void BuildPitchLadder(double w, double h)
     {
         LadderHost.Children.Clear();
@@ -1460,7 +1664,7 @@ public sealed partial class MainPage : Page
         var cx = w / 2;
         var cy = h / 2;
 
-        // РљСЂРµРЅ РІСЂР°С‰Р°РµС‚ С€РєР°Р»Сѓ РІРѕРєСЂСѓРі С‚РѕС‡РєРё РІРёР·РёСЂРѕРІР°РЅРёСЏ, Р° РЅРµ РІРѕРєСЂСѓРі СѓРіР»Р° С…РѕР»СЃС‚Р°.
+        // Крен вращает шкалу вокруг точки визирования, а не вокруг угла холста.
         RollRotate.CenterX = cx;
         RollRotate.CenterY = cy;
 
@@ -1473,7 +1677,7 @@ public sealed partial class MainPage : Page
 
             if (deg == 0)
             {
-                // Р“РѕСЂРёР·РѕРЅС‚ вЂ” СЃРїР»РѕС€РЅР°СЏ Р»РёРЅРёСЏ РІРѕ РІСЃСЋ С€РёСЂРёРЅСѓ СЃ СЂР°Р·СЂС‹РІРѕРј РїРѕРґ РјР°СЂРєРµСЂРѕРј.
+                // Горизонт — сплошная линия во всю ширину с разрывом под маркером.
                 AddLine(cx - Math.Max(cx, 0), y, cx - 22, y, Ink, 2);
                 AddLine(cx + 22, y, cx + Math.Max(cx, 0) + w, y, Ink, 2);
                 continue;
@@ -1482,7 +1686,7 @@ public sealed partial class MainPage : Page
             AddLine(cx - Gap - BarLength, y, cx - Gap, y, InkDim, 1.6, dashed: deg < 0);
             AddLine(cx + Gap, y, cx + Gap + BarLength, y, InkDim, 1.6, dashed: deg < 0);
 
-            // Р—Р°СЃРµС‡РєРё РЅР° РІРЅСѓС‚СЂРµРЅРЅРёС… РєРѕРЅС†Р°С… СЃРјРѕС‚СЂСЏС‚ Рє РіРѕСЂРёР·РѕРЅС‚Сѓ.
+            // Засечки на внутренних концах смотрят к горизонту.
             var tickDir = deg > 0 ? 6 : -6;
             AddLine(cx - Gap, y, cx - Gap, y + tickDir, InkDim, 1.6);
             AddLine(cx + Gap, y, cx + Gap, y + tickDir, InkDim, 1.6);
@@ -1503,7 +1707,7 @@ public sealed partial class MainPage : Page
             StrokeThickness = thickness,
         };
 
-        // РџРёРєРёСЂРѕРІР°РЅРёРµ вЂ” РїСѓРЅРєС‚РёСЂРѕРј: РѕС‚Р»РёС‡Р°РµС‚СЃСЏ РѕС‚ РЅР°Р±РѕСЂР° РЅРµ С‚РѕР»СЊРєРѕ РїРѕР»РѕР¶РµРЅРёРµРј.
+        // Пикирование — пунктиром: отличается от набора не только положением.
         if (dashed)
         {
             line.StrokeDashArray = [4, 3];
@@ -1527,7 +1731,7 @@ public sealed partial class MainPage : Page
         LadderHost.Children.Add(label);
     }
 
-    /// <summary>РќРµРїРѕРґРІРёР¶РЅС‹Р№ РјР°СЂРєРµСЂ РїРѕР»РѕР¶РµРЅРёСЏ: РєСЂСѓРїРЅС‹Р№, С‡С‚РѕР±С‹ С‡РёС‚Р°Р»СЃСЏ СЃСЂР°Р·Сѓ.</summary>
+    /// <summary>Неподвижный маркер положения: крупный, чтобы читался сразу.</summary>
     private void BuildMarker(double w, double h)
     {
         FixedHost.Children.Clear();
@@ -1567,7 +1771,7 @@ public sealed partial class MainPage : Page
         var state = _services.LiveState;
         if (state is null)
         {
-            HudArmedText.Text = "РќРµС‚ РґР°РЅРЅС‹С…: Р±РѕСЂС‚ РЅРµ РЅР° СЃРІСЏР·Рё";
+            HudArmedText.Text = "Нет данных: борт не на связи";
             HudArmedText.Foreground = InkDim;
             return;
         }
@@ -1581,24 +1785,24 @@ public sealed partial class MainPage : Page
             RollRotate.Angle = -rollDeg;
             PitchTranslate.Y = pitchDeg * PitchScale;
 
-            HudRollText.Text = string.Create(CultureInfo.InvariantCulture, $"{rollDeg:+0.0;-0.0;0.0}В°");
-            HudPitchText.Text = string.Create(CultureInfo.InvariantCulture, $"{pitchDeg:+0.0;-0.0;0.0}В°");
-            HudYawText.Text = string.Create(CultureInfo.InvariantCulture, $"{yawDeg:000}В°");
+            HudRollText.Text = string.Create(CultureInfo.InvariantCulture, $"{rollDeg:+0.0;-0.0;0.0}°");
+            HudPitchText.Text = string.Create(CultureInfo.InvariantCulture, $"{pitchDeg:+0.0;-0.0;0.0}°");
+            HudYawText.Text = string.Create(CultureInfo.InvariantCulture, $"{yawDeg:000}°");
         }
 
-        // РЎРµРЅС‚РёРЅРµР»С‹ СѓР¶Рµ РѕС‚СЃРµСЏРЅС‹ РєР°РЅР°Р»РѕРј: РїСѓСЃС‚Рѕ РѕР·РЅР°С‡Р°РµС‚ В«Р±РѕСЂС‚ РЅРµ СЃРѕРѕР±С‰Р°РµС‚В».
+        // Сентинелы уже отсеяны каналом: пусто означает «борт не сообщает».
         HudVoltageText.Text = state.VoltageVolts is { } v
-            ? string.Create(CultureInfo.InvariantCulture, $"{v:0.00} Р’")
-            : "РЅРµС‚";
+            ? string.Create(CultureInfo.InvariantCulture, $"{v:0.00} В")
+            : "нет";
 
         HudCurrentText.Text = state.CurrentAmperes is { } a
-            ? string.Create(CultureInfo.InvariantCulture, $"{a:0.00} Рђ")
-            : "РЅРµС‚";
+            ? string.Create(CultureInfo.InvariantCulture, $"{a:0.00} А")
+            : "нет";
 
         HudModeText.Text = state.ModeName;
 
-        // Р’Р·РІРµРґС‘РЅРЅС‹Рµ РґРІРёРіР°С‚РµР»Рё вЂ” РїСЂРµРґСѓРїСЂРµР¶РґР°СЋС‰РёРј С†РІРµС‚РѕРј Рё СЃР»РѕРІРѕРј, РЅРµ РѕРґРЅРёРј С†РІРµС‚РѕРј.
-        HudArmedText.Text = state.Armed ? "Р’Р—Р’Р•Р”РЃРќ" : "РћР±РµР·РІСЂРµР¶РµРЅ";
+        // Взведённые двигатели — предупреждающим цветом и словом, не одним цветом.
+        HudArmedText.Text = state.Armed ? "ВЗВЕДЁН" : "Обезврежен";
         HudArmedText.Foreground = state.Armed
             ? (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
             : InkDim;
@@ -1608,24 +1812,24 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// РЎРѕСЃС‚РѕСЏРЅРёРµ GPS: РІРёРґ СЂРµС€РµРЅРёСЏ, СЃРїСѓС‚РЅРёРєРё, РіРµРѕРјРµС‚СЂРёСЏ, РєРѕРѕСЂРґРёРЅР°С‚С‹.
+    /// Состояние GPS: вид решения, спутники, геометрия, координаты.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ РўСЂРё СЃРѕСЃС‚РѕСЏРЅРёСЏ СЂР°Р·РІРµРґРµРЅС‹ Рё РЅРµ СЃР»РёРІР°СЋС‚СЃСЏ РІ РѕРґРёРЅ РїСЂРѕС‡РµСЂРє: В«СЃРѕРѕР±С‰РµРЅРёР№ РЅРµ
-    /// Р±С‹Р»РѕВ» (СЃСѓРґРёС‚СЊ СЂР°РЅРѕ), В«РїСЂРёС‘РјРЅРёРєР° РЅРµС‚В» (РёР·РґРµР»РёРµ РЅРµРіРѕРґРЅРѕ) Рё В«СЂРµС€РµРЅРёСЏ РЅРµС‚В»
-    /// (Р¶РґР°С‚СЊ РёР»Рё РёСЃРєР°С‚СЊ РЅРµР±Рѕ). РћРґРёРЅР°РєРѕРІС‹Р№ РїСЂРѕС‡РµСЂРє РЅР° РІСЃРµ С‚СЂРё Р·Р°СЃС‚Р°РІР»СЏР» Р±С‹
-    /// РѕРїРµСЂР°С‚РѕСЂР° РіР°РґР°С‚СЊ, С‡С‚Рѕ РґРµР»Р°С‚СЊ РґР°Р»СЊС€Рµ.
+    /// 🔴 Три состояния разведены и не сливаются в один прочерк: «сообщений не
+    /// было» (судить рано), «приёмника нет» (изделие негодно) и «решения нет»
+    /// (ждать или искать небо). Одинаковый прочерк на все три заставлял бы
+    /// оператора гадать, что делать дальше.
     /// </remarks>
     private void RenderGps(VehicleLiveState state)
     {
         if (state.Gps is not { } gps)
         {
-            HudGpsFixText.Text = "СЃРѕРѕР±С‰РµРЅРёР№ РЅРµ Р±С‹Р»Рѕ";
+            HudGpsFixText.Text = "сообщений не было";
             HudGpsFixText.Foreground = InkDim;
-            HudGpsSatsText.Text = "вЂ”";
-            HudGpsHdopText.Text = "вЂ”";
-            HudGpsAltText.Text = "вЂ”";
-            HudGpsPositionText.Text = "РєРѕРѕСЂРґРёРЅР°С‚ РЅРµС‚";
+            HudGpsSatsText.Text = "—";
+            HudGpsHdopText.Text = "—";
+            HudGpsAltText.Text = "—";
+            HudGpsPositionText.Text = "координат нет";
             return;
         }
 
@@ -1636,45 +1840,45 @@ public sealed partial class MainPage : Page
 
         HudGpsSatsText.Text = gps.SatellitesVisible.ToString(CultureInfo.InvariantCulture);
 
-        // РќРµРёР·РІРµСЃС‚РЅР°СЏ РіРµРѕРјРµС‚СЂРёСЏ РїРѕРєР°Р·С‹РІР°РµС‚СЃСЏ СЃР»РѕРІРѕРј. РџСЂРёРІРµРґС‘РЅРЅР°СЏ Рє С‡РёСЃР»Сѓ, РѕРЅР°
-        // РІС‹РіР»СЏРґРµР»Р° Р±С‹ Р»РёР±Рѕ РёРґРµР°Р»СЊРЅРѕР№, Р»РёР±Рѕ С‡СѓРґРѕРІРёС‰РЅРѕР№ вЂ” Рё С‚Рѕ Рё РґСЂСѓРіРѕРµ Р»РѕР¶СЊ.
+        // Неизвестная геометрия показывается словом. Приведённая к числу, она
+        // выглядела бы либо идеальной, либо чудовищной — и то и другое ложь.
         HudGpsHdopText.Text = gps.Hdop is { } hdop
             ? string.Create(CultureInfo.InvariantCulture, $"{hdop:0.00}")
-            : "РЅРµС‚";
+            : "нет";
 
         HudGpsAltText.Text = gps.Is3D
-            ? string.Create(CultureInfo.InvariantCulture, $"{gps.AltitudeMeters:0} Рј")
-            : "РЅРµС‚";
+            ? string.Create(CultureInfo.InvariantCulture, $"{gps.AltitudeMeters:0} м")
+            : "нет";
 
-        // РљРѕРѕСЂРґРёРЅР°С‚С‹ Р±РµР· СЂРµС€РµРЅРёСЏ вЂ” СЌС‚Рѕ РїРѕСЃР»РµРґРЅРµРµ РёР·РІРµСЃС‚РЅРѕРµ РёР»Рё РЅРѕР»СЊ; РІС‹РґР°РІР°С‚СЊ
-        // РёС… Р·Р° РїРѕР»РѕР¶РµРЅРёРµ Р±РѕСЂС‚Р° РЅРµР»СЊР·СЏ.
+        // Координаты без решения — это последнее известное или ноль; выдавать
+        // их за положение борта нельзя.
         HudGpsPositionText.Text = gps.Is3D
             ? string.Create(
                 CultureInfo.InvariantCulture,
                 $"{gps.LatitudeDeg:F7}, {gps.LongitudeDeg:F7}")
-            : "РєРѕРѕСЂРґРёРЅР°С‚ РЅРµС‚: СЂРµС€РµРЅРёРµ РЅРµ С‚СЂС‘С…РјРµСЂРЅРѕРµ";
+            : "координат нет: решение не трёхмерное";
     }
 
     /// <summary>
-    /// РћРїРѕР·РЅР°РЅРёРµ РєРѕРјРїР°СЃРѕРІ, РїСЂРѕС‡РёС‚Р°РЅРЅРѕРµ СЃ Р±РѕСЂС‚Р°. РљР»СЋС‡ вЂ” РЅРѕРјРµСЂ СЃР»РѕС‚Р°.
+    /// Опознание компасов, прочитанное с борта. Ключ — номер слота.
     /// </summary>
     /// <remarks>
-    /// Р§РёС‚Р°РµС‚СЃСЏ РѕРґРёРЅ СЂР°Р· РЅР° СЃРѕРµРґРёРЅРµРЅРёРµ: <c>COMPASS_DEV_ID*</c> РјРµРЅСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ
-    /// РїСЂРё РїРµСЂРµСЃС‚Р°РЅРѕРІРєРµ СЃР»РѕС‚РѕРІ, Р° С‡С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ РЅР° РєР°Р¶РґРѕРј С‚Р°РєС‚Рµ РёРЅРґРёРєР°С‚РѕСЂР°
-    /// Р·Р°Р±РёР»Рѕ Р±С‹ РєР°РЅР°Р» С‚РµР»РµРјРµС‚СЂРёРё.
+    /// Читается один раз на соединение: <c>COMPASS_DEV_ID*</c> меняется только
+    /// при перестановке слотов, а чтение параметров на каждом такте индикатора
+    /// забило бы канал телеметрии.
     /// </remarks>
     private readonly Dictionary<int, CompassIdentityRow> _compassIdentity = new();
 
     private bool _compassIdentityLoading;
 
     /// <summary>
-    /// Р§РёС‚Р°РµС‚ СЃ Р±РѕСЂС‚Р°, РєР°РєРѕР№ РєРѕРјРїР°СЃ РІРЅРµС€РЅРёР№, Р° РєР°РєРѕР№ РІРЅСѓС‚СЂРµРЅРЅРёР№.
+    /// Читает с борта, какой компас внешний, а какой внутренний.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ РЎСѓРґРёС‚СЊ Рѕ РІРЅРµС€РЅРѕСЃС‚Рё РїРѕ РЅРѕРјРµСЂСѓ СЃР»РѕС‚Р° РЅРµР»СЊР·СЏ. РџРѕСЂСЏРґРѕРє СЃР»РѕС‚РѕРІ Р·Р°РґР°С‘С‚СЃСЏ
-    /// С‚Р°Р±Р»РёС†РµР№ РїСЂРёРѕСЂРёС‚РµС‚РѕРІ Рё РјРµРЅСЏРµС‚СЃСЏ РїСЂРё РїРµСЂРµСЃС‚Р°РЅРѕРІРєРµ, РїРѕСЌС‚РѕРјСѓ В«РїРµСЂРІС‹Р№ вЂ”
-    /// Р·РЅР°С‡РёС‚ РІРЅРµС€РЅРёР№В» РЅРµРІРµСЂРЅРѕ СЂРѕРІРЅРѕ РЅР° С‚РµС… Р±РѕСЂС‚Р°С…, СЂР°РґРё РєРѕС‚РѕСЂС‹С… РїСЂРѕРІРµСЂРєР° Рё
-    /// СЃСѓС‰РµСЃС‚РІСѓРµС‚. Р’С‹РІРѕРґ РґРµР»Р°РµС‚СЃСЏ РїРѕ С‚РёРїСѓ С€РёРЅС‹ Рё С„Р»Р°РіСѓ <c>COMPASS_EXTERNAL*</c>.
+    /// 🔴 Судить о внешности по номеру слота нельзя. Порядок слотов задаётся
+    /// таблицей приоритетов и меняется при перестановке, поэтому «первый —
+    /// значит внешний» неверно ровно на тех бортах, ради которых проверка и
+    /// существует. Вывод делается по типу шины и флагу <c>COMPASS_EXTERNAL*</c>.
     /// </remarks>
     private async Task LoadCompassIdentityAsync()
     {
@@ -1698,8 +1902,8 @@ public sealed partial class MainPage : Page
                 }
                 catch (Exception)
                 {
-                    // РџСЂРѕС€РёРІРєР° Р·Р°РєРѕРЅРЅРѕ РЅРµ Р·РЅР°РµС‚ РёРјРµРЅРё РїСЂРё РјРµРЅСЊС€РµРј С‡РёСЃР»Рµ
-                    // РєРѕРјРїР°СЃРѕРІ вЂ” СЌС‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ Рѕ СЃРѕСЃС‚Р°РІРµ, Р° РЅРµ СЃР±РѕР№.
+                    // Прошивка законно не знает имени при меньшем числе
+                    // компасов — это сообщение о составе, а не сбой.
                     continue;
                 }
 
@@ -1737,14 +1941,14 @@ public sealed partial class MainPage : Page
                 _compassIdentity[pair.Key] = pair.Value;
             }
 
-            // РЎС‚СЂРѕРєРё РїРµСЂРµСЃРѕР±РёСЂР°СЋС‚СЃСЏ: Сѓ РЅРёС… РѕРїРѕР·РЅР°РЅРёРµ Р·Р°РґР°С‘С‚СЃСЏ РїСЂРё СЃРѕР·РґР°РЅРёРё.
+            // Строки пересобираются: у них опознание задаётся при создании.
             Compasses.Clear();
             RenderHud();
         }
         catch (Exception)
         {
-            // РРЅРґРёРєР°С‚РѕСЂ Р±РµР· РѕРїРѕР·РЅР°РЅРёСЏ С…СѓР¶Рµ, С‡РµРј СЃ РЅРёРј, РЅРѕ Р»СѓС‡С€Рµ, С‡РµРј СѓРїР°РІС€РёР№
-            // СЂР°Р±РѕС‡РёР№ СЌРєСЂР°РЅ: СЃС‚СЂРѕРєРё РїРѕРєР°Р¶СѓС‚ В«РѕРїРѕР·РЅР°РЅРёРµ РЅРµ РїСЂРѕС‡РёС‚Р°РЅРѕВ».
+            // Индикатор без опознания хуже, чем с ним, но лучше, чем упавший
+            // рабочий экран: строки покажут «опознание не прочитано».
         }
         finally
         {
@@ -1769,25 +1973,21 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            // 🔴 Порядок правится перестановкой (Move), а не переприсваиванием.
-            // Список, молча перерисованный в другом порядке, читается как
-            // «ничего не изменилось»: оператор не заметит, что первым стал
-            // другой датчик, а это и есть главный итог перестановки очереди.
-            // Move даёт анимацию переезда строки, замена — нет.
+            // 🔴 Порядок правится перестановкой (Move), а содержимое —
+            // обновлением строки на месте. Подмена объекта заставляла список
+            // пересобирать контейнер несколько раз в секунду: панель мерцала.
+            // Move при этом сохраняется — он и даёт анимацию переезда строки
+            // при смене очереди компасов.
             for (var i = 0; i < samples.Count; i++)
             {
                 var wanted = samples[i];
-                var current = Compasses[i];
 
-                if (!string.Equals(current.Title, $"Компас {wanted.Instance + 1}", StringComparison.Ordinal))
+                if (Compasses[i].Instance != wanted.Instance)
                 {
                     var from = -1;
                     for (var j = i + 1; j < Compasses.Count; j++)
                     {
-                        if (string.Equals(
-                            Compasses[j].Title,
-                            $"Компас {wanted.Instance + 1}",
-                            StringComparison.Ordinal))
+                        if (Compasses[j].Instance == wanted.Instance)
                         {
                             from = j;
                             break;
@@ -1800,20 +2000,20 @@ public sealed partial class MainPage : Page
                     }
                 }
 
-                Compasses[i] = new CompassRow(wanted, IdentityFor(wanted));
+                Compasses[i].Update(wanted, IdentityFor(wanted));
             }
         }
 
-        CompassHintText.Text = samples.Count == 0 ? "РџРѕРєР°Р·Р°РЅРёР№ РјР°РіРЅРёС‚РѕРјРµС‚СЂРѕРІ РїРѕРєР° РЅРµС‚." : string.Empty;
+        CompassHintText.Text = samples.Count == 0 ? "Показаний магнитометров пока нет." : string.Empty;
     }
 
     /// <summary>
-    /// РћРїРѕР·РЅР°РЅРёРµ РґР»СЏ РїРѕРєР°Р·Р°РЅРёР№ РјР°РіРЅРёС‚РѕРјРµС‚СЂР°.
+    /// Опознание для показаний магнитометра.
     /// </summary>
     /// <remarks>
-    /// рџ”ґ Р­РєР·РµРјРїР»СЏСЂ С‚РµР»РµРјРµС‚СЂРёРё РЅСѓРјРµСЂСѓРµС‚СЃСЏ СЃ РЅСѓР»СЏ, СЃР»РѕС‚ РєРѕРјРїР°СЃР° вЂ” СЃ РµРґРёРЅРёС†С‹.
-    /// РЎРґРІРёРі РЅР° РµРґРёРЅРёС†Сѓ Р·РґРµСЃСЊ РЅРµ РєРѕСЃРјРµС‚РёРєР°: Р±РµР· РЅРµРіРѕ РІРЅРµС€РЅРёР№ РєРѕРјРїР°СЃ РїРѕРґРїРёСЃР°Р»СЃСЏ
-    /// Р±С‹ РґР°РЅРЅС‹РјРё СЃРѕСЃРµРґРЅРµРіРѕ, Рё РѕРїРµСЂР°С‚РѕСЂ С‡РёС‚Р°Р» Р±С‹ В«РІРЅРµС€РЅРёР№В» РїРѕРґ РІРЅСѓС‚СЂРµРЅРЅРёРј.
+    /// 🔴 Экземпляр телеметрии нумеруется с нуля, слот компаса — с единицы.
+    /// Сдвиг на единицу здесь не косметика: без него внешний компас подписался
+    /// бы данными соседнего, и оператор читал бы «внешний» под внутренним.
     /// </remarks>
     private CompassIdentityRow? IdentityFor(MagSample sample) =>
         _compassIdentity.TryGetValue(sample.Instance + CompassIdentity.MinSlot, out var identity)

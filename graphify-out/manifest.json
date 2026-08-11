@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786455834.2337463,
-    "ast_hash": "2fa17f2edeef1b8ddfbc53da26f43b4e",
+    "mtime": 1786458604.017797,
+    "ast_hash": "4f55d471f232fd1a61b63c010e3be0c1",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786455855.9497373,
-    "ast_hash": "0e52a7cad782a70ee5e0eb25620c9245",
+    "mtime": 1786458701.8954175,
+    "ast_hash": "a0fd86c738331a799c9f351b336d2300",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -205,13 +205,13 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786455647.94008,
-    "ast_hash": "f89b75b4034135c724321efc6d236322",
+    "mtime": 1786458726.929761,
+    "ast_hash": "69a886631053e4e48ca0e81021faa374",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
-    "mtime": 1786453770.0507162,
-    "ast_hash": "cff03cb25672913fac9ba803e80c496e",
+    "mtime": 1786458523.844388,
+    "ast_hash": "734d442d31c457175d90a3d87f5c7414",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceChecks.cs": {
@@ -240,8 +240,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1786456149.88324,
-    "ast_hash": "f7ce8fb66aa9d457d3c854cc72d18cf4",
+    "mtime": 1786458544.2002416,
+    "ast_hash": "f9667ef58e6448dd800a14312f8375e7",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
@@ -449,24 +449,14 @@
     "ast_hash": "240cd94917c7caa8483d8e75888cc807",
     "semantic_hash": ""
   },
-  "ARDU_OTK/AcceptancePage.xaml": {
-    "mtime": 1786455704.5016356,
-    "ast_hash": "30e7cff02562b545a771d0f4d9cc3570",
-    "semantic_hash": ""
-  },
-  "ARDU_OTK/AcceptancePage.xaml.cs": {
-    "mtime": 1786455814.8366685,
-    "ast_hash": "fed422b6369baf40d10de15c4247e158",
-    "semantic_hash": ""
-  },
   "ARDU_OTK/AcceptanceRows.cs": {
     "mtime": 1786455948.5581148,
     "ast_hash": "f9b4c6279715eb0af6c81bf6e25b2493",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
-    "mtime": 1786456335.212263,
-    "ast_hash": "fff43ad589d70347a2059ed3660dddd4",
+    "mtime": 1786458552.6434736,
+    "ast_hash": "0dd5df97b3a9d000a7d4193d552bb566",
     "semantic_hash": ""
   }
 }

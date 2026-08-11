@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ARDU_OTK.Services.Fc.Mavlink;
+using ARDU_OTK.Services.Store;
 
 namespace ARDU_OTK.Services.Fc;
 
@@ -90,6 +91,28 @@ public sealed class AcceptanceSession : IAsyncDisposable
     /// <summary>Баннер прошивки борта, если он получен.</summary>
     public string? FirmwareBanner => _link.FirmwareBanner;
 
+    /// <summary>Канал сессии жив.</summary>
+    public bool IsConnected => _connected && _link.IsConnected;
+
+    /// <summary>
+    /// Состояние борта для индикатора — по каналу самой приёмки.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Приборы обязаны работать всю приёмку. COM-порт открывается монопольно,
+    /// и наблюдательное соединение на время процедуры закрыто; если не отдавать
+    /// состояние отсюда, оператор на несколько минут остаётся без горизонта,
+    /// напряжения и компасов — ровно тогда, когда борт перезагружается и по
+    /// приборам видно, вернулся он или нет.
+    /// </remarks>
+    public VehicleLiveState? LiveState => _link.LiveState;
+
+    /// <summary>Читает параметр по каналу приёмки.</summary>
+    public Task<ParamValue> ReadParamAsync(string name, CancellationToken ct)
+    {
+        EnsureConnected();
+        return _link.ReadParamAsync(name, ct);
+    }
+
     /// <summary>Открывает канал и дожидается первого <c>HEARTBEAT</c>.</summary>
     /// <exception cref="VehicleLinkException">Порт занят, борт молчит.</exception>
     public async Task ConnectAsync(string portName, CancellationToken ct)
@@ -126,7 +149,103 @@ public sealed class AcceptanceSession : IAsyncDisposable
         EnsureConnected();
 
         var board = await _link.ReadAllParamsAsync(progress, detail, ct).ConfigureAwait(false);
+        LastBoard = board;
         return ParameterTransfer.Plan(reference, board.Values, roles);
+    }
+
+    /// <summary>
+    /// Таблица борта, прочитанная последней сверкой.
+    /// </summary>
+    /// <remarks>
+    /// Хранится, чтобы показать оператору значения отображаемых параметров, не
+    /// вычитывая борт второй раз: повторное чтение тысячи имён ради панели —
+    /// это пять секунд занятого канала на каждое обновление экрана.
+    /// </remarks>
+    public FullParameterSet? LastBoard { get; private set; }
+
+    // --- Шаг 1б. Сверка скриптов -------------------------------------------
+
+    /// <summary>
+    /// Сверяет скрипты борта с эталоном.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Скрипты — часть конфигурации изделия наравне с параметрами. Прошивка
+    /// исполняет всё, что лежит в каталоге скриптов: лишний файл на карте
+    /// делает изделие непохожим на эталонное при полностью совпавших
+    /// параметрах, а недостающий — отнимает у него часть поведения.
+    /// </remarks>
+    public async Task<IReadOnlyList<ScriptDifference>> CompareScriptsAsync(
+        IReadOnlyList<ReferenceScript> expected,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        EnsureConnected();
+
+        var unreadable = new List<string>();
+        var actual = await ScriptTransfer.ReadAllAsync(_link, progress, unreadable, ct).ConfigureAwait(false);
+        return ScriptTransfer.Compare(expected, actual, unreadable);
+    }
+
+    /// <summary>
+    /// Приводит скрипты борта к эталону: дописывает недостающие, переписывает
+    /// разошедшиеся, удаляет лишние.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Записанный скрипт начинает исполняться только после перезагрузки
+    /// борта: Lua подхватывается при старте. Сказать об этом обязан вызывающий —
+    /// молчание означало бы «применено», чего не произошло.
+    /// </remarks>
+    public async Task<IReadOnlyList<(string Path, string? Failure)>> ApplyScriptsAsync(
+        IReadOnlyList<ScriptDifference> differences,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(differences);
+        EnsureConnected();
+
+        var outcomes = new List<(string Path, string? Failure)>(differences.Count);
+
+        foreach (var difference in differences)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                if (difference.Outcome == ScriptComparison.ExtraOnBoard)
+                {
+                    progress?.Report($"Удаление {difference.Path}…");
+                    await _link.RemoveFileAsync(difference.Path, ct).ConfigureAwait(false);
+                    outcomes.Add((difference.Path, null));
+                    continue;
+                }
+
+                if (difference.Expected is not { } script)
+                {
+                    outcomes.Add((difference.Path, "в эталоне этого скрипта нет — записывать нечего"));
+                    continue;
+                }
+
+                progress?.Report($"Запись {difference.Path}…");
+                await _link.WriteFileAsync(script.Path, script.ToBytes(), null, ct).ConfigureAwait(false);
+
+                // Обратное чтение обязательно: подтверждение записи означает,
+                // что борт принял байты, но не что на карте лежит тот файл.
+                progress?.Report($"Сверка {difference.Path}…");
+                var readBack = await _link.ReadFileAsync(script.Path, null, ct).ConfigureAwait(false);
+                var actual = ReferenceScript.ComputeHash(readBack);
+
+                outcomes.Add(string.Equals(actual, script.Hash, StringComparison.Ordinal)
+                    ? (difference.Path, null)
+                    : (difference.Path, "обратное чтение дало другой файл"));
+            }
+            catch (Exception ex) when (ex is VehicleLinkException or System.IO.InvalidDataException)
+            {
+                outcomes.Add((difference.Path, ex.Message));
+            }
+        }
+
+        return outcomes;
     }
 
     // --- Шаг 2. Внешний компас первым в очереди ----------------------------

@@ -74,11 +74,25 @@
         <DataTemplate x:Key="DifferenceTemplate" x:DataType="local:ParameterDifferenceRow">
             <Grid ColumnSpacing="10" Padding="0,3">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Spacing="1">
+                <Grid Width="14" VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="11"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind MatchVisibility}" />
+                    <FontIcon
+                        FontSize="11"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xEA39;"
+                        Visibility="{x:Bind DiffVisibility}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" Spacing="1">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock
                             FontFamily="Consolas"
@@ -121,13 +135,52 @@
                 </StackPanel>
 
                 <Button
-                    Grid.Column="1"
+                    Grid.Column="2"
                     VerticalAlignment="Top"
                     Click="OnWriteOneClick"
                     Content="Записать"
                     IsEnabled="{x:Bind CanWrite, Mode=OneWay}"
                     Tag="{x:Bind Name}"
                     Visibility="{x:Bind WriteButtonVisibility}" />
+            </Grid>
+        </DataTemplate>
+
+        <!--
+            Отображаемый параметр: то, что технолог поднял в секцию
+            «контроль и показ» настройками эталона. Панель существует затем,
+            чтобы его решение было видно при сдаче: раскладка, которую можно
+            задать в мастере и нигде не увидеть на рабочем экране, ни на что
+            не влияет — оператор о ней не знает.
+        -->
+        <DataTemplate x:Key="WatchedTemplate" x:DataType="local:WatchedParameterRow">
+            <Grid Padding="0,2" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon
+                    FontSize="11"
+                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                    Glyph="&#xE73E;"
+                    Visibility="{x:Bind MatchVisibility}" />
+                <FontIcon
+                    FontSize="11"
+                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                    Glyph="&#xEA39;"
+                    Visibility="{x:Bind DiffVisibility}" />
+                <TextBlock
+                    Grid.Column="1"
+                    FontFamily="Consolas"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind Name}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    Grid.Column="2"
+                    FontFamily="Consolas"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind ActualText}" />
             </Grid>
         </DataTemplate>
 
@@ -142,12 +195,12 @@
                     FontSize="13"
                     Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                     Glyph="&#xE73E;"
-                    Visibility="{x:Bind OkVisibility}" />
+                    Visibility="{x:Bind OkVisibility, Mode=OneWay}" />
                 <FontIcon
                     FontSize="13"
                     Foreground="{ThemeResource SystemFillColorCautionBrush}"
                     Glyph="&#xE7BA;"
-                    Visibility="{x:Bind WarnVisibility}" />
+                    Visibility="{x:Bind WarnVisibility, Mode=OneWay}" />
                 <StackPanel Grid.Column="1">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Title}" />
@@ -161,7 +214,7 @@
                             Padding="6,0"
                             Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
                             CornerRadius="3"
-                            Visibility="{x:Bind ExternalVisibility}">
+                            Visibility="{x:Bind ExternalVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
@@ -171,7 +224,7 @@
                             Padding="6,0"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             CornerRadius="3"
-                            Visibility="{x:Bind InternalVisibility}">
+                            Visibility="{x:Bind InternalVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
@@ -181,23 +234,23 @@
                             Padding="6,0"
                             Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
                             CornerRadius="3"
-                            Visibility="{x:Bind UnknownKindVisibility}">
+                            Visibility="{x:Bind UnknownKindVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="{x:Bind KindText}" />
+                                Text="{x:Bind KindText, Mode=OneWay}" />
                         </Border>
                     </StackPanel>
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="{x:Bind DeviceText}"
+                        Text="{x:Bind DeviceText, Mode=OneWay}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="{x:Bind Detail}"
+                        Text="{x:Bind Detail, Mode=OneWay}"
                         TextWrapping="Wrap" />
                 </StackPanel>
                 <TextBlock
@@ -205,7 +258,7 @@
                     VerticalAlignment="Center"
                     FontFamily="Consolas"
                     Style="{StaticResource CaptionTextBlockStyle}"
-                    Text="{x:Bind FieldText}" />
+                    Text="{x:Bind FieldText, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
 
@@ -247,19 +300,23 @@
             <!--  Верх: борт слева, HUD посредине, эталон справа. Боковые панели равны.  -->
             <Grid ColumnSpacing="16">
                 <!--
-                    Доли колонок: борт и эталон по 20 %, приборы посередине —
-                    остальное. Боковые панели несут по три строки текста, и
-                    отданная им треть экрана простаивала бы там, где оператору
-                    нужны горизонт и расхождения.
+                    Порядок колонок: приборы слева, как в Mission Planner —
+                    оператор, пришедший с привычной станции, ищет горизонт в
+                    левом верхнем углу. Дальше эталон и борт по 20 %: боковые
+                    панели несут по три строки текста, и отданная им треть
+                    экрана простаивала бы там, где нужны горизонт и расхождения.
                 -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="6*" />
-                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="10*" />
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="5*" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Полётный контроллер  -->
-                <StackPanel x:Name="FcSelector" VerticalAlignment="Top">
+                <StackPanel
+                    x:Name="FcSelector"
+                    Grid.Column="2"
+                    VerticalAlignment="Top">
                     <TextBlock
                         Margin="2,0,0,6"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -331,7 +388,7 @@
                 <!--  Эталон  -->
                 <StackPanel
                     x:Name="ReferenceSelector"
-                    Grid.Column="2"
+                    Grid.Column="1"
                     VerticalAlignment="Top">
                     <TextBlock
                         Margin="2,0,0,6"
@@ -413,7 +470,6 @@
                 -->
                 <Border
                     x:Name="HudCard"
-                    Grid.Column="1"
                     Margin="0,20,0,0"
                     Padding="14"
                     VerticalAlignment="Top"
@@ -640,14 +696,20 @@
                 x:Name="PanelsRow"
                 Grid.Row="1"
                 ColumnSpacing="16">
-                <!--  Те же доли, что и наверху: компасы под бортом, журнал под эталоном.  -->
+                <!--
+                    Те же доли и тот же порядок, что наверху: сверка под
+                    приборами, журнал под эталоном, компасы под бортом. Панель
+                    под своим источником — иначе оператор ищет компасы под
+                    приборами, а находит журнал.
+                -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="6*" />
-                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="10*" />
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="5*" />
                 </Grid.ColumnDefinitions>
 
                 <Border
+                    Grid.Column="2"
                     Padding="14"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -700,7 +762,16 @@
                             три компаса с подписями выше, чем строка окна на
                             цеховом мониторе с крупным масштабом.
                         -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
+                        <!--
+                            🔴 Высота ограничена. Без потолка список компасов
+                            занимает всю колонку, строка под ним сжимается в
+                            ноль, и панель отображаемых параметров пропадает с
+                            экрана — не скрытая, а выдавленная за его край.
+                        -->
+                        <ScrollViewer
+                            MaxHeight="200"
+                            VerticalScrollBarVisibility="Auto"
+                            VerticalScrollMode="Auto">
                             <!--
                                 Перестановка очереди компасов показывается
                                 движением строк. Список, молча перерисованный в
@@ -717,7 +788,6 @@
                                     <TransitionCollection>
                                         <AddDeleteThemeTransition />
                                         <ReorderThemeTransition />
-                                        <ContentThemeTransition />
                                     </TransitionCollection>
                                 </ItemsControl.ItemContainerTransitions>
                             </ItemsControl>
@@ -731,7 +801,6 @@
                 </Border>
 
                 <Border
-                    Grid.Column="1"
                     Padding="14"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -875,9 +944,16 @@
 
                         <!--
                             Не прошедший проверку параметр въезжает в список
-                            анимацией. Строка, появившаяся мгновенно среди
-                            десятка таких же, теряется; движение показывает, что
-                            список именно пополнился, и куда смотреть.
+                            анимацией: строка, появившаяся мгновенно среди
+                            десятка таких же, теряется, а движение показывает,
+                            что список пополнился, и куда смотреть.
+
+                            🔴 Один список, без деления. Совпавшие наблюдаемые
+                            имена и расхождения — две стороны одного вопроса
+                            «сходится ли борт с эталоном». Разнесённые по
+                            разным спискам, они заставляют сверять их памятью:
+                            оператор смотрит на расхождения, потом ищет
+                            глазами, что там с наблюдаемыми, и обратно.
                         -->
                         <ListView
                             x:Name="DiffList"
@@ -897,7 +973,7 @@
                 </Border>
 
                 <Border
-                    Grid.Column="2"
+                    Grid.Column="1"
                     Padding="14"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
