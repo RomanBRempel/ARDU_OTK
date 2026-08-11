@@ -482,6 +482,34 @@ public sealed record WorkstationSettings
     /// <summary>Оператор по умолчанию. Пустая строка — не задан.</summary>
     public string DefaultOperator { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Широта рабочего места, десятичные градусы. <c>null</c> — не задана.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Нужна калибровке компаса по фиксированному курсу. Команда вычисляет
+    /// эталонное магнитное поле по всемирной магнитной модели <b>в точке
+    /// борта</b>, и без координат считать ей не по чему: она отвечает отказом
+    /// с сообщением <c>Mag: no position available</c>. Обычно координаты берёт
+    /// сам борт из фикса GPS, но в цехе внутри здания фикса не бывает.
+    ///
+    /// 🔴 Это свойство рабочего места, а не изделия и не эталона: стенд стоит
+    /// на месте, а борта на нём меняются. Курс борта — наоборот, свойство
+    /// текущей установки, и вводится он отдельно, на рабочем экране.
+    ///
+    /// Живой фикс, если он есть, всегда важнее заданных координат: он вдобавок
+    /// доказывает, что приёмник на плате исправен, а введённые координаты не
+    /// доказывают ничего.
+    /// </remarks>
+    public double? StandLatitudeDeg { get; init; }
+
+    /// <inheritdoc cref="StandLatitudeDeg"/>
+    public double? StandLongitudeDeg { get; init; }
+
+    /// <summary>Координаты стенда заданы полностью и в допустимых пределах.</summary>
+    public bool HasStandPosition =>
+        StandLatitudeDeg is >= -90 and <= 90 && StandLongitudeDeg is >= -180 and <= 180
+        && (StandLatitudeDeg != 0 || StandLongitudeDeg != 0);
+
     /// <summary>Эталон, выбранный в прошлый раз: стенд должен открываться там, где его закрыли.</summary>
     public long? LastReferenceId { get; init; }
 

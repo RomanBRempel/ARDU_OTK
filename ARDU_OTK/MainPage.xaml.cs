@@ -1184,8 +1184,14 @@ public sealed partial class MainPage : Page
         try
         {
             var progress = new Progress<string>(text => CompassBusyText.Text = text);
-            var result = await _session.CompassCalibrationAsync(heading, progress, CancellationToken.None)
-                .ConfigureAwait(true);
+            // Координаты рабочего места нужны, когда у борта нет фикса GPS:
+            // без них команда не может вычислить эталонное магнитное поле.
+            var result = await _session.CompassCalibrationAsync(
+                heading,
+                _settings.StandLatitudeDeg,
+                _settings.StandLongitudeDeg,
+                progress,
+                CancellationToken.None).ConfigureAwait(true);
 
             AppendLog(result.Ok ? MavSeverity.Info : MavSeverity.Error, result.Message);
             CompareStateText.Text = result.Message;

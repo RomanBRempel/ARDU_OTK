@@ -38,6 +38,53 @@
                         Severity="Warning"
                         Title="Стенд не настроен" />
 
+                    <!--
+                        🔴 Координаты нужны калибровке компаса. Команда
+                        вычисляет эталонное магнитное поле по всемирной
+                        магнитной модели в точке борта, и без координат ей
+                        считать не по чему: она отвечает отказом «Mag: no
+                        position available». Обычно координаты даёт сам борт из
+                        фикса GPS, но в цехе внутри здания фикса не бывает.
+
+                        Это свойство рабочего места, а не изделия: стенд стоит
+                        на месте, а борта на нём меняются. Курс борта вводится
+                        отдельно, на рабочем экране, потому что он меняется от
+                        установки к установке.
+                    -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Координаты рабочего места" />
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <NumberBox
+                                x:Name="StandLatBox"
+                                MinWidth="200"
+                                Header="Широта, °"
+                                Maximum="90"
+                                Minimum="-90"
+                                PlaceholderText="не задана"
+                                SmallChange="0.0001"
+                                ValueChanged="OnWorkstationChanged" />
+                            <NumberBox
+                                x:Name="StandLonBox"
+                                Grid.Column="1"
+                                MinWidth="200"
+                                Header="Долгота, °"
+                                Maximum="180"
+                                Minimum="-180"
+                                PlaceholderText="не задана"
+                                SmallChange="0.0001"
+                                ValueChanged="OnWorkstationChanged" />
+                        </Grid>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Десятичные градусы, север и восток положительные. Достаточно точности до сотых: магнитное склонение на таком расстоянии не меняется. Используются только тогда, когда у борта нет трёхмерного фикса GPS — живой фикс важнее, он вдобавок доказывает, что приёмник на плате исправен."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
                     <StackPanel Spacing="4">
                         <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Оператор" />
                         <TextBox

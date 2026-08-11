@@ -65,6 +65,13 @@ public sealed partial class SettingsPage : Page
         {
             _settings = await _services.LoadSettingsAsync().ConfigureAwait(true);
 
+            // 🔴 NaN, а не 0: пустое поле означает «не задано», а нулевые
+            // широта и долгота — это точка в Гвинейском заливе, и калибровка
+            // по магнитной модели в ней даст компас, «успешно» откалиброванный
+            // на чужое поле.
+            StandLatBox.Value = _settings.StandLatitudeDeg ?? double.NaN;
+            StandLonBox.Value = _settings.StandLongitudeDeg ?? double.NaN;
+
             OperatorBox.Text = _settings.DefaultOperator;
         }
         catch (Exception ex)
@@ -102,6 +109,8 @@ public sealed partial class SettingsPage : Page
 
         _settings = _settings with
         {
+            StandLatitudeDeg = double.IsNaN(StandLatBox.Value) ? null : StandLatBox.Value,
+            StandLongitudeDeg = double.IsNaN(StandLonBox.Value) ? null : StandLonBox.Value,
             DefaultOperator = OperatorBox.Text.Trim(),
         };
 

@@ -1235,6 +1235,8 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     private const string SettingLastReference = "workstation.lastReferenceId";
     private const string SettingAutoConnect = "workstation.autoConnect";
     private const string SettingLastPort = "workstation.lastPort";
+    private const string SettingStandLat = "workstation.standLatitudeDeg";
+    private const string SettingStandLon = "workstation.standLongitudeDeg";
 
     /// <summary>
     /// Настройки стенда. Отсутствующий ключ означает «не настроено» и никогда не
@@ -1273,6 +1275,8 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                 AutoConnect = values.TryGetValue(SettingAutoConnect, out var autoText)
                     && string.Equals(autoText, "1", StringComparison.Ordinal),
                 LastPortName = values.TryGetValue(SettingLastPort, out var port) ? port : string.Empty,
+                StandLatitudeDeg = ReadAngle(values, SettingStandLat, 90),
+                StandLongitudeDeg = ReadAngle(values, SettingStandLon, 180),
             };
         }
         finally
@@ -1280,6 +1284,23 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             _gate.Release();
         }
     }
+
+    /// <summary>
+    /// Читает угол настройки. Неразбираемое или выходящее за пределы значение
+    /// приравнивается к «не задано».
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Молча подставить ноль нельзя: нулевые широта и долгота — это точка в
+    /// Гвинейском заливе, и калибровка по магнитной модели в ней даст компас,
+    /// «успешно» откалиброванный на чужое поле.
+    /// </remarks>
+    private static double? ReadAngle(IReadOnlyDictionary<string, string> values, string key, double limit) =>
+        values.TryGetValue(key, out var text)
+        && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        && !double.IsNaN(value)
+        && Math.Abs(value) <= limit
+            ? value
+            : null;
 
     /// <summary>Сохраняет настройки стенда целиком, одной транзакцией.</summary>
     public async Task SaveWorkstationSettingsAsync(WorkstationSettings settings, CancellationToken ct = default)
@@ -1296,6 +1317,16 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
             await using (transaction.ConfigureAwait(false))
             {
+                await UpsertSettingAsync(
+                    connection, transaction, SettingStandLat,
+                    settings.StandLatitudeDeg?.ToString("R", CultureInfo.InvariantCulture), nowUtc, ct)
+                    .ConfigureAwait(false);
+
+                await UpsertSettingAsync(
+                    connection, transaction, SettingStandLon,
+                    settings.StandLongitudeDeg?.ToString("R", CultureInfo.InvariantCulture), nowUtc, ct)
+                    .ConfigureAwait(false);
+
                 await UpsertSettingAsync(
                     connection, transaction, SettingOperator,
                     settings.DefaultOperator?.Trim(), nowUtc, ct).ConfigureAwait(false);

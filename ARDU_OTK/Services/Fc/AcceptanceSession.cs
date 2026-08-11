@@ -464,8 +464,12 @@ public sealed class AcceptanceSession : IAsyncDisposable
     /// </para>
     /// </remarks>
     /// <param name="headingDeg">Истинный курс борта, градусы 0…360.</param>
+    /// <param name="standLatitudeDeg">Широта рабочего места; <c>null</c> — не задана.</param>
+    /// <param name="standLongitudeDeg">Долгота рабочего места; <c>null</c> — не задана.</param>
     public async Task<StepResult> CompassCalibrationAsync(
         double headingDeg,
+        double? standLatitudeDeg,
+        double? standLongitudeDeg,
         IProgress<string>? progress,
         CancellationToken ct)
     {
@@ -480,11 +484,37 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
         var before = await ReadPriorityOrderAsync(ct).ConfigureAwait(false);
 
-        progress?.Report($"Калибровка компаса по курсу {headingDeg:F1}° (FIXED_MAG_CAL_YAW)…");
+        // 🔴 Команда вычисляет эталонное магнитное поле по всемирной магнитной
+        // модели В ТОЧКЕ БОРТА. Без координат ей считать не по чему, и она
+        // отвечает отказом с сообщением «Mag: no position available».
+        //
+        // Обычно координаты берёт сам борт из фикса GPS. Живой фикс всегда
+        // важнее заданных: он вдобавок доказывает, что приёмник на плате
+        // исправен, а введённые координаты не доказывают ничего. Поэтому
+        // координаты рабочего места передаются только тогда, когда фикса нет —
+        // в цехе внутри здания его не бывает.
+        var fix = _link.LiveState?.Gps;
+        var useStand = fix?.Is3D != true && standLatitudeDeg is { } && standLongitudeDeg is { };
+
+        var lat = useStand ? (float)standLatitudeDeg!.Value : 0f;
+        var lon = useStand ? (float)standLongitudeDeg!.Value : 0f;
+
+        if (fix?.Is3D != true && !useStand)
+        {
+            return StepResult.Fail(
+                "Калибровать нечем: у борта нет трёхмерного фикса GPS, а координаты рабочего места не заданы. "
+              + "Команда вычисляет эталонное магнитное поле по всемирной магнитной модели в точке борта, и без "
+              + "координат ей считать не по чему. Задайте широту и долготу стенда в настройках либо выведите "
+              + "борт под открытое небо.");
+        }
+
+        progress?.Report(useStand
+            ? $"Калибровка компаса по курсу {headingDeg:F1}° и координатам стенда (FIXED_MAG_CAL_YAW)…"
+            : $"Калибровка компаса по курсу {headingDeg:F1}° (FIXED_MAG_CAL_YAW)…");
 
         var result = await _link.SendCommandAsync(
             MavCommand.FixedMagCalYaw,
-            (float)headingDeg, 0f, 0f, 0f, 0f, 0f, 0f,
+            (float)headingDeg, 0f, lat, lon, 0f, 0f, 0f,
             CommandTimeout,
             ct).ConfigureAwait(false);
 
@@ -500,9 +530,14 @@ public sealed class AcceptanceSession : IAsyncDisposable
         var orderChanged = !before.SequenceEqual(after);
 
         var note =
-            $"Компасы откалиброваны по курсу {headingDeg:F1}°. Команда сохранила смещения немедленно и "
-          + "принудительно поставила COMPASS_DIA*=(1,1,1) и COMPASS_ODI*=(0,0,0) — перенесённая из эталона "
-          + "мягкожелезная компенсация с этого момента не действует.";
+            (useStand
+                ? $"Компасы откалиброваны по курсу {headingDeg:F1}° и координатам стенда "
+                  + $"({standLatitudeDeg!.Value:F5}, {standLongitudeDeg!.Value:F5}) — фикса GPS у борта нет, "
+                  + "и исправность приёмника этой калибровкой не подтверждена. "
+                : $"Компасы откалиброваны по курсу {headingDeg:F1}° и собственным координатам борта. ")
+            + "Команда сохранила смещения немедленно и принудительно поставила COMPASS_DIA*=(1,1,1) и "
+            + "COMPASS_ODI*=(0,0,0) — перенесённая из эталона мягкожелезная компенсация с этого момента "
+            + "не действует.";
 
         return orderChanged
             ? StepResult.Fail(
