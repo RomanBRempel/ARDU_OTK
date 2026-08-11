@@ -423,6 +423,128 @@ public sealed class AppServices
         ct);
 
     /// <summary>
+    /// Сверяет всю конфигурацию целевого борта с эталоном.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Сверяется всё, что эталон объявил контролируемым, а не компасный
+    /// блок. Изделие отличается от изделия каналами приёмника, выходами,
+    /// полётными режимами и регуляторами; сверка одного компаса пропускала бы
+    /// чужую сборку как годную.
+    /// </remarks>
+    /// <returns>План: что сошлось, что расходится и что из этого можно записать.</returns>
+    public async Task<ParameterTransferPlan> CompareParametersAsync(
+        string portName,
+        CalibrationReference reference,
+        IProgress<string>? progress,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentNullException.ThrowIfNull(reference);
+
+        var expected = reference.ParseParameters().Values;
+        var roles = reference.ToRoleMap();
+
+        _procedureRunning = true;
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+
+            return await Task.Run(
+                async () =>
+                {
+                    var link = new SerialVehicleLink();
+                    await using (link.ConfigureAwait(false))
+                    {
+                        await link.ConnectAsync(portName, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                        if (!link.IsConnected)
+                        {
+                            throw new VehicleLinkException($"Порт {portName} открыт, но HEARTBEAT не получен.");
+                        }
+
+                        var board = await link.ReadAllParamsAsync(progress, ct).ConfigureAwait(false);
+                        return ParameterTransfer.Plan(expected, board.Values, roles);
+                    }
+                },
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _procedureRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Приводит расходящиеся параметры борта к эталону.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Каждая запись подтверждается независимым обратным чтением, а исход по
+    /// каждому имени ложится в реестр строкой аудита. Вердикт прогона это
+    /// действие не меняет: изделие сдаётся повторным прогоном целиком.
+    /// </remarks>
+    /// <param name="runId">Прогон для аудита. <c>0</c> — писать аудит некуда.</param>
+    public async Task<IReadOnlyList<ParamWriteRecord>> ApplyParametersAsync(
+        long runId,
+        string portName,
+        IReadOnlyList<ParameterDifference> differences,
+        IProgress<string>? progress,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentNullException.ThrowIfNull(differences);
+
+        if (differences.Count == 0)
+        {
+            return Array.Empty<ParamWriteRecord>();
+        }
+
+        _procedureRunning = true;
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+
+            return await Task.Run(
+                async () =>
+                {
+                    var link = new SerialVehicleLink();
+                    await using (link.ConfigureAwait(false))
+                    {
+                        await link.ConnectAsync(portName, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                        if (!link.IsConnected)
+                        {
+                            throw new VehicleLinkException($"Порт {portName} открыт, но HEARTBEAT не получен.");
+                        }
+
+                        var records = await ParameterTransfer
+                            .ApplyAsync(link, differences, progress, ct)
+                            .ConfigureAwait(false);
+
+                        if (runId > 0)
+                        {
+                            foreach (var record in records)
+                            {
+                                try
+                                {
+                                    await Store.RecordWriteAsync(runId, record, ct).ConfigureAwait(false);
+                                }
+                                catch (CalibrationStoreException ex)
+                                {
+                                    progress?.Report($"Аудит {record.Name} не записан: {ex.Message}");
+                                }
+                            }
+                        }
+
+                        return records;
+                    }
+                },
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _procedureRunning = false;
+        }
+    }
+
+    /// <summary>
     /// Сверяет скрипты целевого борта с эталоном.
     /// </summary>
     /// <remarks>

@@ -415,6 +415,89 @@
                             </StackPanel>
                         </Grid>
 
+                        <!--
+                            GPS. Вид решения словом, а не числом: «3» не
+                            говорит оператору ничего, а «трёхмерное» говорит.
+                            Спутники и геометрия рядом — по одному числу
+                            спутников о качестве решения судить нельзя.
+                        -->
+                        <Border
+                            Padding="10,8"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="4">
+                            <StackPanel Spacing="4">
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="GPS" />
+                                    <TextBlock
+                                        x:Name="HudGpsFixText"
+                                        Grid.Column="1"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="нет данных" />
+                                </Grid>
+
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="Спутники" />
+                                        <TextBlock
+                                            x:Name="HudGpsSatsText"
+                                            FontFamily="Consolas"
+                                            FontSize="17"
+                                            FontWeight="SemiBold"
+                                            Text="—" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="HDOP" />
+                                        <TextBlock
+                                            x:Name="HudGpsHdopText"
+                                            FontFamily="Consolas"
+                                            FontSize="17"
+                                            FontWeight="SemiBold"
+                                            Text="—" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="Высота" />
+                                        <TextBlock
+                                            x:Name="HudGpsAltText"
+                                            FontFamily="Consolas"
+                                            FontSize="17"
+                                            FontWeight="SemiBold"
+                                            Text="—" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock
+                                    x:Name="HudGpsPositionText"
+                                    FontFamily="Consolas"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    IsTextSelectionEnabled="True"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="координат нет"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock
                             x:Name="HudArmedText"
                             FontWeight="SemiBold"

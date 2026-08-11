@@ -94,13 +94,60 @@ public readonly record struct MagSample(int Instance, short X, short Y, short Z)
 }
 
 /// <summary>Состояние GPS из <c>GPS_RAW_INT</c>.</summary>
-public readonly record struct GpsFix(byte FixType, int LatE7, int LonE7, byte SatellitesVisible)
+/// <param name="FixType">Вид решения: 0 нет приёмника, 1 нет решения, 2 плоское, 3 трёхмерное и выше.</param>
+/// <param name="LatE7">Широта, десятимиллионные доли градуса.</param>
+/// <param name="LonE7">Долгота, десятимиллионные доли градуса.</param>
+/// <param name="SatellitesVisible">Число видимых спутников.</param>
+/// <param name="Eph">Горизонтальная геометрия (HDOP), сотые доли. <c>65535</c> — неизвестно.</param>
+/// <param name="Epv">Вертикальная геометрия (VDOP), сотые доли. <c>65535</c> — неизвестно.</param>
+/// <param name="AltitudeMm">Высота над эллипсоидом WGS-84, миллиметры.</param>
+public readonly record struct GpsFix(
+    byte FixType,
+    int LatE7,
+    int LonE7,
+    byte SatellitesVisible,
+    ushort Eph = ushort.MaxValue,
+    ushort Epv = ushort.MaxValue,
+    int AltitudeMm = 0)
 {
+    /// <summary>Значение <c>eph</c>/<c>epv</c>, означающее «неизвестно», а не «идеально».</summary>
+    /// <remarks>
+    /// 🔴 Различать обязательно. <c>UINT16_MAX</c> — это отсутствие данных, и
+    /// приведённое к 655.35 оно выглядело бы чудовищной геометрией; молча
+    /// показанное как 0.00 — идеальной. Оба прочтения врут оператору о том,
+    /// можно ли доверять координатам.
+    /// </remarks>
+    public const ushort UnknownDop = ushort.MaxValue;
+
     public bool Is3D => FixType >= 3;
 
     public double LatitudeDeg => LatE7 / 1e7;
 
     public double LongitudeDeg => LonE7 / 1e7;
+
+    /// <summary>Высота над эллипсоидом, метры.</summary>
+    public double AltitudeMeters => AltitudeMm / 1000.0;
+
+    /// <summary>HDOP. <c>null</c> — приёмник его не сообщает.</summary>
+    public double? Hdop => Eph == UnknownDop ? null : Eph / 100.0;
+
+    /// <summary>VDOP. <c>null</c> — приёмник его не сообщает.</summary>
+    public double? Vdop => Epv == UnknownDop ? null : Epv / 100.0;
+
+    /// <summary>Русское название вида решения — для HUD и протокола.</summary>
+    public string FixTypeText => FixType switch
+    {
+        0 => "приёмника нет",
+        1 => "нет решения",
+        2 => "плоское (2D)",
+        3 => "трёхмерное (3D)",
+        4 => "с поправкой (DGPS)",
+        5 => "RTK, плавающее",
+        6 => "RTK, фиксированное",
+        7 => "статическое",
+        8 => "счисление пути",
+        _ => "неизвестно",
+    };
 }
 
 /// <summary>Биты здоровья датчиков из <c>SYS_STATUS</c>.</summary>
@@ -135,7 +182,19 @@ public sealed record VehicleLiveState(
     bool Armed,
     byte VehicleType,
     IReadOnlyList<MagSample> Mags,
-    System.DateTimeOffset UpdatedUtc);
+    System.DateTimeOffset UpdatedUtc)
+{
+    /// <summary>
+    /// Состояние GPS. <c>null</c> — <c>GPS_RAW_INT</c> ещё не приходил.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 «Не приходил» и «приёмника нет» — разные состояния, и сводить их к
+    /// одному прочерку нельзя: первое означает, что судить рано, второе — что
+    /// изделие негодно. Первое кодируется <c>null</c>, второе —
+    /// <see cref="GpsFix.FixType"/> равным нулю.
+    /// </remarks>
+    public GpsFix? Gps { get; init; }
+}
 
 /// <summary>Срез телеметрии, усреднённый по окну наблюдения.</summary>
 public sealed record TelemetrySnapshot(

@@ -977,7 +977,56 @@ public sealed partial class MainPage : Page
             ? (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
             : InkDim;
 
+        RenderGps(state);
         RenderCompasses(state);
+    }
+
+    /// <summary>
+    /// Состояние GPS: вид решения, спутники, геометрия, координаты.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Три состояния разведены и не сливаются в один прочерк: «сообщений не
+    /// было» (судить рано), «приёмника нет» (изделие негодно) и «решения нет»
+    /// (ждать или искать небо). Одинаковый прочерк на все три заставлял бы
+    /// оператора гадать, что делать дальше.
+    /// </remarks>
+    private void RenderGps(VehicleLiveState state)
+    {
+        if (state.Gps is not { } gps)
+        {
+            HudGpsFixText.Text = "сообщений не было";
+            HudGpsFixText.Foreground = InkDim;
+            HudGpsSatsText.Text = "—";
+            HudGpsHdopText.Text = "—";
+            HudGpsAltText.Text = "—";
+            HudGpsPositionText.Text = "координат нет";
+            return;
+        }
+
+        HudGpsFixText.Text = gps.FixTypeText;
+        HudGpsFixText.Foreground = gps.Is3D
+            ? (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"]
+            : (Brush)Application.Current.Resources["SystemFillColorCautionBrush"];
+
+        HudGpsSatsText.Text = gps.SatellitesVisible.ToString(CultureInfo.InvariantCulture);
+
+        // Неизвестная геометрия показывается словом. Приведённая к числу, она
+        // выглядела бы либо идеальной, либо чудовищной — и то и другое ложь.
+        HudGpsHdopText.Text = gps.Hdop is { } hdop
+            ? string.Create(CultureInfo.InvariantCulture, $"{hdop:0.00}")
+            : "нет";
+
+        HudGpsAltText.Text = gps.Is3D
+            ? string.Create(CultureInfo.InvariantCulture, $"{gps.AltitudeMeters:0} м")
+            : "нет";
+
+        // Координаты без решения — это последнее известное или ноль; выдавать
+        // их за положение борта нельзя.
+        HudGpsPositionText.Text = gps.Is3D
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"{gps.LatitudeDeg:F7}, {gps.LongitudeDeg:F7}")
+            : "координат нет: решение не трёхмерное";
     }
 
     private void RenderCompasses(VehicleLiveState state)

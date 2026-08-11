@@ -176,7 +176,10 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                     heartbeat is { } armed && (armed.BaseMode & 0x80) != 0,
                     heartbeat?.Type ?? 0,
                     [.. _lastMags.Values],
-                    _lastStateUpdateUtc);
+                    _lastStateUpdateUtc)
+                {
+                    Gps = _lastGpsFix,
+                };
             }
         }
     }
@@ -980,7 +983,14 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         GpsRawIntMessage gps = GpsRawIntMessage.Decode(frame.Payload.Span);
         lock (_stateLock)
         {
-            _lastGpsFix = new GpsFix(gps.FixType, gps.Lat, gps.Lon, gps.SatellitesVisible);
+            _lastGpsFix = new GpsFix(
+                gps.FixType,
+                gps.Lat,
+                gps.Lon,
+                gps.SatellitesVisible,
+                gps.Eph,
+                gps.Epv,
+                gps.Alt);
         }
     }
 
