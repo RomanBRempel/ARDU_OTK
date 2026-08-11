@@ -111,6 +111,30 @@ public readonly record struct SensorHealth(uint Present, uint Enabled, uint Heal
     public bool IsReported(uint bit) => (Present & bit) != 0 && (Enabled & bit) != 0;
 }
 
+/// <summary>
+/// Последнее известное состояние борта для индикатора: то, что показывают
+/// оператору непрерывно, а не измеряют по окну.
+/// </summary>
+/// <param name="Attitude">Ориентация, радианы. <c>null</c>, если ATTITUDE ещё не приходил.</param>
+/// <param name="VoltageVolts">Напряжение батареи. <c>null</c>, если борт его не сообщает.</param>
+/// <param name="CurrentAmperes">Ток. <c>null</c>, если не измеряется.</param>
+/// <param name="BatteryPercent">Остаток заряда в процентах, если известен.</param>
+/// <param name="ModeName">Полётный режим, уже расшифрованный.</param>
+/// <param name="Armed">Двигатели взведены (<c>MAV_MODE_FLAG_SAFETY_ARMED</c>).</param>
+/// <param name="VehicleType">Значение <c>HEARTBEAT.type</c>.</param>
+/// <param name="Mags">Последние показания магнитометров по экземплярам.</param>
+/// <param name="UpdatedUtc">Когда состояние обновлялось последний раз.</param>
+public sealed record VehicleLiveState(
+    AttitudeSample? Attitude,
+    double? VoltageVolts,
+    double? CurrentAmperes,
+    int? BatteryPercent,
+    string ModeName,
+    bool Armed,
+    byte VehicleType,
+    IReadOnlyList<MagSample> Mags,
+    System.DateTimeOffset UpdatedUtc);
+
 /// <summary>Срез телеметрии, усреднённый по окну наблюдения.</summary>
 public sealed record TelemetrySnapshot(
     AttitudeSample Attitude,
@@ -137,6 +161,12 @@ public interface IVehicleLink : System.IAsyncDisposable
 
     /// <summary>Строка версии прошивки из баннера, если он был получен.</summary>
     string? FirmwareBanner { get; }
+
+    /// <summary>
+    /// Последнее известное состояние борта. <c>null</c>, пока не пришло ни
+    /// одного сообщения телеметрии.
+    /// </summary>
+    VehicleLiveState? LiveState { get; }
 
     /// <summary>Собранные <c>STATUSTEXT</c>. Подписка живёт всё время соединения.</summary>
     event System.EventHandler<StatusTextEvent>? StatusTextReceived;

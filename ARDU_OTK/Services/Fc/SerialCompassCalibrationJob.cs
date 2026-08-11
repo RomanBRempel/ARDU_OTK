@@ -1417,7 +1417,15 @@ public sealed class SerialCompassCalibrationJob
         RunContext c,
         TelemetrySnapshot telemetry,
         PrearmReport prearm)
-        => AcceptanceChecks.RunAll(telemetry, prearm, c.TopologyAfter, c.Request.JigAzimuthDeg, _tolerances);
+        // TODO(alpha): предел смещений берётся из значения по умолчанию.
+        // Правильнее прочитать COMPASS_OFFS_MAX с борта — на плате он мог быть изменён.
+        => AcceptanceChecks.RunAll(
+            prearm,
+            c.TopologyAfter,
+            AcceptanceChecks.DefaultOffsMax,
+            telemetry,
+            c.Request.JigAzimuthDeg,
+            _tolerances);
 
     /// <summary>
     /// TODO(integration): ожидается свёртка <c>AcceptanceChecks</c> к общему
@@ -1425,5 +1433,5 @@ public sealed class SerialCompassCalibrationJob
     /// прохождением — недостаток данных это не «норма».
     /// </summary>
     private static CheckOutcome FoldAcceptance(IReadOnlyList<CheckResult> checks)
-        => AcceptanceChecks.Overall(checks);
+        => AcceptanceChecks.Fold(checks);
 }

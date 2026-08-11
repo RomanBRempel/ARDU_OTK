@@ -76,6 +76,14 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
     <PackageReference Include="Velopack" Version="1.2.0" />
+    <!--
+      Реестр прогонов и аудит записей параметров. Хранилище лежит вне каталога
+      установки, потому что Velopack подменяет его при обновлении.
+    -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.10" />
+    <!-- Описания COM-портов (модель платы, VID/PID) берутся из WMI. -->
+    <PackageReference Include="System.Management" Version="10.0.10" />
   </ItemGroup>
 
   <!-- Publish Properties -->

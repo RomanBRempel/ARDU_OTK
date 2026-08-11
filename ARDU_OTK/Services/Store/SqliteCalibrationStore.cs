@@ -47,7 +47,11 @@ public sealed class CalibrationStoreException : Exception
 public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
 {
     /// <summary>Версия схемы, которую понимает эта сборка.</summary>
-    public const int SchemaVersion = 1;
+    /// <remarks>
+    /// v2 добавила профили изделий (<see cref="CalibrationProfile"/>), настройки
+    /// рабочего места и привязку прогона к профилю.
+    /// </remarks>
+    public const int SchemaVersion = 2;
 
     // Формат меток времени: UTC, фиксированная ширина. Такой текст сравнивается
     // и сортируется лексикографически ровно как хронологически — на этом держатся
@@ -59,9 +63,61 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     private const string VerdictAborted = "aborted";
 
     /// <summary>Литерал версии схемы. Обязан совпадать с <see cref="SchemaVersion"/>: PRAGMA не принимает параметр.</summary>
-    private const string SetSchemaVersionSql = "PRAGMA user_version = 1;";
+    private const string SetSchemaVersionSql = "PRAGMA user_version = 2;";
 
-    private const string CreateSchemaSql = """
+    /// <summary>
+    /// Профили изделий и настройки рабочего места.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Один и тот же текст используется и при создании базы с нуля, и в
+    /// миграции v1→v2. Два пути создания одной таблицы неизбежно расходятся, и
+    /// расхождение обнаруживается только на машине, которая обновлялась, — то
+    /// есть в цеху, а не у разработчика.
+    /// </remarks>
+    private const string ProfileSchemaSql = """
+        -- Профиль изделия: постоянная часть технологической карты. Эталон хранится
+        -- содержимым, а не путём: файл на сетевом ресурсе исчезает ровно тогда,
+        -- когда по нему разбирают рекламацию.
+        --
+        -- Ожидаемый состав компасов здесь НЕ хранится: он полностью выводится из
+        -- ReferenceText, и вторая копия той же истины со временем разойдётся с первой.
+        CREATE TABLE IF NOT EXISTS Profile (
+            Id                    INTEGER PRIMARY KEY,
+            Name                  TEXT    NOT NULL,
+            NameNormalized        TEXT    NOT NULL UNIQUE,
+            Description           TEXT    NOT NULL DEFAULT '',
+            ReferenceFileName     TEXT    NOT NULL,
+            ReferenceFormat       TEXT    NOT NULL,
+            ReferenceText         TEXT    NOT NULL,
+            ReferenceHash         TEXT    NOT NULL,
+            ParamCount            INTEGER NOT NULL,
+            HeadingVsJigDeg       REAL    NOT NULL,
+            InterCompassSpreadDeg REAL    NOT NULL,
+            TransferMotorComp     INTEGER NOT NULL DEFAULT 1,
+            CreatedBy             TEXT    NOT NULL,
+            CreatedUtc            TEXT    NOT NULL,
+            RetiredUtc            TEXT
+        );
+
+        -- Настройки рабочего места: азимут стапеля, оператор, последний профиль.
+        -- Ключ-значение, потому что набор растёт, а схему ради каждой галки
+        -- мигрировать нельзя — миграция требует резервной копии всей базы.
+        CREATE TABLE IF NOT EXISTS Setting (
+            Name         TEXT PRIMARY KEY,
+            SettingValue TEXT NOT NULL,
+            UpdatedUtc   TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS IX_Profile_Active ON Profile(NameNormalized) WHERE RetiredUtc IS NULL;
+        """;
+
+    /// <summary>
+    /// Полная схема текущей версии. Профили создаются первыми: на них ссылается
+    /// столбец <c>Run.ProfileId</c>.
+    /// </summary>
+    private const string CreateSchemaSql = ProfileSchemaSql + "\n" + CoreSchemaSql;
+
+    private const string CoreSchemaSql = """
         -- Изделие: борт так, как его называет предприятие. Ключ — нормализованный
         -- идентификатор, поэтому история по борту не рассыпается на регистр и пробелы.
         CREATE TABLE IF NOT EXISTS Unit (
@@ -93,7 +149,14 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             FirmwareBanner   TEXT,
             WriteCount       INTEGER NOT NULL DEFAULT 0,
             CheckCount       INTEGER NOT NULL DEFAULT 0,
-            FailedCheckCount INTEGER NOT NULL DEFAULT 0
+            FailedCheckCount INTEGER NOT NULL DEFAULT 0,
+
+            -- Профиль, по которому сдавали. NULL законен и означает ровно одно:
+            -- прогон сделан до введения профилей (схема v1). Имя дублируется
+            -- снимком по той же причине, что и UnitIdAtRun: профиль могли
+            -- переименовать, а протокол обязан читаться так, как его подписывали.
+            ProfileId        INTEGER REFERENCES Profile(Id) ON DELETE RESTRICT,
+            ProfileNameAtRun TEXT
         );
 
         -- Аудит записи параметров. ON DELETE RESTRICT намеренно: это единственное
@@ -141,6 +204,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         CREATE INDEX IF NOT EXISTS IX_RunCheck_Run     ON RunCheck(RunId, Id);
         CREATE INDEX IF NOT EXISTS IX_RunMessage_Run   ON RunMessage(RunId, ReceivedUtc);
         CREATE INDEX IF NOT EXISTS IX_Unit_LastSeen    ON Unit(LastSeenUtc DESC);
+        CREATE INDEX IF NOT EXISTS IX_Run_Profile      ON Run(ProfileId, StartedUtc DESC);
         """;
 
     private readonly AppPaths _paths;
@@ -200,7 +264,17 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     /// в <c>İ</c>, и <c>UAV-i7</c> тихо распадается на два разных борта, а
     /// история по борту начинает возвращать подмножество прогонов.
     /// </remarks>
-    public static string NormalizeUnitId(string? raw)
+    public static string NormalizeUnitId(string? raw) => NormalizeName(raw);
+
+    /// <summary>
+    /// Общая нормализация человеко-введённых имён: борта и профиля.
+    /// </summary>
+    /// <remarks>
+    /// Имя профиля нормализуется по тем же правилам и по той же причине, что и
+    /// идентификатор борта: иначе «Гриф-2» и «Гриф-2 » заводятся как два разных
+    /// профиля, и половина плат уезжает сданной по профилю-двойнику.
+    /// </remarks>
+    public static string NormalizeName(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
         {
@@ -736,6 +810,541 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         }
     }
 
+    // ==================================================================
+    // Профили изделий
+    // ==================================================================
+
+    /// <summary>Верхняя граница допусков процедуры, градусы.</summary>
+    /// <remarks>
+    /// Выше этого сравнивать нечего: прошивка сама объявляет компасы
+    /// несогласованными при расхождении 60° по горизонтали и 90° по всем осям,
+    /// поэтому допуск шире 90° не отбраковал бы ничего и означал бы отключённую
+    /// проверку. Отключать проверку следует явно, а не подсовывая ей допуск,
+    /// который нельзя нарушить.
+    /// </remarks>
+    private const double MaxToleranceDeg = 90.0;
+
+    private const string ProfileColumnsSql = """
+        SELECT p.Id, p.Name, p.Description, p.ReferenceFileName, p.ReferenceFormat, p.ReferenceText,
+               p.ReferenceHash, p.ParamCount, p.HeadingVsJigDeg, p.InterCompassSpreadDeg,
+               p.TransferMotorComp, p.CreatedBy, p.CreatedUtc, p.RetiredUtc,
+               (SELECT COUNT(*) FROM Run r WHERE r.ProfileId = p.Id) AS RunCount
+        FROM Profile p
+        """;
+
+    /// <summary>
+    /// Профили в порядке имени; выведенные из обращения — в конце.
+    /// </summary>
+    /// <param name="includeRetired">
+    /// Включать выведенные из обращения. Для выбора профиля перед прогоном —
+    /// <c>false</c>; для раздела настроек и для чтения истории — <c>true</c>.
+    /// </param>
+    public async Task<IReadOnlyList<CalibrationProfile>> ListProfilesAsync(
+        bool includeRetired = false,
+        CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            await using var command = connection.CreateCommand();
+            command.CommandText = ProfileColumnsSql + """
+
+                WHERE $includeRetired = 1 OR p.RetiredUtc IS NULL
+                ORDER BY p.RetiredUtc IS NOT NULL, p.NameNormalized;
+                """;
+            AddParameter(command, "$includeRetired", includeRetired ? 1L : 0L);
+
+            var rows = new List<CalibrationProfile>();
+            await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(ReadProfile(reader));
+            }
+
+            return rows;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Профиль по ключу. <c>null</c>, если такого нет.</summary>
+    public async Task<CalibrationProfile?> GetProfileAsync(long profileId, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            await using var command = connection.CreateCommand();
+            command.CommandText = ProfileColumnsSql + """
+
+                WHERE p.Id = $id;
+                """;
+            AddParameter(command, "$id", profileId);
+
+            await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            return await reader.ReadAsync(ct).ConfigureAwait(false) ? ReadProfile(reader) : null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Заводит профиль и возвращает его ключ.
+    /// </summary>
+    /// <exception cref="ArgumentException">Заготовка не проходит проверку.</exception>
+    /// <exception cref="CalibrationStoreException">Профиль с таким именем уже есть.</exception>
+    public async Task<long> CreateProfileAsync(NewCalibrationProfile draft, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        ThrowIfDisposed();
+
+        var name = draft.Name?.Trim() ?? string.Empty;
+        var normalized = NormalizeName(name);
+        if (normalized.Length == 0)
+        {
+            throw new ArgumentException("Имя профиля пусто.", nameof(draft));
+        }
+
+        if (draft.Reference is null || string.IsNullOrWhiteSpace(draft.Reference.Text))
+        {
+            throw new ArgumentException(
+                "Профиль без содержимого эталона не имеет смысла: переносить будет нечего.", nameof(draft));
+        }
+
+        ValidateTolerance(draft.HeadingVsJigDeg, "допуск курса против азимута стапеля", nameof(draft));
+        ValidateTolerance(draft.InterCompassSpreadDeg, "допуск расхождения курсов между компасами", nameof(draft));
+
+        var nowUtc = FormatUtc(DateTimeOffset.UtcNow);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
+            {
+                await ThrowIfNameTakenAsync(connection, transaction, normalized, excludeId: null, name, ct)
+                    .ConfigureAwait(false);
+
+                await ExecuteAsync(
+                    connection,
+                    transaction,
+                    """
+                    INSERT INTO Profile (
+                        Name, NameNormalized, Description, ReferenceFileName, ReferenceFormat,
+                        ReferenceText, ReferenceHash, ParamCount, HeadingVsJigDeg,
+                        InterCompassSpreadDeg, TransferMotorComp, CreatedBy, CreatedUtc)
+                    VALUES (
+                        $name, $normalized, $description, $fileName, $format,
+                        $text, $hash, $paramCount, $heading,
+                        $spread, $motorComp, $createdBy, $created);
+                    """,
+                    ct,
+                    ("$name", name),
+                    ("$normalized", normalized),
+                    ("$description", draft.Description?.Trim() ?? string.Empty),
+                    ("$fileName", draft.Reference.FileName ?? string.Empty),
+                    ("$format", draft.Reference.Format ?? string.Empty),
+                    ("$text", draft.Reference.Text),
+                    ("$hash", draft.Reference.Hash ?? string.Empty),
+                    ("$paramCount", (long)draft.Reference.ParamCount),
+                    ("$heading", draft.HeadingVsJigDeg),
+                    ("$spread", draft.InterCompassSpreadDeg),
+                    ("$motorComp", draft.TransferMotorComp ? 1L : 0L),
+                    ("$createdBy", draft.CreatedBy?.Trim() ?? string.Empty),
+                    ("$created", nowUtc)).ConfigureAwait(false);
+
+                var profileId = Convert.ToInt64(
+                    await ScalarAsync(connection, transaction, "SELECT last_insert_rowid();", ct).ConfigureAwait(false),
+                    CultureInfo.InvariantCulture);
+
+                await CommitAsync(transaction, ct).ConfigureAwait(false);
+                return profileId;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Правит профиль.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Эталон неизменяем — ни при каких условиях. Подменённый эталон делает
+    /// ложными все прогоны, уже сданные по этому профилю: реестр утверждал бы,
+    /// что плату сдавали по набору, которого в тот момент не существовало.
+    /// Другой эталон — это другой профиль.
+    /// </para>
+    /// <para>
+    /// Допуски неизменяемы с первого прогона по той же причине. Имя и описание
+    /// править можно всегда: это подпись, а не суть, и в прогоне уже лежит
+    /// снимок имени на момент сдачи.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="CalibrationStoreException">
+    /// Профиля нет, имя занято либо предпринята попытка изменить допуски
+    /// профиля, по которому уже сдавали платы.
+    /// </exception>
+    public async Task UpdateProfileAsync(
+        long profileId,
+        string name,
+        string description,
+        double headingVsJigDeg,
+        double interCompassSpreadDeg,
+        bool transferMotorComp,
+        CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        var trimmedName = name?.Trim() ?? string.Empty;
+        var normalized = NormalizeName(trimmedName);
+        if (normalized.Length == 0)
+        {
+            throw new ArgumentException("Имя профиля пусто.", nameof(name));
+        }
+
+        ValidateTolerance(headingVsJigDeg, "допуск курса против азимута стапеля", nameof(headingVsJigDeg));
+        ValidateTolerance(interCompassSpreadDeg, "допуск расхождения курсов между компасами", nameof(interCompassSpreadDeg));
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
+            {
+                var current = await ReadProfileCoreAsync(connection, transaction, profileId, ct).ConfigureAwait(false)
+                    ?? throw new CalibrationStoreException(
+                        $"Профиль {profileId} не найден: правка отменена.");
+
+                var tolerancesChanged =
+                    !NearlyEqual(current.HeadingVsJigDeg, headingVsJigDeg)
+                    || !NearlyEqual(current.InterCompassSpreadDeg, interCompassSpreadDeg)
+                    || current.TransferMotorComp != transferMotorComp;
+
+                if (tolerancesChanged && current.RunCount > 0)
+                {
+                    throw new CalibrationStoreException(
+                        $"По профилю «{current.Name}» уже сдано прогонов: {current.RunCount}. " +
+                        "Допуски и правило переноса COMPASS_MOT* менять нельзя — прогоны в реестре " +
+                        "выполнялись по прежним значениям, и правка сделала бы реестр ложным. " +
+                        "Заведите новый профиль.");
+                }
+
+                await ThrowIfNameTakenAsync(connection, transaction, normalized, profileId, trimmedName, ct)
+                    .ConfigureAwait(false);
+
+                await ExecuteAsync(
+                    connection,
+                    transaction,
+                    """
+                    UPDATE Profile SET
+                        Name                  = $name,
+                        NameNormalized        = $normalized,
+                        Description           = $description,
+                        HeadingVsJigDeg       = $heading,
+                        InterCompassSpreadDeg = $spread,
+                        TransferMotorComp     = $motorComp
+                    WHERE Id = $id;
+                    """,
+                    ct,
+                    ("$name", trimmedName),
+                    ("$normalized", normalized),
+                    ("$description", description?.Trim() ?? string.Empty),
+                    ("$heading", headingVsJigDeg),
+                    ("$spread", interCompassSpreadDeg),
+                    ("$motorComp", transferMotorComp ? 1L : 0L),
+                    ("$id", profileId)).ConfigureAwait(false);
+
+                await CommitAsync(transaction, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Выводит профиль из обращения либо возвращает его в обращение.
+    /// </summary>
+    /// <remarks>
+    /// Удаления профиля нет и не будет: <c>Run.ProfileId</c> ссылается на него с
+    /// <c>ON DELETE RESTRICT</c>, потому что профиль — часть доказательства того,
+    /// по чему сдавали плату. Выведенный из обращения профиль не предлагается
+    /// для новых прогонов, но остаётся читаемым в истории.
+    /// </remarks>
+    public async Task SetProfileRetiredAsync(long profileId, bool retired, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        var affected = await RunGuardedNonQueryAsync(
+            """
+            UPDATE Profile SET RetiredUtc = $retiredUtc WHERE Id = $id;
+            """,
+            ct,
+            ("$retiredUtc", retired ? FormatUtc(DateTimeOffset.UtcNow) : null),
+            ("$id", profileId)).ConfigureAwait(false);
+
+        if (affected == 0)
+        {
+            throw new CalibrationStoreException($"Профиль {profileId} не найден.");
+        }
+    }
+
+    // ==================================================================
+    // Настройки рабочего места
+    // ==================================================================
+
+    private const string SettingJigAzimuth = "workstation.jigAzimuthDeg";
+    private const string SettingOperator = "workstation.operator";
+    private const string SettingLastProfile = "workstation.lastProfileId";
+
+    /// <summary>
+    /// Настройки стенда. Отсутствующий ключ означает «не настроено» и никогда не
+    /// подменяется значением по умолчанию: для азимута ноль — законный север.
+    /// </summary>
+    public async Task<WorkstationSettings> GetWorkstationSettingsAsync(CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Name, SettingValue FROM Setting;";
+
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            await using (var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false))
+            {
+                while (await reader.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    values[reader.GetString(0)] = reader.GetString(1);
+                }
+            }
+
+            return new WorkstationSettings
+            {
+                // Неразбираемое значение приравнивается к «не настроено»: молча
+                // подставить ноль означало бы направить стапель на север.
+                JigAzimuthDeg = values.TryGetValue(SettingJigAzimuth, out var azimuthText)
+                    && double.TryParse(azimuthText, NumberStyles.Float, CultureInfo.InvariantCulture, out var azimuth)
+                    && azimuth is >= 0 and <= 360
+                        ? azimuth
+                        : null,
+                DefaultOperator = values.TryGetValue(SettingOperator, out var op) ? op : string.Empty,
+                LastProfileId = values.TryGetValue(SettingLastProfile, out var profileText)
+                    && long.TryParse(profileText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastProfile)
+                        ? lastProfile
+                        : null,
+            };
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Сохраняет настройки стенда целиком, одной транзакцией.</summary>
+    public async Task SaveWorkstationSettingsAsync(WorkstationSettings settings, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ThrowIfDisposed();
+
+        if (settings.JigAzimuthDeg is { } azimuth && (double.IsNaN(azimuth) || azimuth is < 0 or > 360))
+        {
+            throw new ArgumentException(
+                $"Азимут стапеля {azimuth.ToString("G9", CultureInfo.InvariantCulture)} вне диапазона 0…360.",
+                nameof(settings));
+        }
+
+        var nowUtc = FormatUtc(DateTimeOffset.UtcNow);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
+            {
+                await UpsertSettingAsync(
+                    connection, transaction, SettingJigAzimuth,
+                    settings.JigAzimuthDeg?.ToString("R", CultureInfo.InvariantCulture), nowUtc, ct)
+                    .ConfigureAwait(false);
+
+                await UpsertSettingAsync(
+                    connection, transaction, SettingOperator,
+                    settings.DefaultOperator?.Trim(), nowUtc, ct).ConfigureAwait(false);
+
+                await UpsertSettingAsync(
+                    connection, transaction, SettingLastProfile,
+                    settings.LastProfileId?.ToString(CultureInfo.InvariantCulture), nowUtc, ct)
+                    .ConfigureAwait(false);
+
+                await CommitAsync(transaction, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>Пустое значение стирает ключ: «не настроено» хранится отсутствием строки, а не пустой строкой.</summary>
+    private static Task UpsertSettingAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string key,
+        string? value,
+        string nowUtc,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return ExecuteAsync(connection, transaction, "DELETE FROM Setting WHERE Name = $name;", ct, ("$name", key));
+        }
+
+        return ExecuteAsync(
+            connection,
+            transaction,
+            """
+            INSERT INTO Setting (Name, SettingValue, UpdatedUtc)
+            VALUES ($name, $value, $now)
+            ON CONFLICT(Name) DO UPDATE SET
+                SettingValue = excluded.SettingValue,
+                UpdatedUtc   = excluded.UpdatedUtc;
+            """,
+            ct,
+            ("$name", key),
+            ("$value", value),
+            ("$now", nowUtc));
+    }
+
+    // ------------------------------------------------------------------
+    // Помощники профилей
+    // ------------------------------------------------------------------
+
+    private static CalibrationProfile ReadProfile(SqliteDataReader reader) => new(
+        Id: reader.GetInt64(0),
+        Name: reader.GetString(1),
+        Description: reader.GetString(2),
+        ReferenceFileName: reader.GetString(3),
+        ReferenceFormat: reader.GetString(4),
+        ReferenceText: reader.GetString(5),
+        ReferenceHash: reader.GetString(6),
+        ParamCount: reader.GetInt32(7),
+        HeadingVsJigDeg: reader.GetDouble(8),
+        InterCompassSpreadDeg: reader.GetDouble(9),
+        TransferMotorComp: reader.GetInt64(10) != 0,
+        CreatedBy: reader.GetString(11),
+        CreatedUtc: ParseUtc(reader.GetString(12)),
+        RetiredUtc: reader.IsDBNull(13) ? null : ParseUtc(reader.GetString(13)),
+        RunCount: reader.GetInt32(14));
+
+    /// <summary>Только те поля профиля, которые нужны проверкам правки.</summary>
+    private static async Task<(string Name, double HeadingVsJigDeg, double InterCompassSpreadDeg,
+        bool TransferMotorComp, int RunCount)?> ReadProfileCoreAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long profileId,
+        CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT p.Name, p.HeadingVsJigDeg, p.InterCompassSpreadDeg, p.TransferMotorComp,
+                   (SELECT COUNT(*) FROM Run r WHERE r.ProfileId = p.Id)
+            FROM Profile p
+            WHERE p.Id = $id;
+            """;
+        AddParameter(command, "$id", profileId);
+
+        await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return (reader.GetString(0), reader.GetDouble(1), reader.GetDouble(2),
+            reader.GetInt64(3) != 0, reader.GetInt32(4));
+    }
+
+    /// <summary>
+    /// Проверяет имя до вставки. Ограничение <c>UNIQUE</c> в схеме остаётся
+    /// последней линией, но сообщение SQLite оператору ничего не объясняет.
+    /// </summary>
+    private static async Task ThrowIfNameTakenAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string normalized,
+        long? excludeId,
+        string displayName,
+        CancellationToken ct)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT Id FROM Profile
+            WHERE NameNormalized = $normalized AND ($excludeId IS NULL OR Id <> $excludeId)
+            LIMIT 1;
+            """;
+        AddParameter(command, "$normalized", normalized);
+        AddParameter(command, "$excludeId", excludeId);
+
+        var existing = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        if (existing is not null && existing is not DBNull)
+        {
+            throw new CalibrationStoreException(
+                $"Профиль с именем «{displayName}» уже есть (запись {existing}). " +
+                "Имена профилей сравниваются без учёта регистра и лишних пробелов: " +
+                "два профиля-двойника развели бы историю сдачи по разным записям.");
+        }
+    }
+
+    private static void ValidateTolerance(double value, string what, string parameterName)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0 || value > MaxToleranceDeg)
+        {
+            throw new ArgumentException(
+                $"Значение «{what}» должно быть в диапазоне (0; {MaxToleranceDeg.ToString("F0", CultureInfo.InvariantCulture)}] градусов, " +
+                $"получено {value.ToString("G9", CultureInfo.InvariantCulture)}.",
+                parameterName);
+        }
+    }
+
+    /// <summary>Сравнение допусков в решётке binary32 — в ней они и хранятся у борта.</summary>
+    private static bool NearlyEqual(double a, double b) => (float)a == (float)b;
+
+    private async Task<int> RunGuardedNonQueryAsync(
+        string sql,
+        CancellationToken ct,
+        params (string Name, object? Value)[] args)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            return await ExecuteAsync(connection, null, sql, ct, args).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -823,13 +1432,13 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             AddParameter(command, name, value);
         }
 
-        var value = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        if (value is null || value is DBNull)
+        var scalar = await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        if (scalar is null || scalar is DBNull)
         {
             throw new CalibrationStoreException($"Запрос не вернул значения: {sql}");
         }
 
-        return value;
+        return scalar;
     }
 
     private static void AddParameter(SqliteCommand command, string name, object? value)
@@ -872,19 +1481,53 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         }
     }
 
-    private static Task ApplyMigrationAsync(SqliteConnection connection, int fromVersion, CancellationToken ct)
+    private static async Task ApplyMigrationAsync(SqliteConnection connection, int fromVersion, CancellationToken ct)
     {
         // Миграции упорядочены, только вперёд, каждая в своей транзакции и
         // завершается собственным литералом PRAGMA user_version. Они вправе
         // добавлять таблицы, столбцы и индексы, но не переписывать строки
         // RunWrite, RunCheck и RunMessage — это доказательная база.
-        _ = connection;
-        _ = ct;
+        var sql = fromVersion switch
+        {
+            1 => MigrateV1ToV2Sql,
+            _ => throw new CalibrationStoreException(
+                $"Миграция схемы с версии {fromVersion} не реализована в этой сборке. " +
+                "Хранилище оставлено на последней исправной версии."),
+        };
 
-        throw new CalibrationStoreException(
-            $"Миграция схемы с версии {fromVersion} не реализована в этой сборке. " +
-            "Хранилище оставлено на последней исправной версии.");
+        var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+        await using (transaction.ConfigureAwait(false))
+        {
+            await ExecuteAsync(connection, transaction, sql, ct).ConfigureAwait(false);
+            await CommitAsync(transaction, ct).ConfigureAwait(false);
+        }
     }
+
+    /// <summary>
+    /// v1 → v2: профили изделий, настройки рабочего места, привязка прогона к профилю.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Существующие прогоны не переписываются: у них <c>ProfileId IS NULL</c>, и
+    /// это честное «прогон сделан до введения профилей». Задним числом приписать
+    /// им профиль нельзя — никто не знает, каким эталоном их сдавали, кроме уже
+    /// записанного <c>ReferencePath</c>/<c>ReferenceHash</c>.
+    /// </para>
+    /// <para>
+    /// Оба <c>ALTER TABLE</c> добавляют столбцы без значения по умолчанию.
+    /// Это требование SQLite: при включённом <c>foreign_keys</c> добавляемый
+    /// столбец с <c>REFERENCES</c> обязан иметь умолчание <c>NULL</c>.
+    /// </para>
+    /// </remarks>
+    private const string MigrateV1ToV2Sql = ProfileSchemaSql + """
+
+        ALTER TABLE Run ADD COLUMN ProfileId        INTEGER REFERENCES Profile(Id) ON DELETE RESTRICT;
+        ALTER TABLE Run ADD COLUMN ProfileNameAtRun TEXT;
+
+        CREATE INDEX IF NOT EXISTS IX_Run_Profile ON Run(ProfileId, StartedUtc DESC);
+
+        PRAGMA user_version = 2;
+        """;
 
     private static async Task VerifyIntegrityAsync(SqliteConnection connection, CancellationToken ct)
     {

@@ -251,7 +251,9 @@ internal ref struct PayloadReader
     /// Копирует очередные <c>destination.Length</c> байт, дополняя нулями всё,
     /// что вышло за границу усечённой нагрузки.
     /// </summary>
-    private void Fill(Span<byte> destination)
+    // scoped обязателен: без него компилятор считает, что destination может
+    // пережить _payload, и запрещает передавать сюда stackalloc-буфер.
+    private void Fill(scoped Span<byte> destination)
     {
         destination.Clear();
 

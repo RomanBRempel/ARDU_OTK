@@ -97,6 +97,14 @@ public sealed class SerialVehicleLink : IVehicleLink
     private GpsFix? _lastGpsFix;
     private SensorHealth? _lastHealth;
 
+    // Последнее состояние для индикатора. Хранится отдельно от сессий
+    // измерения: индикатору нужно «что сейчас», а не среднее по окну.
+    private AttitudeSample? _lastAttitude;
+    private HeartbeatMessage? _lastHeartbeat;
+    private SysStatusMessage? _lastSysStatus;
+    private readonly Dictionary<int, MagSample> _lastMags = [];
+    private DateTimeOffset _lastStateUpdateUtc;
+
     /// <summary>
     /// Диагностический канал уровня транспорта: отказ запроса потока, потеря
     /// порта, недособранный <c>STATUSTEXT</c>.
@@ -128,6 +136,49 @@ public sealed class SerialVehicleLink : IVehicleLink
 
     /// <inheritdoc />
     public string? FirmwareBanner => _firmwareBanner;
+
+    /// <inheritdoc />
+    public VehicleLiveState? LiveState
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                if (_lastStateUpdateUtc == default)
+                {
+                    return null;
+                }
+
+                var heartbeat = _lastHeartbeat;
+                var status = _lastSysStatus;
+
+                // Сентинелы MAVLink: 65535 у напряжения и -1 у тока означают
+                // «борт не сообщает», а не ноль. Показывать их как нули нельзя.
+                double? volts = status is { VoltageBattery: not ushort.MaxValue } s1
+                    ? s1.VoltageBattery / 1000.0
+                    : null;
+
+                double? amps = status is { CurrentBattery: > -1 } s2
+                    ? s2.CurrentBattery / 100.0
+                    : null;
+
+                int? percent = status is { BatteryRemaining: >= 0 } s3
+                    ? s3.BatteryRemaining
+                    : null;
+
+                return new VehicleLiveState(
+                    _lastAttitude,
+                    volts,
+                    amps,
+                    percent,
+                    heartbeat is { } hb ? ArduPilotModes.Describe(hb.Type, hb.CustomMode) : "—",
+                    heartbeat is { } armed && (armed.BaseMode & 0x80) != 0,
+                    heartbeat?.Type ?? 0,
+                    [.. _lastMags.Values],
+                    _lastStateUpdateUtc);
+            }
+        }
+    }
 
     /// <summary>Имя открытого порта, если соединение установлено.</summary>
     public string? PortName => _portName;
@@ -698,7 +749,20 @@ public sealed class SerialVehicleLink : IVehicleLink
     private void HandleHeartbeat(MavlinkFrame frame)
     {
         HeartbeatMessage heartbeat = HeartbeatMessage.Decode(frame.Payload.Span);
-        if (_heartbeatSeen || !heartbeat.IsAutopilot)
+        if (!heartbeat.IsAutopilot)
+        {
+            return;
+        }
+
+        // Режим и признак взведения обновляются каждым HEARTBEAT, а не только
+        // первым: индикатор обязан показывать текущее состояние.
+        lock (_stateLock)
+        {
+            _lastHeartbeat = heartbeat;
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
+        }
+
+        if (_heartbeatSeen)
         {
             return;
         }
@@ -717,6 +781,8 @@ public sealed class SerialVehicleLink : IVehicleLink
         lock (_stateLock)
         {
             _lastHealth = health;
+            _lastSysStatus = status;
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
         }
 
         lock (_sessionLock)
@@ -733,6 +799,12 @@ public sealed class SerialVehicleLink : IVehicleLink
         AttitudeMessage attitude = AttitudeMessage.Decode(frame.Payload.Span);
         var sample = new AttitudeSample(attitude.Roll, attitude.Pitch, attitude.Yaw);
 
+        lock (_stateLock)
+        {
+            _lastAttitude = sample;
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
+        }
+
         lock (_sessionLock)
         {
             foreach (TelemetrySession session in _sessions)
@@ -745,6 +817,12 @@ public sealed class SerialVehicleLink : IVehicleLink
     private void HandleMag(int instance, ImuMessage imu)
     {
         var sample = new MagSample(instance, imu.Xmag, imu.Ymag, imu.Zmag);
+
+        lock (_stateLock)
+        {
+            _lastMags[instance] = sample;
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
+        }
 
         lock (_sessionLock)
         {

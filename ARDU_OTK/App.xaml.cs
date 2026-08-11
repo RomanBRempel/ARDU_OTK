@@ -22,7 +22,20 @@ namespace ARDU_OTK;
 public partial class App : Application
 {
     private Window? _window;
-    
+
+    /// <summary>
+    /// Главное окно приложения.
+    /// </summary>
+    /// <remarks>
+    /// Нужно файловым диалогам: приложение unpackaged, и пикеры обязаны
+    /// получить окно-владелец через WinRT-интероп, иначе падают в рантайме.
+    /// </remarks>
+    public static Window MainWindow =>
+        Current is App { _window: { } window }
+            ? window
+            : throw new InvalidOperationException("Главное окно ещё не создано.");
+
+
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
     /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -30,6 +43,37 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // Необработанное исключение в WinUI гасит процесс без следов: Windows
+        // показывает только 0xC000027B. Пишем причину в файл, иначе на цеховом
+        // ПК разобраться невозможно.
+        UnhandledException += (_, e) =>
+        {
+            LogFatal("UnhandledException", e.Exception);
+            e.Handled = false;
+        };
+    }
+
+    /// <summary>Путь к журналу аварий. Рядом с данными, а не в каталоге установки.</summary>
+    internal static string CrashLogPath => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "ARDU_OTK.Data",
+        "startup-errors.log");
+
+    internal static void LogFatal(string context, Exception? ex)
+    {
+        try
+        {
+            var path = CrashLogPath;
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+            System.IO.File.AppendAllText(
+                path,
+                $"[{DateTimeOffset.Now:O}] {context}: {ex}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Журнал — вспомогательный. Его отказ не должен подменять исходную ошибку.
+        }
     }
 
     /// <summary>
@@ -38,7 +82,15 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
-        _window.Activate();
+        try
+        {
+            _window = new MainWindow();
+            _window.Activate();
+        }
+        catch (Exception ex)
+        {
+            LogFatal("OnLaunched", ex);
+            throw;
+        }
     }
 }

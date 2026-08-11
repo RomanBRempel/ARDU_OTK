@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <Page
     x:Class="ARDU_OTK.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -8,41 +8,508 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Padding="32">
-        <StackPanel
-            MaxWidth="720"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top"
-            Spacing="16">
+    <Page.Resources>
+        <DataTemplate x:Key="MagTemplate" x:DataType="local:CompassRow">
+            <Grid Padding="0,6" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="ARDU ОТК" />
+                <FontIcon
+                    FontSize="14"
+                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                    Glyph="&#xE73E;"
+                    Visibility="{x:Bind OkVisibility}" />
+                <FontIcon
+                    FontSize="14"
+                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                    Glyph="&#xE7BA;"
+                    Visibility="{x:Bind WarnVisibility}" />
 
-            <TextBlock
-                x:Name="VersionText"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource BodyTextBlockStyle}"
-                Text="Версия —" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="{x:Bind Title}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Detail}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    FontFamily="Consolas"
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    Text="{x:Bind FieldText}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="LogTemplate" x:DataType="local:CalibrationLogRow">
+            <Grid Padding="0,3" ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    FontFamily="Consolas"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind TimeText}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind Text}"
+                    TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <ScrollViewer>
+        <StackPanel Padding="24" Spacing="20">
+
+            <!--  Верх: борт и эталон  -->
+            <Grid ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Полётный контроллер  -->
+                <Border
+                    Padding="20"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="14">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Полётный контроллер" />
+
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon
+                                x:Name="LinkIcon"
+                                FontSize="18"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Glyph="&#xE711;" />
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock
+                                    x:Name="LinkStateText"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="Нет связи" />
+                                <TextBlock
+                                    x:Name="LinkDetailText"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Выберите порт и подключитесь."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <ProgressRing x:Name="LinkRing" IsActive="False" />
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox
+                                x:Name="PortCombo"
+                                HorizontalAlignment="Stretch"
+                                DisplayMemberPath="Caption"
+                                PlaceholderText="COM-порт"
+                                SelectionChanged="OnPortSelectionChanged" />
+
+                            <Button
+                                x:Name="RefreshPortsButton"
+                                Grid.Column="1"
+                                Click="OnRefreshPortsClick"
+                                Content="Обновить" />
+                        </Grid>
+
+                        <TextBlock
+                            x:Name="PortDetailText"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            TextWrapping="Wrap" />
+
+                        <CheckBox
+                            x:Name="AutoConnectCheck"
+                            Click="OnAutoConnectChanged"
+                            Content="Подключаться автоматически" />
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button
+                                x:Name="ConnectButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnConnectClick"
+                                Content="Подключить"
+                                Style="{StaticResource AccentButtonStyle}" />
+
+                            <Button
+                                x:Name="DisconnectButton"
+                                Grid.Column="1"
+                                HorizontalAlignment="Stretch"
+                                Click="OnDisconnectClick"
+                                Content="Отключить"
+                                IsEnabled="False" />
+                        </Grid>
+
+                        <InfoBar
+                            x:Name="LinkBar"
+                            IsClosable="False"
+                            IsOpen="False"
+                            Severity="Error"
+                            Title="Связь" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Эталон  -->
+                <Border
+                    Grid.Column="1"
+                    Padding="20"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="14">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Эталон" />
+
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon
+                                x:Name="ProfileIcon"
+                                FontSize="18"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Glyph="&#xE8A5;" />
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock
+                                    x:Name="ProfileStateText"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="Эталон не выбран" />
+                                <TextBlock
+                                    x:Name="ProfileDetailText"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Выберите профиль изделия."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox
+                                x:Name="ProfileCombo"
+                                HorizontalAlignment="Stretch"
+                                DisplayMemberPath="Caption"
+                                PlaceholderText="Эталонный профиль"
+                                SelectionChanged="OnProfileSelectionChanged" />
+
+                            <Button
+                                x:Name="RefreshProfilesButton"
+                                Grid.Column="1"
+                                Click="OnRefreshProfilesClick"
+                                Content="Обновить" />
+                        </Grid>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                x:Name="ProfileFileText"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                x:Name="ProfileHashText"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                IsTextSelectionEnabled="True"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <InfoBar
+                            x:Name="ProfileBar"
+                            IsClosable="False"
+                            IsOpen="False"
+                            Severity="Informational"
+                            Title="Эталон" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <InfoBar
-                x:Name="UpdateBar"
+                x:Name="ReadyBar"
                 IsClosable="False"
                 IsOpen="True"
-                Message="Проверка обновлений не выполнялась."
                 Severity="Informational"
-                Title="Обновления">
-                <InfoBar.ActionButton>
-                    <Button
-                        x:Name="UpdateActionButton"
-                        Click="OnUpdateActionClick"
-                        Content="Проверить обновления" />
-                </InfoBar.ActionButton>
-            </InfoBar>
+                Title="Готовность" />
 
-            <ProgressBar
-                x:Name="UpdateProgress"
-                IsIndeterminate="True"
-                Visibility="Collapsed" />
+            <!--  Середина: HUD. Появляется, когда выбраны борт и эталон.  -->
+            <Border
+                x:Name="HudCard"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="Collapsed">
+                <Grid ColumnSpacing="24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!--  Авиагоризонт  -->
+                    <Border
+                        Width="300"
+                        Height="220"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                        <Grid x:Name="HorizonViewport">
+                            <Grid.Clip>
+                                <RectangleGeometry Rect="0,0,300,220" />
+                            </Grid.Clip>
+
+                            <Grid x:Name="HorizonInner" Height="900" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <TransformGroup>
+                                        <TranslateTransform x:Name="PitchTranslate" />
+                                        <RotateTransform x:Name="RollRotate" />
+                                    </TransformGroup>
+                                </Grid.RenderTransform>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <!--  Небо и земля — цвета прибора, они одинаковы в обеих темах  -->
+                                <Rectangle Fill="#FF2E6FA8" />
+                                <Rectangle Grid.Row="1" Fill="#FF6B4A2F" />
+                                <Rectangle
+                                    Grid.Row="1"
+                                    Height="2"
+                                    VerticalAlignment="Top"
+                                    Fill="#FFFFFFFF" />
+                            </Grid>
+
+                            <!--  Неподвижный символ аппарата  -->
+                            <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Rectangle
+                                    Width="120"
+                                    Height="3"
+                                    Fill="#FFFFD400" />
+                                <Rectangle
+                                    Width="3"
+                                    Height="16"
+                                    Fill="#FFFFD400" />
+                            </Grid>
+
+                            <TextBlock
+                                x:Name="HudArmedText"
+                                Margin="8"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                FontWeight="SemiBold"
+                                Foreground="#FFFFFFFF"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="ОБЕЗВРЕЖЕН" />
+
+                            <TextBlock
+                                x:Name="HudModeText"
+                                Margin="8"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                FontWeight="SemiBold"
+                                Foreground="#FFFFFFFF"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="—" />
+                        </Grid>
+                    </Border>
+
+                    <!--  Цифры  -->
+                    <Grid
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        ColumnSpacing="28"
+                        RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel>
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Крен" />
+                            <TextBlock
+                                x:Name="HudRollText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Тангаж" />
+                            <TextBlock
+                                x:Name="HudPitchText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Курс (истинный)" />
+                            <TextBlock
+                                x:Name="HudYawText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Напряжение" />
+                            <TextBlock
+                                x:Name="HudVoltageText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Grid.Column="1">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Ток" />
+                            <TextBlock
+                                x:Name="HudCurrentText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="1" Grid.Column="2">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Режим" />
+                            <TextBlock
+                                x:Name="HudModeBigText"
+                                FontFamily="Consolas"
+                                Style="{StaticResource SubtitleTextBlockStyle}"
+                                Text="—" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!--  Ниже: остальные панели  -->
+            <Grid x:Name="PanelsRow" ColumnSpacing="20" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Компасы  -->
+                <Border
+                    Padding="20"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="10">
+                        <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Компасы" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Модуль поля, мГс. Норма 530, допуск 185…875."
+                            TextWrapping="Wrap" />
+                        <ListView
+                            x:Name="CompassList"
+                            ItemTemplate="{StaticResource MagTemplate}"
+                            ItemsSource="{x:Bind Compasses}"
+                            SelectionMode="None" />
+                        <TextBlock
+                            x:Name="CompassHintText"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!--  Журнал операций  -->
+                <Border
+                    Grid.Column="1"
+                    Padding="20"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="10">
+                        <Grid>
+                            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Журнал операций" />
+                            <Button
+                                HorizontalAlignment="Right"
+                                Click="OnClearLogClick"
+                                Content="Очистить" />
+                        </Grid>
+                        <ListView
+                            x:Name="LogList"
+                            MaxHeight="260"
+                            ItemTemplate="{StaticResource LogTemplate}"
+                            ItemsSource="{x:Bind LogEntries}"
+                            SelectionMode="None" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <InfoBar
+                x:Name="NotBuiltBar"
+                IsClosable="False"
+                IsOpen="False"
+                Message="Панель контролируемых параметров и сверка с эталоном в этой сборке ещё не реализованы."
+                Severity="Informational"
+                Title="В работе" />
 
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </Page>
