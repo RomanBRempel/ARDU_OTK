@@ -58,6 +58,28 @@ public sealed partial class ReferenceEditorPage : Page
     /// <summary>Сколько сохранённых отступлений не разобралось — признак правки базы снаружи.</summary>
     private int _discardedOverrides;
 
+    /// <summary>
+    /// Страница собрана и готова отвечать на события своих элементов.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Обязателен, и вот почему. <c>ValueChanged</c> и <c>Toggled</c>
+    /// подключаются в разметке раньше, чем разметка присваивает начальное
+    /// значение, поэтому обработчик срабатывает <b>посреди разбора XAML</b> —
+    /// когда поля <c>x:Name</c> заполнены только для элементов, объявленных
+    /// выше по документу. Всё, что ниже (плашка готовности, кнопка сохранения,
+    /// раздел контроля, список скриптов), в этот момент равно <c>null</c>, и
+    /// обращение к нему рушит разбор целиком: наружу выходит
+    /// <c>XamlParseException: Failed to assign to property NumberBox.Value</c>,
+    /// по которому настоящую причину не видно.
+    ///
+    /// Проверять каждый элемент на <c>null</c> по отдельности — лечение
+    /// симптома: список элементов растёт, и следующий добавленный снова
+    /// уронит страницу. Правило одно: до конца сборки страница на события
+    /// своих элементов не отвечает, а согласованное состояние выставляется
+    /// один раз явным вызовом в конце конструктора.
+    /// </remarks>
+    private readonly bool _ready;
+
     public ReferenceEditorPage()
     {
         InitializeComponent();
@@ -65,7 +87,11 @@ public sealed partial class ReferenceEditorPage : Page
         HeadingToleranceBox.Value = DefaultTolerances.HeadingVsJigDeg;
         SpreadToleranceBox.Value = DefaultTolerances.InterCompassSpreadDeg;
 
-        Loaded += (_, _) => UpdateGate();
+        _ready = true;
+
+        RenderScripts();
+        RebuildRoleSections();
+        UpdateGate();
     }
 
     /// <summary>Ожидаемый состав компасов, выведенный из выбранного эталона.</summary>
@@ -391,6 +417,11 @@ public sealed partial class ReferenceEditorPage : Page
     /// </remarks>
     private void RebuildRoleSections()
     {
+        if (!_ready)
+        {
+            return;
+        }
+
         RoleSections.Clear();
 
         if (_parameters is null)
@@ -837,6 +868,11 @@ public sealed partial class ReferenceEditorPage : Page
 
     private void RenderScripts()
     {
+        if (!_ready)
+        {
+            return;
+        }
+
         Scripts.Clear();
         foreach (var script in _scripts.OrderBy(static s => s.Path, StringComparer.Ordinal))
         {
@@ -973,6 +1009,11 @@ public sealed partial class ReferenceEditorPage : Page
     /// </remarks>
     private void UpdateGate()
     {
+        if (!_ready)
+        {
+            return;
+        }
+
         var problems = new List<string>();
 
         if (_services is null)
