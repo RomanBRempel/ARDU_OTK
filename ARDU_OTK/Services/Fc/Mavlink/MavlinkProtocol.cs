@@ -21,6 +21,9 @@ public static class MavMessageId
     public const uint GpsRawInt = 24;
     public const uint RawImu = 27;
     public const uint Attitude = 30;
+    /// <summary>Все каналы приёмника разом. Отдельная вкладка показывает их живьём.</summary>
+    public const uint RcChannels = 65;
+
     public const uint CommandLong = 76;
     public const uint CommandAck = 77;
 

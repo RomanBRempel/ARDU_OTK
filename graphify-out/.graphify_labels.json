@@ -169,5 +169,14 @@
   "167": "MavSeverity",
   "168": "ReadOnlyMemory",
   "169": "uint",
-  "170": "ushort"
+  "170": "ushort",
+  "171": "Func",
+  "172": "object",
+  "173": "TimeSpan",
+  "174": "ValueTask",
+  "175": "Failure",
+  "176": "ParameterDifferenceRow",
+  "177": "Path",
+  "178": "ReferenceScript",
+  "179": "ScriptDifference"
 }

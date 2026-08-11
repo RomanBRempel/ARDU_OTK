@@ -806,7 +806,24 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
-                    <StackPanel Spacing="6">
+                    <!--
+                        🔴 Сетка, а не вертикальный стек. В стеке у списка
+                        высота не ограничена: он растёт вместе с содержимым и
+                        не прокручивается вовсе, поэтому до нижних расхождений
+                        добраться нечем. Строка «*» задаёт ему остаток панели,
+                        и прокрутка появляется сама.
+                    -->
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
                         <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Сверка с эталоном" />
 
                         <!--
@@ -817,6 +834,7 @@
                         -->
                         <TextBlock
                             x:Name="CompareStateText"
+                            Grid.Row="1"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Сверка не выполнялась."
@@ -824,6 +842,7 @@
 
                         <ProgressBar
                             x:Name="CompareProgress"
+                            Grid.Row="2"
                             Maximum="1"
                             Minimum="0"
                             Visibility="Collapsed"
@@ -838,6 +857,7 @@
                         -->
                         <Grid
                             x:Name="CompareTickPanel"
+                            Grid.Row="3"
                             ColumnSpacing="8"
                             Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
@@ -874,6 +894,7 @@
                         <!--  Счётчики итога: совпало, расходится, вне контроля.  -->
                         <Grid
                             x:Name="CompareCountsPanel"
+                            Grid.Row="4"
                             ColumnSpacing="6"
                             Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
@@ -922,7 +943,7 @@
                             </Border>
                         </Grid>
 
-                        <Grid ColumnSpacing="6" x:Name="CompareActionsPanel" Visibility="Collapsed">
+                        <Grid Grid.Row="5" ColumnSpacing="6" x:Name="CompareActionsPanel" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
@@ -957,6 +978,7 @@
                         -->
                         <ListView
                             x:Name="DiffList"
+                            Grid.Row="6"
                             IsItemClickEnabled="False"
                             ItemContainerStyle="{StaticResource RowContainerStyle}"
                             ItemTemplate="{StaticResource DifferenceTemplate}"
@@ -969,7 +991,7 @@
                                 </TransitionCollection>
                             </ListView.ItemContainerTransitions>
                         </ListView>
-                    </StackPanel>
+                    </Grid>
                 </Border>
 
                 <Border

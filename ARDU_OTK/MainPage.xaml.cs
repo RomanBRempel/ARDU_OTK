@@ -351,6 +351,10 @@ public sealed partial class MainPage : Page
     /// <summary>Замечает появление и пропажу устройств, пока приложение открыто.</summary>
     private async void OnPortsTick(object? sender, object e)
     {
+        // Проверка связи идёт до всех прочих условий: она нужна и при
+        // раскрытом списке портов, и во время приёмки.
+        SyncConnectionState();
+
         if (_portsScanBusy || _portsExpanded)
         {
             // Пока список раскрыт, не подменяем плашки под рукой оператора.
@@ -622,20 +626,36 @@ public sealed partial class MainPage : Page
             // Опознание компасов после перестановки устарело — перечитываем.
             await LoadCompassIdentityAsync().ConfigureAwait(true);
 
+            // 🔴 Перезагрузка — не обряд, а следствие записи. Если ничего не
+            // записано, перезагружать нечего: борт и так в том состоянии, в
+            // котором его перечитают. Лишняя перезагрузка стоит полминуты,
+            // рвёт связь и заставляет оператора ждать без причины.
+            var written = 0;
             if (plan.Writable.Count > 0)
             {
                 CompareStateText.Text = $"Переношу расхождения: {plan.Writable.Count}…";
                 var records = await _session.ApplyAsync(plan.Writable, progress, ct).ConfigureAwait(true);
-                var ok = records.Count(static r => r.Outcome == WriteOutcome.Verified);
-                AppendLog(MavSeverity.Info, $"Перенос: записано {ok}, отклонено {records.Count - ok}.");
+                written = records.Count(static r => r.Outcome == WriteOutcome.Verified);
+                AppendLog(MavSeverity.Info, $"Перенос: записано {written}, отклонено {records.Count - written}.");
+            }
+            else
+            {
+                AppendLog(MavSeverity.Info, "Переносить нечего: расхождений по записываемым именам нет.");
             }
 
-            var reboot = await _session.RebootAsync(progress, ct).ConfigureAwait(true);
-            AppendLog(reboot.Ok ? MavSeverity.Info : MavSeverity.Error, reboot.Message);
-            if (!reboot.Ok)
+            if (written > 0)
             {
-                ShowCompare(plan, "Приёмка остановлена: " + reboot.Message);
-                return;
+                var reboot = await _session.RebootAsync(progress, ct).ConfigureAwait(true);
+                AppendLog(reboot.Ok ? MavSeverity.Info : MavSeverity.Error, reboot.Message);
+                if (!reboot.Ok)
+                {
+                    ShowCompare(plan, "Приёмка остановлена: " + reboot.Message);
+                    return;
+                }
+            }
+            else
+            {
+                AppendLog(MavSeverity.Info, "Перезагрузка пропущена: на борт ничего не записано.");
             }
 
             CompareStateText.Text = "Повторная сверка после перезагрузки…";
@@ -1603,22 +1623,34 @@ public sealed partial class MainPage : Page
     /// <summary>Состояние связи, отражённое на экране последней перерисовкой.</summary>
     private bool? _renderedConnected;
 
-    /// <remarks>
-    /// 🔴 Состояние связи проверяется на каждом такте. Сессия приёмки
-    /// переподключается к борту сама — после каждой перезагрузки, — и события
-    /// об этом не возникает. Без сверки экран остаётся с надписью «нет связи с
-    /// полётником» на живом борту с бегущими приборами, и оператор верит
-    /// надписи, а не приборам.
-    /// </remarks>
-    private void OnHudTick(object? sender, object e)
-    {
-        RenderHud();
+    private void OnHudTick(object? sender, object e) => RenderHud();
 
+    /// <summary>
+    /// Замечает возвращение связи и обновляет экран.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Сверка живёт на часах опроса портов, а не на часах индикатора. Часы
+    /// индикатора сами останавливаются, когда связи нет, — и получается, что
+    /// единственное, что могло бы заметить возвращение борта, выключается
+    /// ровно в тот момент, когда оно понадобилось. Экран навсегда застревал с
+    /// надписью «нет связи с полётником» после первой же перезагрузки борта.
+    ///
+    /// Часы опроса портов работают всегда, поэтому проверка стоит здесь.
+    /// </remarks>
+    private void SyncConnectionState()
+    {
         var connected = _services.IsLinkConnected;
-        if (_renderedConnected != connected)
+        if (_renderedConnected == connected)
         {
-            _renderedConnected = connected;
-            RenderAll();
+            return;
+        }
+
+        _renderedConnected = connected;
+        RenderAll();
+
+        if (connected)
+        {
+            _ = LoadCompassIdentityAsync();
         }
     }
 
