@@ -1260,15 +1260,11 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                 }
             }
 
+            // Ключ азимута оснастки в базе может остаться от прежних версий:
+            // он просто не читается. Удалять его миграцией незачем — настройка
+            // мертва, а лишний ALTER на живой базе стенда риска не стоит.
             return new WorkstationSettings
             {
-                // Неразбираемое значение приравнивается к «не настроено»: молча
-                // подставить ноль означало бы направить стапель на север.
-                JigAzimuthDeg = values.TryGetValue(SettingJigAzimuth, out var azimuthText)
-                    && double.TryParse(azimuthText, NumberStyles.Float, CultureInfo.InvariantCulture, out var azimuth)
-                    && azimuth is >= 0 and <= 360
-                        ? azimuth
-                        : null,
                 DefaultOperator = values.TryGetValue(SettingOperator, out var op) ? op : string.Empty,
                 LastReferenceId = values.TryGetValue(SettingLastReference, out var referenceIdText)
                     && long.TryParse(referenceIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastReference)
@@ -1291,13 +1287,6 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         ArgumentNullException.ThrowIfNull(settings);
         ThrowIfDisposed();
 
-        if (settings.JigAzimuthDeg is { } azimuth && (double.IsNaN(azimuth) || azimuth is < 0 or > 360))
-        {
-            throw new ArgumentException(
-                $"Азимут стапеля {azimuth.ToString("G9", CultureInfo.InvariantCulture)} вне диапазона 0…360.",
-                nameof(settings));
-        }
-
         var nowUtc = FormatUtc(DateTimeOffset.UtcNow);
 
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -1307,11 +1296,6 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
             await using (transaction.ConfigureAwait(false))
             {
-                await UpsertSettingAsync(
-                    connection, transaction, SettingJigAzimuth,
-                    settings.JigAzimuthDeg?.ToString("R", CultureInfo.InvariantCulture), nowUtc, ct)
-                    .ConfigureAwait(false);
-
                 await UpsertSettingAsync(
                     connection, transaction, SettingOperator,
                     settings.DefaultOperator?.Trim(), nowUtc, ct).ConfigureAwait(false);

@@ -332,11 +332,17 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
 
         var missing = await FillGapsAsync(values, seen, declared, progress, ct).ConfigureAwait(false);
 
-        progress?.Report(missing.Count == 0
-            ? $"Снято параметров: {values.Count} из {declared}. Прочитано всё."
-            : $"Снято параметров: {values.Count} из {declared}. Не отдано: {missing.Count}.");
+        var set = new FullParameterSet(values, declared, missing);
 
-        return new FullParameterSet(values, declared, missing);
+        // 🔴 Признак полноты один и тот же и в сообщении, и в наборе. Пока их
+        // было два, оператор читал «Прочитано всё» на наборе, который
+        // FullParameterSet.IsComplete считал неполным, и верил сообщению.
+        progress?.Report(set.IsComplete
+            ? $"Снято параметров: {values.Count}. Прочитано всё."
+            : $"Снято параметров: {values.Count}, борт объявил {declared}"
+              + (missing.Count > 0 ? $", не отдал {missing.Count}" : string.Empty) + ".");
+
+        return set;
     }
 
     /// <summary>

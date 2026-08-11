@@ -175,14 +175,14 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786433972.859771,
-    "ast_hash": "6edf01521bc265fc2dcb405ed83efc5c",
-    "semantic_hash": "6edf01521bc265fc2dcb405ed83efc5c"
+    "mtime": 1786452865.5343978,
+    "ast_hash": "3b8b801d3615c1ef203048ac6f78518a",
+    "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786433895.7258275,
-    "ast_hash": "b406c0ad687927a083fdf1e310bcfa46",
-    "semantic_hash": "b406c0ad687927a083fdf1e310bcfa46"
+    "mtime": 1786452881.7752266,
+    "ast_hash": "d9ae54e842a5d43d6b13c8104eaaa58d",
+    "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
     "mtime": 1786390515.0538812,
@@ -205,13 +205,13 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786452090.9179285,
-    "ast_hash": "cf19dcf464123a0518d59713e5ac08d8",
+    "mtime": 1786453884.0496006,
+    "ast_hash": "a80af512ad5adaf5190e5cc4ba3194f9",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
-    "mtime": 1786451656.08287,
-    "ast_hash": "0cafac9b0301f9325ce207522742a588",
+    "mtime": 1786453770.0507162,
+    "ast_hash": "cff03cb25672913fac9ba803e80c496e",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceChecks.cs": {
@@ -240,8 +240,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1786451696.7926953,
-    "ast_hash": "a2458bd49dcf6bf781758888e51f770c",
+    "mtime": 1786452838.4655538,
+    "ast_hash": "13fcef6a9cbf7a094b8d1f1f108a356c",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
@@ -442,6 +442,11 @@
   ".github/workflows/graph-freshness.yml": {
     "mtime": 1786446084.1827207,
     "ast_hash": "c21c7f43bca8c1ae57e9cb6ea8615a10",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Fc/ParameterTransfer.cs": {
+    "mtime": 1786453918.4120576,
+    "ast_hash": "240cd94917c7caa8483d8e75888cc807",
     "semantic_hash": ""
   }
 }

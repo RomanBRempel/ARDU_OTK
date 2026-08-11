@@ -390,6 +390,24 @@ public sealed partial class MainPage : Page
         Frame.Navigate(typeof(ReferenceEditorPage), new ReferenceEditorArgs(_services, profile));
     }
 
+    /// <summary>
+    /// Уводит на экран приёмки.
+    /// </summary>
+    /// <remarks>
+    /// Порт передаётся явно: приёмка держит его монопольно всю процедуру, и
+    /// наблюдательное соединение рабочего экрана она закроет сама. Азимут не
+    /// передаётся — курс борта вводится там же, в момент калибровки компаса.
+    /// </remarks>
+    private void OnStartAcceptanceClick(object sender, RoutedEventArgs e)
+    {
+        if (_selectedReference is not { } reference || _services.ConnectedPort is not { } port)
+        {
+            return;
+        }
+
+        Frame.Navigate(typeof(AcceptancePage), new AcceptanceArgs(_services, reference, port));
+    }
+
     private Button CreateTile(string title, string detail, Action onClick)
     {
         var captionStyle = (Style)Application.Current.Resources["CaptionTextBlockStyle"];
@@ -755,13 +773,15 @@ public sealed partial class MainPage : Page
         if (problems.Count == 0)
         {
             ReadyBar.Severity = InfoBarSeverity.Success;
-            ReadyBar.Message = "Борт на связи, эталон выбран.";
+            ReadyBar.Message = "Борт на связи, эталон выбран. Можно запускать приёмку.";
         }
         else
         {
             ReadyBar.Severity = InfoBarSeverity.Informational;
             ReadyBar.Message = "Не готово: " + string.Join(", ", problems) + ".";
         }
+
+        StartAcceptanceButton.IsEnabled = problems.Count == 0;
 
         // Индикатор работает от связи с бортом и не ждёт выбора эталона:
         // приборы нужны оператору раньше, чем эталон.

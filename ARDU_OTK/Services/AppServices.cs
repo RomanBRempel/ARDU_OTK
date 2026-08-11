@@ -380,6 +380,62 @@ public sealed class AppServices
         },
         ct);
 
+    // --- Приёмка -----------------------------------------------------------
+
+    private AcceptanceSession? _session;
+
+    /// <summary>Идёт приёмка: канал занят сессией, наблюдательное соединение закрыто.</summary>
+    public bool IsAcceptanceRunning => _session is not null;
+
+    /// <summary>
+    /// Начинает приёмку на указанном порту.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Наблюдательное соединение гасится: COM-порт открывается монопольно, и
+    /// сессия держит его до конца приёмки. Держать канал открытым всю приёмку
+    /// обязательно — открывать порт заново на каждый шаг значит терять по
+    /// два десятка секунд на каждом и ловить чужой захват порта в промежутках.
+    /// </remarks>
+    public async Task<AcceptanceSession> BeginAcceptanceAsync(string portName, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+
+        await EndAcceptanceAsync().ConfigureAwait(false);
+        await DisconnectAsync().ConfigureAwait(false);
+
+        _procedureRunning = true;
+
+        var session = new AcceptanceSession();
+        try
+        {
+            await Task.Run(() => session.ConnectAsync(portName, ct), ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+            _procedureRunning = false;
+            throw;
+        }
+
+        _session = session;
+        LinkChanged?.Invoke(this, EventArgs.Empty);
+        return session;
+    }
+
+    /// <summary>Закрывает приёмку и освобождает порт.</summary>
+    public async Task EndAcceptanceAsync()
+    {
+        var session = _session;
+        _session = null;
+
+        if (session is not null)
+        {
+            await session.DisposeAsync().ConfigureAwait(false);
+            _procedureRunning = false;
+            LinkChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     /// <summary>Читает один параметр по уже открытому наблюдательному каналу.</summary>
     /// <exception cref="VehicleLinkException">Связи нет либо борт имени не знает.</exception>
     public Task<double> ReadParameterAsync(string name, CancellationToken ct = default) => Task.Run(

@@ -471,16 +471,14 @@ public sealed record ReferenceParameters(
 /// изделию, ни к конкретной плате.
 /// </summary>
 /// <remarks>
-/// 🔴 <see cref="JigAzimuthDeg"/> допускает <c>null</c>, и это существенно:
-/// 0° — законный азимут (север). Если бы «не настроено» кодировалось нулём,
-/// ненастроенный стенд был бы неотличим от стапеля, направленного на север, и
-/// первая же плата уехала бы с калибровкой на чужой курс.
+/// 🔴 Азимута оснастки здесь нет и быть не может. Курс, по которому калибруется
+/// компас, — это свойство положения борта в момент калибровки, а не свойство
+/// рабочего места: борт можно повернуть между двумя прогонами, и настройка
+/// стенда об этом не узнает. Поэтому курс вводится оператором на экране приёмки,
+/// рядом с самой командой калибровки.
 /// </remarks>
 public sealed record WorkstationSettings
 {
-    /// <summary>ИСТИННЫЙ азимут стапеля, градусы 0…360. <c>null</c> — не настроен.</summary>
-    public double? JigAzimuthDeg { get; init; }
-
     /// <summary>Оператор по умолчанию. Пустая строка — не задан.</summary>
     public string DefaultOperator { get; init; } = string.Empty;
 
@@ -494,24 +492,14 @@ public sealed record WorkstationSettings
     public string LastPortName { get; init; } = string.Empty;
 
     /// <summary>Настроено ли рабочее место настолько, чтобы запускать прогон.</summary>
-    public bool IsComplete =>
-        JigAzimuthDeg is >= 0 and <= 360 && !string.IsNullOrWhiteSpace(DefaultOperator);
+    public bool IsComplete => !string.IsNullOrWhiteSpace(DefaultOperator);
 
     /// <summary>Чего именно не хватает — готовая строка для панели готовности.</summary>
     public IReadOnlyList<string> Problems
     {
         get
         {
-            var problems = new List<string>(2);
-            if (JigAzimuthDeg is null)
-            {
-                problems.Add("не задан истинный азимут стапеля");
-            }
-            else if (JigAzimuthDeg is < 0 or > 360 || double.IsNaN(JigAzimuthDeg.Value))
-            {
-                problems.Add("азимут стапеля вне диапазона 0…360");
-            }
-
+            var problems = new List<string>(1);
             if (string.IsNullOrWhiteSpace(DefaultOperator))
             {
                 problems.Add("не указан оператор");

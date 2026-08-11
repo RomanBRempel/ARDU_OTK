@@ -65,10 +65,6 @@ public sealed partial class SettingsPage : Page
         {
             _settings = await _services.LoadSettingsAsync().ConfigureAwait(true);
 
-            // 🔴 NaN, а не 0: пустой NumberBox означает «не задан», а ноль —
-            // законный азимут (стапель на север). Подставить сюда ноль значило
-            // бы молча настроить стенд на север.
-            AzimuthBox.Value = _settings.JigAzimuthDeg ?? double.NaN;
             OperatorBox.Text = _settings.DefaultOperator;
         }
         catch (Exception ex)
@@ -104,10 +100,8 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        var azimuth = AzimuthBox.Value;
         _settings = _settings with
         {
-            JigAzimuthDeg = double.IsNaN(azimuth) ? null : azimuth,
             DefaultOperator = OperatorBox.Text.Trim(),
         };
 

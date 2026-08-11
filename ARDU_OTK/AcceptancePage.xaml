@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ARDU_OTK.AcceptancePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:ARDU_OTK"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+
+        <!--
+            Расхождение по одному параметру. Ожидаемое и фактическое стоят
+            рядом и подписаны цветом: оператор сверяет их глазами десятками, и
+            догадываться, какое из двух чисел эталонное, он не должен.
+        -->
+        <DataTemplate x:Key="DifferenceTemplate" x:DataType="local:ParameterDifferenceRow">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="{x:Bind Name}" />
+                        <Border
+                            Padding="6,0"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind VisibleBadgeVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="показываемый" />
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Text="{x:Bind ExpectedText}" />
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Text="{x:Bind ActualText}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Detail}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind OutcomeText, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Top"
+                    Click="OnWriteOneClick"
+                    Content="Записать из эталона"
+                    IsEnabled="{x:Bind CanWrite, Mode=OneWay}"
+                    Tag="{x:Bind Name}"
+                    Visibility="{x:Bind WriteButtonVisibility}" />
+            </Grid>
+        </DataTemplate>
+
+        <!--  Шаг приёмки в левой колонке.  -->
+        <DataTemplate x:Key="StepTemplate" x:DataType="local:AcceptanceStepRow">
+            <Grid ColumnSpacing="10" Padding="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid
+                    Width="18"
+                    Height="18"
+                    VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xE91F;"
+                        Visibility="{x:Bind PendingVisibility, Mode=OneWay}" />
+                    <ProgressRing
+                        Width="16"
+                        Height="16"
+                        IsActive="True"
+                        Visibility="{x:Bind RunningVisibility, Mode=OneWay}" />
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind PassVisibility, Mode=OneWay}" />
+                    <FontIcon
+                        FontSize="13"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xEA39;"
+                        Visibility="{x:Bind FailVisibility, Mode=OneWay}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="{x:Bind Title}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Detail, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind DetailVisibility, Mode=OneWay}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!--  Строка журнала.  -->
+        <DataTemplate x:Key="LogTemplate" x:DataType="local:CalibrationLogRow">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    FontFamily="Consolas"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind TimeText}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind Text}"
+                    TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
+
+    </Page.Resources>
+
+    <Grid Padding="20" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!--  Шапка  -->
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="2">
+                <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Приёмка изделия" />
+                <TextBlock
+                    x:Name="SubjectText"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text=""
+                    TextWrapping="Wrap" />
+            </StackPanel>
+            <Button
+                x:Name="CloseButton"
+                Grid.Column="1"
+                VerticalAlignment="Top"
+                Click="OnCloseClick"
+                Content="Закрыть приёмку" />
+        </Grid>
+
+        <InfoBar
+            x:Name="VerdictBar"
+            Grid.Row="1"
+            IsClosable="False"
+            IsOpen="False"
+            Severity="Informational"
+            Title="—" />
+
+        <Grid Grid.Row="2" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="330" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  Слева: шаги и команды оператора  -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="12">
+
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Автоматическая часть" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Вычитывает всю прошивку, сверяет с эталоном, ставит внешний компас первым, переносит расхождения и перезагружает борт. Останавливается на показе того, что не сошлось."
+                                TextWrapping="Wrap" />
+                            <Button
+                                x:Name="StartButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnStartClick"
+                                Content="Старт"
+                                Style="{StaticResource AccentButtonStyle}" />
+
+                            <ItemsControl ItemTemplate="{StaticResource StepTemplate}" ItemsSource="{x:Bind Steps}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Команды оператора" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Выполняются после того, как расхождения разобраны: исправлены записью или приняты как есть."
+                                TextWrapping="Wrap" />
+
+                            <Button
+                                x:Name="LevelButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnLevelClick"
+                                Content="Калибровка уровня"
+                                IsEnabled="False" />
+
+                            <StackPanel Spacing="4">
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="ИСТИННЫЙ курс борта сейчас, градусы"
+                                    TextWrapping="Wrap" />
+                                <NumberBox
+                                    x:Name="HeadingBox"
+                                    HorizontalAlignment="Stretch"
+                                    LargeChange="10"
+                                    Maximum="360"
+                                    Minimum="0"
+                                    PlaceholderText="не задан"
+                                    SmallChange="1"
+                                    SpinButtonPlacementMode="Compact" />
+                                <TextBlock
+                                    x:Name="HeadingHintText"
+                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Курс борта, а не азимут оснастки: борт можно повернуть между прогонами."
+                                    TextWrapping="Wrap" />
+                                <Button
+                                    x:Name="CompassButton"
+                                    HorizontalAlignment="Stretch"
+                                    Click="OnCompassClick"
+                                    Content="Калибровка компаса"
+                                    IsEnabled="False" />
+                            </StackPanel>
+
+                            <Button
+                                x:Name="FinishButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnFinishClick"
+                                Content="Ребут и проверка готовности"
+                                IsEnabled="False" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="Журнал" />
+                                <Button
+                                    Grid.Column="1"
+                                    Click="OnClearLogClick"
+                                    Content="Очистить" />
+                            </Grid>
+                            <ListView
+                                MaxHeight="260"
+                                IsItemClickEnabled="False"
+                                ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                ItemTemplate="{StaticResource LogTemplate}"
+                                ItemsSource="{x:Bind LogEntries}"
+                                SelectionMode="None" />
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!--  Справа: расхождения  -->
+            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Расхождения с эталоном" />
+                            <TextBlock
+                                x:Name="DiffSummaryText"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Сверка не выполнялась."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button
+                            x:Name="WriteAllButton"
+                            Grid.Column="1"
+                            Click="OnWriteAllClick"
+                            Content="Записать все из эталона"
+                            IsEnabled="False" />
+                        <Button
+                            x:Name="AcceptButton"
+                            Grid.Column="2"
+                            Click="OnAcceptClick"
+                            Content="Принять как есть"
+                            IsEnabled="False" />
+                    </Grid>
+
+                    <InfoBar
+                        x:Name="DiffBar"
+                        Grid.Row="1"
+                        IsClosable="False"
+                        IsOpen="False"
+                        Severity="Informational"
+                        Title="Сверка" />
+
+                    <StackPanel
+                        x:Name="ProgressPanel"
+                        Grid.Row="2"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Visibility="Collapsed">
+                        <ProgressRing
+                            x:Name="BusyRing"
+                            Width="16"
+                            Height="16"
+                            IsActive="False" />
+                        <TextBlock
+                            x:Name="ProgressText"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="" />
+                    </StackPanel>
+
+                    <ListView
+                        x:Name="DiffList"
+                        Grid.Row="3"
+                        IsItemClickEnabled="False"
+                        ItemContainerStyle="{StaticResource RowContainerStyle}"
+                        ItemTemplate="{StaticResource DifferenceTemplate}"
+                        ItemsSource="{x:Bind Differences}"
+                        SelectionMode="None" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
