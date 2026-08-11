@@ -582,19 +582,32 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
-                    <StackPanel Spacing="14">
+                    <!--
+                        🔴 Приборка компактная: прибор вдвое ниже, цифры стоят
+                        справа от него, а не под ним. Прибор нужен для беглого
+                        взгляда «стоит ровно или нет» — на это хватает полосы
+                        вдвое ниже, а освободившаяся высота уходит списку
+                        расхождений, ради которого экран и открыт.
+                    -->
+                    <StackPanel Spacing="8">
 
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Положение" />
 
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
                         <Border
                             Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
                             CornerRadius="6">
-                            <Grid x:Name="HudViewport" Height="170" SizeChanged="OnHudSizeChanged">
+                            <Grid x:Name="HudViewport" Height="86" SizeChanged="OnHudSizeChanged">
                                 <Grid.Clip>
                                     <RectangleGeometry x:Name="HudClip" />
                                 </Grid.Clip>
@@ -613,7 +626,12 @@
                         </Border>
 
                         <!--  Цифры крупно и в одном месте, а не по углам прибора  -->
-                        <Grid ColumnSpacing="12" RowSpacing="10">
+                        <Grid
+                            Grid.Column="1"
+                            MinWidth="330"
+                            VerticalAlignment="Center"
+                            ColumnSpacing="14"
+                            RowSpacing="4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
@@ -632,7 +650,7 @@
                                 <TextBlock
                                     x:Name="HudRollText"
                                     FontFamily="Consolas"
-                                    FontSize="19"
+                                    FontSize="17"
                                     FontWeight="SemiBold"
                                     Text="—" />
                             </StackPanel>
@@ -645,7 +663,7 @@
                                 <TextBlock
                                     x:Name="HudPitchText"
                                     FontFamily="Consolas"
-                                    FontSize="19"
+                                    FontSize="17"
                                     FontWeight="SemiBold"
                                     Text="—" />
                             </StackPanel>
@@ -658,7 +676,7 @@
                                 <TextBlock
                                     x:Name="HudYawText"
                                     FontFamily="Consolas"
-                                    FontSize="19"
+                                    FontSize="17"
                                     FontWeight="SemiBold"
                                     Text="—" />
                             </StackPanel>
@@ -671,7 +689,7 @@
                                 <TextBlock
                                     x:Name="HudVoltageText"
                                     FontFamily="Consolas"
-                                    FontSize="19"
+                                    FontSize="17"
                                     FontWeight="SemiBold"
                                     Text="—" />
                             </StackPanel>
@@ -684,7 +702,7 @@
                                 <TextBlock
                                     x:Name="HudCurrentText"
                                     FontFamily="Consolas"
-                                    FontSize="19"
+                                    FontSize="17"
                                     FontWeight="SemiBold"
                                     Text="—" />
                             </StackPanel>
@@ -702,6 +720,7 @@
                                     TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Grid>
+                        </Grid>
 
                         <!--
                             GPS. Вид решения словом, а не числом: «3» не
@@ -710,10 +729,10 @@
                             спутников о качестве решения судить нельзя.
                         -->
                         <Border
-                            Padding="10,8"
+                            Padding="10,6"
                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                             CornerRadius="4">
-                            <StackPanel Spacing="4">
+                            <StackPanel Spacing="2">
                                 <Grid ColumnSpacing="10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />

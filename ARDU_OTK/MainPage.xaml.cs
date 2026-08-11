@@ -1272,12 +1272,19 @@ public sealed partial class MainPage : Page
     private void UpdateAcceptanceCommands()
     {
         var live = _session is not null && !_acceptanceBusy;
-        var resolved = _diffAccepted
-            || (Differences.Count > 0 && Differences.All(static d => d.OutcomeVisibility == Visibility.Visible))
-            || (Differences.Count == 0 && _session is not null);
+
+        // 🔴 Разобранными считаются только настоящие расхождения. В списке
+        // вперемешку лежат и совпавшие наблюдаемые имена — у них исхода не
+        // бывает никогда, и требование «исход у каждой строки» держало бы
+        // калибровки заблокированными вечно.
+        var outstanding = Differences
+            .Where(static d => d.Source is not null && d.OutcomeVisibility == Visibility.Collapsed)
+            .ToArray();
+
+        var resolved = _diffAccepted || outstanding.Length == 0;
 
         WriteAllButton.IsEnabled = live && Differences.Any(static d => d.CanWrite);
-        AcceptDiffButton.IsEnabled = live && Differences.Count > 0 && !_diffAccepted;
+        AcceptDiffButton.IsEnabled = live && outstanding.Length > 0 && !_diffAccepted;
         ApplyAllScriptsButton.IsEnabled = live && ScriptDiffs.Any(static r => r.CanApply);
 
         LevelButton.IsEnabled = live && resolved;
