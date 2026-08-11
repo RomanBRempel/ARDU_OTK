@@ -619,9 +619,16 @@ public sealed partial class MainPage : Page
             var primary = await _session.MakeExternalCompassPrimaryAsync(progress, ct).ConfigureAwait(true);
             SetCompassBusy(false);
 
-            AppendLog(primary.Ok ? MavSeverity.Info : MavSeverity.Error, primary.Message);
+            AppendLog(
+                primary.IsWarning ? MavSeverity.Warning : primary.Ok ? MavSeverity.Info : MavSeverity.Error,
+                primary.Message);
+
             if (!primary.Ok)
             {
+                // Останавливаемся только на настоящем отказе: борт не принял
+                // приоритеты либо не вернулся после перезагрузки. Отсутствие
+                // компасов отказом не считается — оно приходит предупреждением
+                // и приёмку не прерывает.
                 ShowCompare(plan, "Приёмка остановлена: " + primary.Message);
                 return;
             }

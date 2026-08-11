@@ -14,7 +14,21 @@ namespace ARDU_OTK.Services.Fc;
 /// <param name="Message">Что именно произошло — для оператора и протокола.</param>
 public sealed record StepResult(bool Ok, string Message)
 {
+    /// <summary>
+    /// Шаг не выполнен, но приёмку это не останавливает.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Третий исход существует затем, чтобы отсутствие условия не выдавалось
+    /// за отказ изделия. Нет компасов — работать по-прежнему можно: параметры
+    /// сверяются и переносятся, а очередь компасов выставлять просто не на чем.
+    /// Останавливать за это всю приёмку значит запрещать оператору делать то,
+    /// что делать можно, и прятать от него настоящую причину за словом «отказ».
+    /// </remarks>
+    public bool IsWarning { get; init; }
+
     public static StepResult Pass(string message) => new(true, message);
+
+    public static StepResult Warn(string message) => new(true, message) { IsWarning = true };
 
     public static StepResult Fail(string message) => new(false, message);
 }
@@ -281,20 +295,29 @@ public sealed class AcceptanceSession : IAsyncDisposable
             slots.Add(await ReadSlotAsync(slot, ct).ConfigureAwait(false));
         }
 
+        // 🔴 Отсутствие компасов приёмку не останавливает. Очередь выставлять
+        // не на чем — значит, шаг пропускается вместе с его перезагрузкой, а
+        // не объявляется отказом изделия: параметры и скрипты сверяются и
+        // переносятся по-прежнему. Сказать об этом обязательно: изделие,
+        // сданное без компасов, летать не будет, и оператор должен узнать об
+        // этом от программы, а не от прошивки при первом взлёте.
         var present = slots.Where(static s => s.IsPresent).ToArray();
         if (present.Length == 0)
         {
-            return StepResult.Fail(
-                "Борт не видит ни одного компаса: все COMPASS_DEV_IDx нулевые. Ставить первым нечего.");
+            return StepResult.Warn(
+                "Борт не видит ни одного компаса: все COMPASS_DEV_IDx нулевые. Очередь выставлять не на чем — "
+              + "шаг пропущен вместе с перезагрузкой. Остальная приёмка идёт своим чередом, но изделие в таком "
+              + "виде негодно: перед сдачей компас должен быть подключён.");
         }
 
         var external = present.FirstOrDefault(s => CompassIdentity.IsExternal(CompassIdentity.Classify(s)) == true);
         if (external is null)
         {
             var described = string.Join("; ", present.Select(CompassIdentity.Describe));
-            return StepResult.Fail(
+            return StepResult.Warn(
                 "Среди найденных компасов нет ни одного внешнего: " + described
-              + ". Технологическая карта требует внешний компас первым в очереди.");
+              + ". Ставить первым нечего — шаг пропущен вместе с перезагрузкой. Технологическая карта требует "
+              + "внешний компас первым в очереди, и без него приёмку завершать нельзя.");
         }
 
         if (present[0].Slot == external.Slot && slots[0].DeviceId.Raw == external.DeviceId.Raw)

@@ -1056,7 +1056,14 @@ public sealed partial class ReferenceEditorPage : Page
             problems.Add("допуск расхождения вне диапазона 0,1…90°");
         }
 
-        problems.AddRange(TopologyProblems());
+        // 🔴 Состав компасов заведению эталона не мешает и в список причин
+        // отказа не входит. Требование «внешний компас первым» — условие
+        // приёмки изделия, а не условие снятия эталона: эталон снимают и с
+        // образца, на который внешний компас ещё не поставили, и с изделия,
+        // где его нет вовсе. Приёмка это требование проверяет сама и без него
+        // останавливается — дублировать её проверку здесь значит запретить
+        // законную работу за то, чего на этом шаге ещё не должно быть.
+        RenderTopologyNotice();
 
         var ready = problems.Count == 0 && !_saving && !_snapshotting && !_readingScripts;
 
@@ -1076,42 +1083,42 @@ public sealed partial class ReferenceEditorPage : Page
     /// отказом не является: прошивка определяет внешность сама, и сверять её с
     /// эталоном процедура в этом случае просто не станет.
     /// </remarks>
-    private IEnumerable<string> TopologyProblems()
+    private void RenderTopologyNotice()
     {
         if (_parameters is null)
         {
-            yield break;
+            TopologyBar.IsOpen = false;
+            return;
         }
 
         var slot1 = Slots.FirstOrDefault(r => r.Slot == CompassIdentity.MinSlot);
         if (slot1 is null || !slot1.IsPresent)
         {
             TopologyBar.Message =
-                "Эталон не описывает компас в слоте 1 (COMPASS_DEV_ID нулевой или отсутствует). "
-              + "Приоритетного компаса нет — сверять на борту будет нечего.";
-            TopologyBar.Severity = InfoBarSeverity.Error;
+                "Эталон не описывает компас в слоте 1: COMPASS_DEV_ID нулевой или отсутствует. Завести эталон "
+              + "можно — снимок сделан с изделия, каким оно есть. Но перед приёмкой внешний компас должен быть "
+              + "подключён: процедура ставит его первым в очередь и без него остановится.";
+            TopologyBar.Severity = InfoBarSeverity.Warning;
             TopologyBar.IsOpen = true;
-            yield return "в эталоне нет компаса в слоте 1";
-            yield break;
+            return;
         }
 
         switch (slot1.IsExternal)
         {
             case false:
                 TopologyBar.Message =
-                    $"Слот 1 эталона: {slot1.DeviceText} — внутренний компас. "
-                  + "Технологическая карта требует в первом слоте внешний. По такому эталону каждый прогон "
-                  + "остановится на сверке состава компасов.";
-                TopologyBar.Severity = InfoBarSeverity.Error;
+                    $"Слот 1 эталона: {slot1.DeviceText} — внутренний компас. Завести эталон можно: очередь "
+                  + "компасов выставляет сама процедура из собственных COMPASS_DEV_IDx целевой платы, а не из "
+                  + "эталона. Внешний компас при этом на изделии быть обязан — без него приёмка остановится.";
+                TopologyBar.Severity = InfoBarSeverity.Warning;
                 TopologyBar.IsOpen = true;
-                yield return "в слоте 1 эталона внутренний компас";
                 break;
 
             case null:
                 TopologyBar.Message =
-                    "Внешность компаса в слоте 1 по эталону не определяется: в файле нет COMPASS_EXTERNAL "
+                    "Внешность компаса в слоте 1 по эталону не определяется: в наборе нет COMPASS_EXTERNAL "
                   + "либо его значение противоречит типу шины. Прошивка определит внешность сама, и процедура "
-                  + "проверит её уже на борту — заводить эталон можно.";
+                  + "проверит её уже на борту.";
                 TopologyBar.Severity = InfoBarSeverity.Warning;
                 TopologyBar.IsOpen = true;
                 break;

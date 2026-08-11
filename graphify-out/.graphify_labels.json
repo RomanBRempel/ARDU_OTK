@@ -196,5 +196,16 @@
   "194": "Task",
   "195": "VehicleLiveState",
   "196": "Visibility",
-  "197": ".PostCalibrationNames"
+  "197": ".PostCalibrationNames",
+  "198": "EventArgs",
+  "199": "FullParameterSet",
+  "200": "InfoBarSeverity",
+  "201": "IReadOnlyList",
+  "202": "List",
+  "203": "ParameterProgress",
+  "204": "ParameterTransferPlan",
+  "205": "StatusTextEvent",
+  "206": "string",
+  "207": "Task",
+  "208": "WorkstationSettings"
 }
