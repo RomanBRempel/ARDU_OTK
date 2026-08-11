@@ -88,10 +88,18 @@
         -->
         <DataTemplate x:Key="DifferenceTemplate" x:DataType="local:ParameterDifferenceRow">
             <Grid ColumnSpacing="10" Padding="0,3">
+                <!--
+                    🔴 Колонка действия постоянной ширины, а не по содержимому.
+                    «По содержимому» она схлопывается в ноль на строках без
+                    кнопки, и колонки значений разъезжаются от строки к строке:
+                    столбик, по которому расхождение читается не глядя,
+                    перестаёт быть столбиком. Место под кнопку держится всегда,
+                    даже когда кнопки нет.
+                -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="96" />
                 </Grid.ColumnDefinitions>
 
                 <Grid Width="14" VerticalAlignment="Center">
@@ -185,12 +193,13 @@
 
                 <Button
                     Grid.Column="2"
-                    VerticalAlignment="Top"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Center"
                     Click="OnWriteOneClick"
                     Content="Записать"
                     IsEnabled="{x:Bind CanWrite, Mode=OneWay}"
-                    Tag="{x:Bind Name}"
-                    Visibility="{x:Bind WriteButtonVisibility}" />
+                    Visibility="{x:Bind WriteButtonVisibility}"
+                    Tag="{x:Bind Name}" />
             </Grid>
         </DataTemplate>
 
@@ -240,10 +249,11 @@
         -->
         <DataTemplate x:Key="ScriptTemplate" x:DataType="local:ScriptDifferenceRow">
             <Grid ColumnSpacing="8" Padding="0,3">
+                <!--  Колонка действия постоянной ширины — см. строку параметра.  -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="84" />
                 </Grid.ColumnDefinitions>
 
                 <Grid Width="14" VerticalAlignment="Top">
@@ -1121,6 +1131,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="92" />
                                     <ColumnDefinition Width="92" />
+                                    <ColumnDefinition Width="106" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
