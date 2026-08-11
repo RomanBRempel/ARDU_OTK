@@ -61,5 +61,21 @@ $RECYCLE.BIN/
 appsettings.Development.json
 secrets.json
 
-## Локальные артефакты инструментов
-graphify-out/
+## Граф знаний (graphify)
+# Граф — общий артефакт репозитория: graph.json, отчёт, манифест, метки и кэш
+# извлечения трекаются, чтобы облачный routine и любая машина работали с одним
+# и тем же графом и не переизвлекали неизменившиеся документы заново.
+# Всё, что машинно-специфично или пересобирается из graph.json, — игнорируется.
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/manifest.json
+!graphify-out/.graphify_labels.json
+!graphify-out/cache/
+# Регенерируется из graph.json командой `graphify export html` (~1.5 МБ на коммит)
+graphify-out/graph.html
+# Локальный счётчик токенов, у каждой машины свой
+graphify-out/cost.json
+# Пути к локальному интерпретатору и корню сканирования — машинно-специфичны
+graphify-out/.graphify_python
+graphify-out/.graphify_root
