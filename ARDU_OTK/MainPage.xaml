@@ -405,22 +405,23 @@
             <!--  Верх: борт слева, HUD посредине, эталон справа. Боковые панели равны.  -->
             <Grid ColumnSpacing="16">
                 <!--
-                    Порядок колонок: приборы слева, как в Mission Planner —
-                    оператор, пришедший с привычной станции, ищет горизонт в
-                    левом верхнем углу. Дальше эталон и борт по 20 %: боковые
-                    панели несут по три строки текста, и отданная им треть
-                    экрана простаивала бы там, где нужны горизонт и расхождения.
+                    Приборы слева, как в Mission Planner — оператор, пришедший
+                    с привычной станции, ищет горизонт в левом верхнем углу.
+                    Справа узкая полоса выбора: борт, под ним эталон. Порядок
+                    сверху вниз повторяет порядок подготовки — сначала связь,
+                    потом эталон, — чтобы взгляд не прыгал снизу вверх.
                 -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="10*" />
-                    <ColumnDefinition Width="5*" />
-                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="6*" />
                 </Grid.ColumnDefinitions>
+
+                <!--  Правая полоса: борт, под ним эталон.  -->
+                <StackPanel Grid.Column="1" Spacing="14">
 
                 <!--  Полётный контроллер  -->
                 <StackPanel
                     x:Name="FcSelector"
-                    Grid.Column="2"
                     VerticalAlignment="Top">
                     <TextBlock
                         Margin="2,0,0,6"
@@ -444,6 +445,18 @@
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Text="Нажмите, чтобы выбрать"
                                 TextWrapping="Wrap" />
+
+                            <!--
+                                Флаг живёт на самой плашке борта, а не строкой
+                                под ней: он свойство этого выбора, а не
+                                отдельная настройка стенда, и в стороне читался
+                                бы как «что-то про приложение вообще».
+                            -->
+                            <CheckBox
+                                x:Name="AutoConnectCheck"
+                                Margin="0,6,0,-6"
+                                Click="OnAutoConnectChanged"
+                                Content="Подключаться автоматически" />
                         </StackPanel>
                     </Button>
 
@@ -482,18 +495,11 @@
                         Margin="0,8,0,0"
                         HorizontalAlignment="Left"
                         IsActive="False" />
-
-                    <CheckBox
-                        x:Name="AutoConnectCheck"
-                        Margin="0,4,0,0"
-                        Click="OnAutoConnectChanged"
-                        Content="Подключаться автоматически" />
                 </StackPanel>
 
                 <!--  Эталон  -->
                 <StackPanel
                     x:Name="ReferenceSelector"
-                    Grid.Column="1"
                     VerticalAlignment="Top">
                     <TextBlock
                         Margin="2,0,0,6"
@@ -567,9 +573,10 @@
                         </StackPanel>
                     </primitives:Popup>
                 </StackPanel>
+                </StackPanel>
 
                 <!--
-                    Посредине: положение борта. Шкала намеренно разрежена —
+                    Слева: положение борта. Шкала намеренно разрежена —
                     ступени через 10°, подписи с одной стороны, ленты курса нет.
                     В полосе такой ширины плотная символика нечитаема.
                 -->

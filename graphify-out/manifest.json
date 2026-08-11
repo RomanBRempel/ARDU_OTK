@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786462307.754129,
-    "ast_hash": "28216cf9363fba08b949406903976ae6",
+    "mtime": 1786463092.212,
+    "ast_hash": "700769e75605ef80a21321e85f46fe5f",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786462297.7265866,
-    "ast_hash": "e1120cc6bc55eff598344dc3e1aa5424",
+    "mtime": 1786463034.2747428,
+    "ast_hash": "f33572755f5cd6cec02180538be51ce7",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {

@@ -1,7 +1,7 @@
 # Graph Report - ARDU_OTK  (2026-08-11)
 
 ## Corpus Check
-- 78 files · ~153,562 words
+- 78 files · ~153,656 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3e167ec0`
+- Built from commit: `35e28266`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
