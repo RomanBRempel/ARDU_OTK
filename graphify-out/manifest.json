@@ -1,8 +1,8 @@
 {
   ".claude/settings.json": {
-    "mtime": 1786432253.1996891,
-    "ast_hash": "8ca9902421b04391482b25f2eba7c314",
-    "semantic_hash": "8ca9902421b04391482b25f2eba7c314"
+    "mtime": 1786432913.119437,
+    "ast_hash": "dcf2b9d19d783ab3b16bd0abcbb914ce",
+    "semantic_hash": "dcf2b9d19d783ab3b16bd0abcbb914ce"
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
     "mtime": 1786363782.727032,
@@ -180,9 +180,9 @@
     "semantic_hash": "aef6f54dd2b4717bf24e994ea831b5a4"
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786432277.879803,
-    "ast_hash": "bf134630af955d0bbaf284b2f591c26b",
-    "semantic_hash": "bf134630af955d0bbaf284b2f591c26b"
+    "mtime": 1786432285.380833,
+    "ast_hash": "d8dee099f021be58f155ae51f16531a3",
+    "semantic_hash": "d8dee099f021be58f155ae51f16531a3"
   },
   "ARDU_OTK/MainWindow.xaml": {
     "mtime": 1786390515.0538812,
@@ -403,5 +403,20 @@
     "mtime": 1786390691.3528237,
     "ast_hash": "94dfd2f40f4f7639f76c3d4600d504ff",
     "semantic_hash": "94dfd2f40f4f7639f76c3d4600d504ff"
+  },
+  ".vscode/launch.json": {
+    "mtime": 1786425404.9324703,
+    "ast_hash": "68fefb0dc72c0ce13277cc02edea22be",
+    "semantic_hash": "68fefb0dc72c0ce13277cc02edea22be"
+  },
+  ".vscode/tasks.json": {
+    "mtime": 1786425349.2567232,
+    "ast_hash": "198f5ffac472a31d62cd9645afdb68dd",
+    "semantic_hash": "198f5ffac472a31d62cd9645afdb68dd"
+  },
+  "ARDU_OTK/Services/Fc/CompassParameterSnapshot.cs": {
+    "mtime": 1786424624.164474,
+    "ast_hash": "af76c95c1bf382ff330c56bce2ed194c",
+    "semantic_hash": "af76c95c1bf382ff330c56bce2ed194c"
   }
 }
