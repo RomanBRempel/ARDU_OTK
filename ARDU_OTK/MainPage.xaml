@@ -1267,6 +1267,7 @@
                 -->
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -1275,8 +1276,25 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
+                    <!--
+                        🔴 Идентификатор борта обязателен: прогон без него не
+                        привязать к изделию, и вся история сдачи превращается в
+                        список безымянных записей, по которому нельзя ответить
+                        на единственный вопрос, ради которого реестр и ведётся, —
+                        чем сдавали вот эту плату.
+                    -->
+                    <TextBox
+                        x:Name="UnitIdBox"
+                        MinWidth="180"
+                        VerticalAlignment="Center"
+                        Header=""
+                        PlaceholderText="номер борта"
+                        TextChanged="OnUnitIdChanged"
+                        ToolTipService.ToolTip="Серийный номер платы. По нему прогон попадает в историю изделия." />
+
                     <Button
                         x:Name="StartAcceptanceButton"
+                        Grid.Column="1"
                         HorizontalAlignment="Stretch"
                         Click="OnStartAcceptanceClick"
                         Content="Старт приёмки"
@@ -1291,20 +1309,20 @@
                     -->
                     <Button
                         x:Name="LevelButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Click="OnLevelClick"
                         Content="Калибровка уровня"
                         IsEnabled="False" />
 
                     <TextBlock
-                        Grid.Column="2"
+                        Grid.Column="3"
                         VerticalAlignment="Center"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="курс борта, °" />
                     <NumberBox
                         x:Name="HeadingBox"
-                        Grid.Column="3"
+                        Grid.Column="4"
                         MinWidth="120"
                         VerticalAlignment="Center"
                         GotFocus="OnHeadingEdited"
@@ -1317,14 +1335,14 @@
 
                     <Button
                         x:Name="CompassCalButton"
-                        Grid.Column="4"
+                        Grid.Column="5"
                         Click="OnCompassCalClick"
                         Content="Калибровка компаса"
                         IsEnabled="False" />
 
                     <Button
                         x:Name="FinishButton"
-                        Grid.Column="5"
+                        Grid.Column="6"
                         Click="OnFinishClick"
                         Content="Ребут и проверка"
                         IsEnabled="False" />

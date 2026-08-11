@@ -927,6 +927,52 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     /// <summary>
+    /// Привязывает открытый прогон к эталону, по которому он идёт.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Без этой привязки <c>Run.ReferenceId</c> оставался пустым, счётчик
+    /// прогонов эталона всегда показывал ноль, и заморозка допусков и раскладки
+    /// после первой сданной платы не срабатывала никогда: эталон, по которому
+    /// уже сдавали, можно было переписать, и реестр начинал утверждать, что
+    /// платы сдавали по набору, которого в тот момент не существовало.
+    /// </para>
+    /// <para>
+    /// Имя эталона сохраняется снимком на момент прогона: имя правится всегда,
+    /// а протокол обязан называть эталон так, как он назывался при сдаче.
+    /// </para>
+    /// </remarks>
+    public async Task AttachReferenceToRunAsync(
+        long runId,
+        long referenceId,
+        string referenceName,
+        CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            await ExecuteAsync(
+                connection,
+                null,
+                """
+                UPDATE Run SET ReferenceId = $referenceId, ReferenceNameAtRun = $name
+                WHERE Id = $runId;
+                """,
+                ct,
+                ("$referenceId", referenceId),
+                ("$name", referenceName ?? string.Empty),
+                ("$runId", runId)).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
     /// Скрипты эталона в порядке пути.
     /// </summary>
     /// <remarks>

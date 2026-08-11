@@ -552,6 +552,23 @@ public sealed partial class MainPage : Page
     private bool _acceptanceBusy;
     private bool _diffAccepted;
 
+    /// <summary>
+    /// Открытый прогон в реестре. <c>0</c> — прогон не открыт.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Прогон открывается в начале приёмки и закрывается её итогом. Открытая
+    /// строка в реестре хуже строки с отказом: она блокирует обновление
+    /// приложения и врёт про состояние стенда, поэтому закрытие идёт даже при
+    /// сбое и при отмене.
+    /// </remarks>
+    private long _runId;
+
+    private DateTimeOffset _runStartedUtc;
+
+    private readonly List<CheckResult> _runChecks = new();
+
+    private void OnUnitIdChanged(object sender, TextChangedEventArgs e) => RenderAll();
+
     private void OnStartAcceptanceClick(object sender, RoutedEventArgs e)
     {
         if (_acceptanceBusy)
@@ -603,6 +620,11 @@ public sealed partial class MainPage : Page
         try
         {
             await CloseSessionAsync().ConfigureAwait(true);
+
+            // Прогон открывается в реестре до касания железа: строка о прогоне,
+            // который начали, обязана существовать даже если он оборвётся на
+            // первом же шаге.
+            await OpenRunAsync(reference).ConfigureAwait(true);
 
             AppendLog(MavSeverity.Info, "Приёмка: открываю канал связи…");
             _session = await _services.BeginAcceptanceAsync(port, ct).ConfigureAwait(true);
@@ -707,6 +729,7 @@ public sealed partial class MainPage : Page
             // дальше по нему пойдут команды оператора.
             if (aborted)
             {
+                await CloseRunAsync(false, "Приёмка прервана.").ConfigureAwait(true);
                 await ReleaseAcceptanceAsync().ConfigureAwait(true);
             }
         }
@@ -1240,6 +1263,16 @@ public sealed partial class MainPage : Page
             ReadyBar.Message = readiness.Ready
                 ? "ГОДЕН: борт готов быть взведённым."
                 : readiness.Detail;
+
+            await RecordCheckAsync(
+                "arm.readiness",
+                "Готовность к взведению",
+                readiness.Ready ? CheckOutcome.Pass : CheckOutcome.Fail,
+                readiness.Detail).ConfigureAwait(true);
+
+            // Проверка готовности — последний шаг приёмки, её итог и есть
+            // вердикт прогона.
+            await CloseRunAsync(readiness.Ready, readiness.Detail).ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -1309,6 +1342,123 @@ public sealed partial class MainPage : Page
     {
         await _services.EndAcceptanceAsync().ConfigureAwait(true);
         _session = null;
+    }
+
+    // --- Прогон в реестре ---------------------------------------------------
+
+    /// <summary>
+    /// Открывает прогон в реестре и привязывает его к эталону.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Открывается до касания железа: строка о прогоне, который начали,
+    /// обязана существовать, даже если он оборвётся на первом же шаге.
+    /// Прерванный прогон в истории борта — это факт, а его отсутствие — ложь.
+    /// </remarks>
+    private async Task OpenRunAsync(CalibrationReference reference)
+    {
+        await CloseRunAsync(passed: false, "Прогон не завершён.").ConfigureAwait(true);
+
+        _runChecks.Clear();
+        _runStartedUtc = DateTimeOffset.UtcNow;
+
+        var request = new CalibrationRequest(
+            PortName: _services.ConnectedPort ?? string.Empty,
+            ReferenceFilePath: reference.SourceName,
+            JigAzimuthDeg: double.IsNaN(HeadingBox.Value) ? 0 : HeadingBox.Value,
+            UnitId: UnitIdBox.Text.Trim(),
+            Operator: _settings.DefaultOperator,
+            Roles: reference.ToRoleMap());
+
+        try
+        {
+            _runId = await _services.Store
+                .BeginRunAsync(request, reference.ParamHash, _services.Updates.CurrentVersion ?? "0.0.0-dev")
+                .ConfigureAwait(true);
+
+            await _services.Store
+                .AttachReferenceToRunAsync(_runId, reference.Id, reference.Name)
+                .ConfigureAwait(true);
+
+            AppendLog(MavSeverity.Info,
+                $"Прогон {_runId} открыт в реестре: борт {request.UnitId}, эталон «{reference.Name}».");
+        }
+        catch (Exception ex)
+        {
+            // Отказ реестра не должен помешать сдать плату: оператор у стенда,
+            // деталь в приспособлении. Но молчать об этом нельзя — прогон
+            // останется незаписанным.
+            _runId = 0;
+            AppendLog(MavSeverity.Error,
+                "Прогон не открыт в реестре: " + ex.Message + " Приёмка пойдёт, но в историю не попадёт.");
+        }
+    }
+
+    /// <summary>Дописывает проверку и в реестр, и в итог прогона.</summary>
+    private async Task RecordCheckAsync(string id, string title, CheckOutcome outcome, string detail)
+    {
+        var check = new CheckResult(id, title, outcome, detail);
+        _runChecks.Add(check);
+
+        if (_runId == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _services.Store.RecordCheckAsync(_runId, check).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            AppendLog(MavSeverity.Error, $"Проверка «{title}» не записана в реестр: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Закрывает прогон итогом.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Закрывается при любом исходе — успехе, отказе, отмене, сбое.
+    /// Открытая строка в реестре хуже строки с отказом: она блокирует
+    /// обновление приложения и врёт про состояние стенда.
+    /// </remarks>
+    private async Task CloseRunAsync(bool passed, string reason)
+    {
+        if (_runId == 0)
+        {
+            return;
+        }
+
+        var runId = _runId;
+        _runId = 0;
+
+        var result = new CalibrationRunResult(
+            passed,
+            passed ? null : CalibrationStage.Acceptance,
+            passed ? null : reason,
+            _runChecks.ToArray(),
+            Array.Empty<ParamWriteRecord>(),
+            Array.Empty<CompassSlot>(),
+            Array.Empty<CompassSlot>(),
+            Array.Empty<StatusTextEvent>(),
+            _session?.FirmwareBanner,
+            _runStartedUtc,
+            DateTimeOffset.UtcNow)
+        {
+            RunId = runId,
+            PortName = _services.ConnectedPort ?? string.Empty,
+        };
+
+        try
+        {
+            await _services.Store.CompleteRunAsync(runId, result).ConfigureAwait(true);
+            AppendLog(passed ? MavSeverity.Info : MavSeverity.Warning,
+                $"Прогон {runId} закрыт в реестре: {(passed ? "ГОДЕН" : "не пройден")}. {reason}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog(MavSeverity.Error, $"Прогон {runId} не закрыт в реестре: {ex.Message}");
+        }
     }
 
     private Button CreateTile(string title, string detail, Action onClick)
@@ -1701,6 +1851,14 @@ public sealed partial class MainPage : Page
         if (_selectedReference is null)
         {
             problems.Add("не выбран эталон");
+        }
+
+        // 🔴 Без номера борта прогон не привязать к изделию, и история сдачи
+        // превращается в список безымянных записей, по которому нельзя
+        // ответить на единственный вопрос, ради которого реестр и ведётся.
+        if (UnitIdBox.Text.Trim().Length == 0)
+        {
+            problems.Add("не указан номер борта");
         }
 
         if (problems.Count == 0)
