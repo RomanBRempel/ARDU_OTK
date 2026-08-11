@@ -272,7 +272,10 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
     private static readonly TimeSpan ParamStreamIdle = TimeSpan.FromSeconds(4);
 
     /// <inheritdoc />
-    public async Task<FullParameterSet> ReadAllParamsAsync(IProgress<string>? progress, CancellationToken ct)
+    public async Task<FullParameterSet> ReadAllParamsAsync(
+        IProgress<string>? progress,
+        IProgress<ParameterProgress>? detail,
+        CancellationToken ct)
     {
         EnsureConnected();
 
@@ -311,6 +314,8 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                 {
                     seen.Add(message.ParamIndex);
                 }
+
+                detail?.Report(new ParameterProgress(message.ParamId, values.Count, declared));
 
                 if (values.Count % 50 == 0)
                 {

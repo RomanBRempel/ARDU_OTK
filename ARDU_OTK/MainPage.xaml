@@ -66,6 +66,71 @@
             <Setter Property="BorderBrush" Value="{StaticResource TileDangerBrush}" />
         </Style>
 
+        <!--
+            Расхождение по одному параметру. Ожидаемое и фактическое стоят
+            рядом и разведены цветом: оператор сверяет их десятками, и
+            догадываться, какое из двух чисел эталонное, он не должен.
+        -->
+        <DataTemplate x:Key="DifferenceTemplate" x:DataType="local:ParameterDifferenceRow">
+            <Grid ColumnSpacing="10" Padding="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="1">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind Name}" />
+                        <Border
+                            Padding="5,0"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind VisibleBadgeVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="показываемый" />
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ExpectedText}" />
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ActualText}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind OutcomeText, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Top"
+                    Click="OnWriteOneClick"
+                    Content="Записать"
+                    IsEnabled="{x:Bind CanWrite, Mode=OneWay}"
+                    Tag="{x:Bind Name}"
+                    Visibility="{x:Bind WriteButtonVisibility}" />
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="MagTemplate" x:DataType="local:CompassRow">
             <Grid Padding="0,4" ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
@@ -84,7 +149,51 @@
                     Glyph="&#xE7BA;"
                     Visibility="{x:Bind WarnVisibility}" />
                 <StackPanel Grid.Column="1">
-                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Title}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Title}" />
+
+                        <!--
+                            Метка вида компаса. Внешний, внутренний и «судить
+                            нельзя» окрашены по-разному: последнее не должно
+                            выглядеть как исправное состояние.
+                        -->
+                        <Border
+                            Padding="6,0"
+                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind ExternalVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="внешний" />
+                        </Border>
+                        <Border
+                            Padding="6,0"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind InternalVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="внутренний" />
+                        </Border>
+                        <Border
+                            Padding="6,0"
+                            Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind UnknownKindVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="{x:Bind KindText}" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind DeviceText}"
+                        TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
@@ -120,15 +229,33 @@
         </DataTemplate>
     </Page.Resources>
 
-    <ScrollViewer>
-        <StackPanel Padding="20" Spacing="14">
+    <!--
+        🔴 Прокрутки у рабочего экрана нет намеренно. Оператор у стенда должен
+        видеть приборы, компасы и расхождения одновременно: то, что уехало за
+        нижний край, при принятии решения не участвует, а прокручивать экран
+        рукой, занятой платой, он не станет. Поэтому окно делится на три
+        строки — верх и низ по содержимому, середина забирает остаток, — а
+        длинные списки прокручиваются внутри своих панелей.
+    -->
+    <Grid Padding="20" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="140" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
             <!--  Верх: борт слева, HUD посредине, эталон справа. Боковые панели равны.  -->
             <Grid ColumnSpacing="16">
+                <!--
+                    Доли колонок: борт и эталон по 20 %, приборы посередине —
+                    остальное. Боковые панели несут по три строки текста, и
+                    отданная им треть экрана простаивала бы там, где оператору
+                    нужны горизонт и расхождения.
+                -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*" />
-                    <ColumnDefinition Width="4*" />
-                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="6*" />
+                    <ColumnDefinition Width="2*" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Полётный контроллер  -->
@@ -508,29 +635,93 @@
 
             </Grid>
 
-            <!--  Ниже: остальные панели  -->
-            <Grid x:Name="PanelsRow" ColumnSpacing="16">
+            <!--  Ниже: остальные панели. Тянутся на весь остаток окна.  -->
+            <Grid
+                x:Name="PanelsRow"
+                Grid.Row="1"
+                ColumnSpacing="16">
+                <!--  Те же доли, что и наверху: компасы под бортом, журнал под эталоном.  -->
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="6*" />
+                    <ColumnDefinition Width="2*" />
                 </Grid.ColumnDefinitions>
 
                 <Border
                     Padding="14"
-                    VerticalAlignment="Top"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
                     <StackPanel Spacing="6">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Компасы" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Text="Компасы" />
+
+                            <!--
+                                Работа с компасами идёт секундами и с
+                                перезагрузками борта. Без движения на панели
+                                оператор не отличает «идёт» от «зависло» и
+                                дёргает кабель посреди записи приоритетов.
+                            -->
+                            <StackPanel
+                                x:Name="CompassBusyPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                Visibility="Collapsed">
+                                <ProgressRing
+                                    x:Name="CompassBusyRing"
+                                    Width="14"
+                                    Height="14"
+                                    IsActive="False" />
+                                <TextBlock
+                                    x:Name="CompassBusyText"
+                                    VerticalAlignment="Center"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="" />
+                            </StackPanel>
+                        </Grid>
+
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Text="Модуль поля, мГс. Норма 530, допуск 185…875."
                             TextWrapping="Wrap" />
-                        <ItemsControl x:Name="CompassList" ItemTemplate="{StaticResource MagTemplate}" ItemsSource="{x:Bind Compasses}" />
+                        <!--
+                            Прокрутка внутри панели, а не разрастание панели:
+                            три компаса с подписями выше, чем строка окна на
+                            цеховом мониторе с крупным масштабом.
+                        -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
+                            <!--
+                                Перестановка очереди компасов показывается
+                                движением строк. Список, молча перерисованный в
+                                другом порядке, читается как «ничего не
+                                изменилось»: оператор не заметит, что первым
+                                стал другой датчик, а это и есть главный итог
+                                шага.
+                            -->
+                            <ItemsControl
+                                x:Name="CompassList"
+                                ItemTemplate="{StaticResource MagTemplate}"
+                                ItemsSource="{x:Bind Compasses}">
+                                <ItemsControl.ItemContainerTransitions>
+                                    <TransitionCollection>
+                                        <AddDeleteThemeTransition />
+                                        <ReorderThemeTransition />
+                                        <ContentThemeTransition />
+                                    </TransitionCollection>
+                                </ItemsControl.ItemContainerTransitions>
+                            </ItemsControl>
+                        </ScrollViewer>
                         <TextBlock
                             x:Name="CompassHintText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -542,25 +733,172 @@
                 <Border
                     Grid.Column="1"
                     Padding="14"
-                    VerticalAlignment="Top"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
                     <StackPanel Spacing="6">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Контролируемые параметры" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Сверка с эталоном" />
+
+                        <!--
+                            Ход сверки виден числом и полосой. Вычитывание
+                            тысячи с лишним параметров занимает секунды, и без
+                            движения панель неотличима от повисшей: оператор
+                            жмёт «Старт» второй раз посреди чтения.
+                        -->
                         <TextBlock
+                            x:Name="CompareStateText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="Сверка с эталоном в этой сборке ещё не реализована."
+                            Text="Сверка не выполнялась."
                             TextWrapping="Wrap" />
+
+                        <ProgressBar
+                            x:Name="CompareProgress"
+                            Maximum="1"
+                            Minimum="0"
+                            Visibility="Collapsed"
+                            Value="0" />
+
+                        <!--
+                            Бегущая галочка: имя только что принятого параметра.
+                            Полоса показывает, что работа идёт, но не показывает,
+                            что она идёт по делу — зависшее чтение и чтение
+                            мусора выглядят одинаково. По бегущим именам видно,
+                            что борт отдаёт свою таблицу.
+                        -->
+                        <Grid
+                            x:Name="CompareTickPanel"
+                            ColumnSpacing="8"
+                            Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon
+                                x:Name="CompareTickIcon"
+                                FontSize="13"
+                                Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                Glyph="&#xE73E;">
+                                <FontIcon.RenderTransform>
+                                    <ScaleTransform x:Name="CompareTickScale" CenterX="7" CenterY="7" />
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
+                            <TextBlock
+                                x:Name="CompareTickName"
+                                Grid.Column="1"
+                                FontFamily="Consolas"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text=""
+                                TextTrimming="CharacterEllipsis" />
+                            <TextBlock
+                                x:Name="CompareTickCount"
+                                Grid.Column="2"
+                                FontFamily="Consolas"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="" />
+                        </Grid>
+
+                        <!--  Счётчики итога: совпало, расходится, вне контроля.  -->
+                        <Grid
+                            x:Name="CompareCountsPanel"
+                            ColumnSpacing="6"
+                            Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Padding="8,4" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock
+                                        x:Name="CompareMatchedText"
+                                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="совпало" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Padding="8,4" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock
+                                        x:Name="CompareDiffText"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="расходится" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Padding="8,4" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock
+                                        x:Name="CompareSkippedText"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="вне контроля" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Grid ColumnSpacing="6" x:Name="CompareActionsPanel" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button
+                                x:Name="WriteAllButton"
+                                HorizontalAlignment="Stretch"
+                                Click="OnWriteAllClick"
+                                Content="Записать все"
+                                IsEnabled="False" />
+                            <Button
+                                x:Name="AcceptDiffButton"
+                                Grid.Column="1"
+                                HorizontalAlignment="Stretch"
+                                Click="OnAcceptDiffClick"
+                                Content="Принять как есть"
+                                IsEnabled="False" />
+                        </Grid>
+
+                        <!--
+                            Не прошедший проверку параметр въезжает в список
+                            анимацией. Строка, появившаяся мгновенно среди
+                            десятка таких же, теряется; движение показывает, что
+                            список именно пополнился, и куда смотреть.
+                        -->
+                        <ListView
+                            x:Name="DiffList"
+                            IsItemClickEnabled="False"
+                            ItemContainerStyle="{StaticResource RowContainerStyle}"
+                            ItemTemplate="{StaticResource DifferenceTemplate}"
+                            ItemsSource="{x:Bind Differences}"
+                            SelectionMode="None">
+                            <ListView.ItemContainerTransitions>
+                                <TransitionCollection>
+                                    <AddDeleteThemeTransition />
+                                    <ReorderThemeTransition />
+                                </TransitionCollection>
+                            </ListView.ItemContainerTransitions>
+                        </ListView>
                     </StackPanel>
                 </Border>
 
                 <Border
                     Grid.Column="2"
                     Padding="14"
-                    VerticalAlignment="Top"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
@@ -582,18 +920,73 @@
             </Grid>
 
             <!--  Статусы — в самом низу экрана  -->
-            <StackPanel Spacing="6">
+            <StackPanel Grid.Row="2" Spacing="6">
                 <!--
                     Запуск приёмки. Кнопка мертва, пока нет связи или эталона:
                     что именно мешает, сказано строкой ниже, а не молчанием.
                 -->
-                <Button
-                    x:Name="StartAcceptanceButton"
-                    HorizontalAlignment="Stretch"
-                    Click="OnStartAcceptanceClick"
-                    Content="Старт приёмки"
-                    IsEnabled="False"
-                    Style="{StaticResource AccentButtonStyle}" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        x:Name="StartAcceptanceButton"
+                        HorizontalAlignment="Stretch"
+                        Click="OnStartAcceptanceClick"
+                        Content="Старт приёмки"
+                        IsEnabled="False"
+                        Style="{StaticResource AccentButtonStyle}" />
+
+                    <!--
+                        Команды оператора. Заблокированы, пока расхождения не
+                        разобраны: калибровать борт, конфигурация которого
+                        расходится с эталоном, значит подтвердить не то изделие,
+                        которое сдаётся.
+                    -->
+                    <Button
+                        x:Name="LevelButton"
+                        Grid.Column="1"
+                        Click="OnLevelClick"
+                        Content="Калибровка уровня"
+                        IsEnabled="False" />
+
+                    <TextBlock
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="курс борта, °" />
+                    <NumberBox
+                        x:Name="HeadingBox"
+                        Grid.Column="3"
+                        MinWidth="120"
+                        VerticalAlignment="Center"
+                        Maximum="360"
+                        Minimum="0"
+                        PlaceholderText="не задан"
+                        SmallChange="1"
+                        SpinButtonPlacementMode="Compact" />
+
+                    <Button
+                        x:Name="CompassCalButton"
+                        Grid.Column="4"
+                        Click="OnCompassCalClick"
+                        Content="Калибровка компаса"
+                        IsEnabled="False" />
+
+                    <Button
+                        x:Name="FinishButton"
+                        Grid.Column="5"
+                        Click="OnFinishClick"
+                        Content="Ребут и проверка"
+                        IsEnabled="False" />
+                </Grid>
                 <InfoBar
                     x:Name="ReadyBar"
                     IsClosable="False"
@@ -614,6 +1007,5 @@
                     Title="Эталон" />
             </StackPanel>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </Page>

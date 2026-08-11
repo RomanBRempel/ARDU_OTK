@@ -120,11 +120,12 @@ public sealed class AcceptanceSession : IAsyncDisposable
         IReadOnlyDictionary<string, double> reference,
         ParameterRoleMap roles,
         IProgress<string>? progress,
-        CancellationToken ct)
+        CancellationToken ct,
+        IProgress<ParameterProgress>? detail = null)
     {
         EnsureConnected();
 
-        var board = await _link.ReadAllParamsAsync(progress, ct).ConfigureAwait(false);
+        var board = await _link.ReadAllParamsAsync(progress, detail, ct).ConfigureAwait(false);
         return ParameterTransfer.Plan(reference, board.Values, roles);
     }
 

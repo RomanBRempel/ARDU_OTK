@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786452865.5343978,
-    "ast_hash": "3b8b801d3615c1ef203048ac6f78518a",
+    "mtime": 1786455834.2337463,
+    "ast_hash": "2fa17f2edeef1b8ddfbc53da26f43b4e",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786452881.7752266,
-    "ast_hash": "d9ae54e842a5d43d6b13c8104eaaa58d",
+    "mtime": 1786455855.9497373,
+    "ast_hash": "0e52a7cad782a70ee5e0eb25620c9245",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -205,8 +205,8 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786453884.0496006,
-    "ast_hash": "a80af512ad5adaf5190e5cc4ba3194f9",
+    "mtime": 1786455647.94008,
+    "ast_hash": "f89b75b4034135c724321efc6d236322",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
@@ -240,8 +240,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1786452838.4655538,
-    "ast_hash": "13fcef6a9cbf7a094b8d1f1f108a356c",
+    "mtime": 1786456149.88324,
+    "ast_hash": "f7ce8fb66aa9d457d3c854cc72d18cf4",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
@@ -265,8 +265,8 @@
     "semantic_hash": "ca6f0fc05480a1eaa6fa3c18b906a5e8"
   },
   "ARDU_OTK/Services/Store/SqliteCalibrationStore.cs": {
-    "mtime": 1786446176.6980314,
-    "ast_hash": "cb851310ffea22199d299212a7300d4c",
+    "mtime": 1786455940.3017566,
+    "ast_hash": "912b508d1790b3c62bf8840bdf6c30da",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/UpdateService.cs": {
@@ -275,14 +275,14 @@
     "semantic_hash": "7cccf6cb849f532fadd0f02baca204d5"
   },
   "ARDU_OTK/SettingsPage.xaml": {
-    "mtime": 1786434603.9082596,
-    "ast_hash": "e087146f5d8121da49ff10dad67cb5c7",
-    "semantic_hash": "e087146f5d8121da49ff10dad67cb5c7"
+    "mtime": 1786455896.390214,
+    "ast_hash": "b41aef2ef0c012fc25857f726b30120d",
+    "semantic_hash": ""
   },
   "ARDU_OTK/SettingsPage.xaml.cs": {
-    "mtime": 1786434634.8728242,
-    "ast_hash": "c2fe59bcc2074147a2716bb42d60ec3d",
-    "semantic_hash": "c2fe59bcc2074147a2716bb42d60ec3d"
+    "mtime": 1786455896.390718,
+    "ast_hash": "49a94edaf6553141a1d9e511e2a5d81b",
+    "semantic_hash": ""
   },
   ".github/skills/ardupilot-firmware/SKILL.md": {
     "mtime": 1786369613.5003757,
@@ -340,9 +340,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786390700.2774713,
-    "ast_hash": "72059c11629adb482c90abfa56cd0764",
-    "semantic_hash": "72059c11629adb482c90abfa56cd0764"
+    "mtime": 1786455946.9497187,
+    "ast_hash": "3c28cec98fae10611adb6715b2e3de19",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Assets/LockScreenLogo.scale-200.png": {
     "mtime": 1786390691.3401494,
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Store/CalibrationReference.cs": {
-    "mtime": 1786452069.7095609,
-    "ast_hash": "3b9bb0cc2ae8b9be92841d967fff724e",
+    "mtime": 1786455896.391238,
+    "ast_hash": "2aa75fcc96d8a961a73a91d056c0f90d",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
@@ -447,6 +447,26 @@
   "ARDU_OTK/Services/Fc/ParameterTransfer.cs": {
     "mtime": 1786453918.4120576,
     "ast_hash": "240cd94917c7caa8483d8e75888cc807",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/AcceptancePage.xaml": {
+    "mtime": 1786455704.5016356,
+    "ast_hash": "30e7cff02562b545a771d0f4d9cc3570",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/AcceptancePage.xaml.cs": {
+    "mtime": 1786455814.8366685,
+    "ast_hash": "fed422b6369baf40d10de15c4247e158",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/AcceptanceRows.cs": {
+    "mtime": 1786455948.5581148,
+    "ast_hash": "f9b4c6279715eb0af6c81bf6e25b2493",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
+    "mtime": 1786456335.212263,
+    "ast_hash": "fff43ad589d70347a2059ed3660dddd4",
     "semantic_hash": ""
   }
 }

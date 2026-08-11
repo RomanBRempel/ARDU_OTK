@@ -249,9 +249,13 @@ public interface IVehicleLink : System.IAsyncDisposable
     /// целиком, потоком, а недосланные имена добираются поштучно по индексу.
     /// </remarks>
     /// <param name="progress">Куда сообщать «принято N из M»; может быть <c>null</c>.</param>
+    /// <param name="detail">Куда сообщать каждое принятое имя; может быть <c>null</c>.</param>
     /// <returns>Все прочитанные параметры и список индексов, которых борт так и не прислал.</returns>
     /// <exception cref="VehicleLinkException">Борт не прислал ни одного параметра.</exception>
-    Task<FullParameterSet> ReadAllParamsAsync(System.IProgress<string>? progress, CancellationToken ct);
+    Task<FullParameterSet> ReadAllParamsAsync(
+        System.IProgress<string>? progress,
+        System.IProgress<ParameterProgress>? detail,
+        CancellationToken ct);
 
     /// <summary>
     /// Пишет параметр. Подтверждение эхом не считается: проверку чтением делает
@@ -284,6 +288,20 @@ public interface IVehicleLink : System.IAsyncDisposable
     /// </summary>
     Task<PrearmReport> RunPrearmChecksAsync(System.TimeSpan window, CancellationToken ct);
 }
+
+/// <summary>
+/// Ход вычитывания: какое имя только что принято и сколько всего.
+/// </summary>
+/// <remarks>
+/// 🔴 Имя передаётся наверх намеренно. Полоса и счётчик показывают, что работа
+/// идёт, но не показывают, что она идёт <b>по делу</b>: зависшее чтение и
+/// чтение мусора выглядят одинаково. Бегущее имя параметра — это то, по чему
+/// оператор у стенда видит, что борт действительно отдаёт свою таблицу.
+/// </remarks>
+/// <param name="Name">Имя только что принятого параметра.</param>
+/// <param name="Done">Сколько принято.</param>
+/// <param name="Total">Сколько борт обещал. <c>0</c> — ещё не сообщил.</param>
+public readonly record struct ParameterProgress(string Name, int Done, int Total);
 
 /// <summary>
 /// Полная таблица параметров, снятая с борта.
