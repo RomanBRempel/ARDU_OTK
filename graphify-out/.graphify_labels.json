@@ -194,6 +194,5 @@
   "192": "ParameterTransferPlan",
   "193": "string",
   "194": "Task",
-  "195": "VehicleLiveState",
-  "196": "WorkstationSettings"
+  "195": "VehicleLiveState"
 }

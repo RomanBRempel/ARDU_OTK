@@ -1849,6 +1849,11 @@ public sealed partial class MainPage : Page
 
     private bool _previewBusy;
 
+    /// <summary>Оператор задал курс сам — подстановка с борта прекращается.</summary>
+    private bool _headingEdited;
+
+    private void OnHeadingEdited(object sender, RoutedEventArgs e) => _headingEdited = true;
+
     /// <summary>Таблица борта из предварительной сверки — по ней показываются наблюдаемые значения.</summary>
     private FullParameterSet? _previewBoard;
 
@@ -2018,6 +2023,20 @@ public sealed partial class MainPage : Page
             HudRollText.Text = string.Create(CultureInfo.InvariantCulture, $"{rollDeg:+0.0;-0.0;0.0}°");
             HudPitchText.Text = string.Create(CultureInfo.InvariantCulture, $"{pitchDeg:+0.0;-0.0;0.0}°");
             HudYawText.Text = string.Create(CultureInfo.InvariantCulture, $"{yawDeg:000}°");
+
+            // 🔴 Курс для калибровки подставляется с борта и следует за ним,
+            // пока оператор не взялся за поле руками. Вводить вручную то, что
+            // борт measures сам, — лишний повод ошибиться в цифре, а ошибка в
+            // курсе оставляет компас «успешно» откалиброванным на чужое
+            // направление, и этого не покажет ни одна проверка.
+            //
+            // Как только поле получило ввод, подстановка прекращается: борт
+            // может стоять не так, как думает его же AHRS, и последнее слово
+            // за человеком.
+            if (HeadingBox.FocusState == FocusState.Unfocused && !_headingEdited)
+            {
+                HeadingBox.Value = Math.Round(yawDeg, 1);
+            }
         }
 
         // Сентинелы уже отсеяны каналом: пусто означает «борт не сообщает».

@@ -1270,11 +1270,13 @@
                         Grid.Column="3"
                         MinWidth="120"
                         VerticalAlignment="Center"
+                        GotFocus="OnHeadingEdited"
                         Maximum="360"
                         Minimum="0"
-                        PlaceholderText="не задан"
+                        PlaceholderText="с борта"
                         SmallChange="1"
-                        SpinButtonPlacementMode="Compact" />
+                        SpinButtonPlacementMode="Compact"
+                        ToolTipService.ToolTip="Истинный курс борта. Подставляется с борта и следует за ним, пока не тронете поле." />
 
                     <Button
                         x:Name="CompassCalButton"
