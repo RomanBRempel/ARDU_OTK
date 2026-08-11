@@ -265,6 +265,147 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         }
     }
 
+    /// <summary>Тишина в потоке <c>PARAM_VALUE</c>, после которой поток считается закончившимся.</summary>
+    private static readonly TimeSpan ParamStreamIdle = TimeSpan.FromSeconds(4);
+
+    /// <inheritdoc />
+    public async Task<FullParameterSet> ReadAllParamsAsync(IProgress<string>? progress, CancellationToken ct)
+    {
+        EnsureConnected();
+
+        var values = new Dictionary<string, ParamValue>(StringComparer.Ordinal);
+        var seen = new HashSet<int>();
+        var declared = 0;
+
+        using (FrameSubscription stream = Subscribe(static f => f.MessageId == MavMessageId.ParamValue))
+        {
+            await SendAsync(
+                _encoder.EncodeParamRequestList(TargetSystem, TargetComponent), ct).ConfigureAwait(false);
+
+            // Поток идёт, пока борт присылает новое. Признак конца — не счётчик
+            // (часть имён теряется на USB-линии и поток встанет недосчитавшись),
+            // а тишина: борт всё, что хотел, уже отправил.
+            while (true)
+            {
+                MavlinkFrame frame;
+                try
+                {
+                    frame = await stream.ReadAsync(ParamStreamIdle, "поток PARAM_VALUE", ct)
+                        .ConfigureAwait(false);
+                }
+                catch (VehicleLinkException)
+                {
+                    break;
+                }
+
+                var message = ParamValueMessage.Decode(frame.Payload.Span);
+                declared = Math.Max(declared, message.ParamCount);
+
+                values[message.ParamId] = new ParamValue(
+                    message.ParamId, message.ParamValue, (MavParamType)message.ParamType);
+
+                if (message.ParamIndex != ParamValueMessage.BroadcastIndex)
+                {
+                    seen.Add(message.ParamIndex);
+                }
+
+                if (values.Count % 50 == 0)
+                {
+                    progress?.Report($"Принято параметров: {values.Count} из {declared}.");
+                }
+
+                if (declared > 0 && seen.Count >= declared)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (values.Count == 0)
+        {
+            throw new VehicleLinkException(
+                "Борт не прислал ни одного параметра в ответ на PARAM_REQUEST_LIST. Снимать эталон не с чего.");
+        }
+
+        var missing = await FillGapsAsync(values, seen, declared, progress, ct).ConfigureAwait(false);
+
+        progress?.Report(missing.Count == 0
+            ? $"Снято параметров: {values.Count} из {declared}. Прочитано всё."
+            : $"Снято параметров: {values.Count} из {declared}. Не отдано: {missing.Count}.");
+
+        return new FullParameterSet(values, declared, missing);
+    }
+
+    /// <summary>
+    /// Добирает поштучно то, что борт не прислал потоком.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Именно по индексу, а не повтором <c>PARAM_REQUEST_LIST</c>: повторный
+    /// запрос списка заставляет прошивку начать поток с начала, и на наборе в
+    /// тысячу имён недостача одного превращается в вечный круг.
+    /// </remarks>
+    private async Task<IReadOnlyList<int>> FillGapsAsync(
+        Dictionary<string, ParamValue> values,
+        HashSet<int> seen,
+        int declared,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        if (declared <= 0)
+        {
+            return Array.Empty<int>();
+        }
+
+        var missing = new List<int>();
+        for (var index = 0; index < declared; index++)
+        {
+            if (!seen.Contains(index))
+            {
+                missing.Add(index);
+            }
+        }
+
+        if (missing.Count == 0)
+        {
+            return missing;
+        }
+
+        progress?.Report($"Борт не прислал {missing.Count} параметров, добираю поштучно…");
+
+        var stillMissing = new List<int>();
+        foreach (var index in missing)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                using FrameSubscription one = Subscribe(f =>
+                    f.MessageId == MavMessageId.ParamValue
+                    && ParamValueMessage.Decode(f.Payload.Span).ParamIndex == index);
+
+                await SendAsync(
+                    _encoder.EncodeParamRequestRead(TargetSystem, TargetComponent, string.Empty, (short)index),
+                    ct).ConfigureAwait(false);
+
+                MavlinkFrame reply = await one
+                    .ReadAsync(ParamReadTimeout, $"PARAM_VALUE с индексом {index}", ct)
+                    .ConfigureAwait(false);
+
+                var message = ParamValueMessage.Decode(reply.Payload.Span);
+                values[message.ParamId] = new ParamValue(
+                    message.ParamId, message.ParamValue, (MavParamType)message.ParamType);
+            }
+            catch (VehicleLinkException)
+            {
+                // Индекс, которого борт не отдал и поштучно, — это факт о
+                // наборе, а не сбой снятия: он уходит наверх списком.
+                stillMissing.Add(index);
+            }
+        }
+
+        return stillMissing;
+    }
+
     /// <inheritdoc />
     /// <remarks>
     /// Метод завершается сразу после отправки кадра. Широковещательный

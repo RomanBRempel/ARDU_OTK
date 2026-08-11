@@ -355,6 +355,31 @@ public sealed class AppServices
         },
         ct);
 
+    /// <summary>
+    /// Снимает с образца всю таблицу параметров — то, из чего собирается эталон.
+    /// </summary>
+    /// <remarks>
+    /// Читает по уже открытому наблюдательному каналу: второй открыватель того
+    /// же COM-порта получил бы отказ, а гасить канал ради снимка значило бы
+    /// выключить индикатор в момент, когда оператор смотрит на борт.
+    /// </remarks>
+    /// <exception cref="VehicleLinkException">Связи нет либо борт не отдал ни одного параметра.</exception>
+    public Task<FullParameterSet> ReadAllParametersAsync(
+        IProgress<string>? progress = null,
+        CancellationToken ct = default) => Task.Run(
+        () =>
+        {
+            var link = _link;
+            if (link is not { IsConnected: true })
+            {
+                throw new VehicleLinkException(
+                    "Нет связи с бортом: снимать эталон не с чего. Подключите образцовое изделие.");
+            }
+
+            return link.ReadAllParamsAsync(progress, ct);
+        },
+        ct);
+
     /// <summary>Читает один параметр по уже открытому наблюдательному каналу.</summary>
     /// <exception cref="VehicleLinkException">Связи нет либо борт имени не знает.</exception>
     public Task<double> ReadParameterAsync(string name, CancellationToken ct = default) => Task.Run(

@@ -205,9 +205,9 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786436976.8593018,
-    "ast_hash": "e7fbe3e01d392f0168038f3eb8b16235",
-    "semantic_hash": "e7fbe3e01d392f0168038f3eb8b16235"
+    "mtime": 1786446578.2811568,
+    "ast_hash": "d91b269499f496c469c173642b9b1ebf",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
     "mtime": 1786444918.5476768,
@@ -265,8 +265,8 @@
     "semantic_hash": "ca6f0fc05480a1eaa6fa3c18b906a5e8"
   },
   "ARDU_OTK/Services/Store/SqliteCalibrationStore.cs": {
-    "mtime": 1786446133.4700708,
-    "ast_hash": "81f644c5a9b565e85bf9759609e87c8e",
+    "mtime": 1786446176.6980314,
+    "ast_hash": "cb851310ffea22199d299212a7300d4c",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/UpdateService.cs": {
@@ -335,8 +335,8 @@
     "semantic_hash": "245615d2721cd5cafa36fcb7f3a50773"
   },
   "CLAUDE.md": {
-    "mtime": 1786446108.7625694,
-    "ast_hash": "bdf8ef575c11e3761045d37adfb34b94",
+    "mtime": 1786447440.1632638,
+    "ast_hash": "65c5bfd154a83a4d3bfee4bd7d51d451",
     "semantic_hash": ""
   },
   "README.md": {
@@ -400,24 +400,24 @@
     "semantic_hash": "3b8ce30fe33d0e31cab26ce527f57252"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml": {
-    "mtime": 1786436556.233783,
-    "ast_hash": "5acc2b1eeb3f55a7a49a7246915677d3",
-    "semantic_hash": "5acc2b1eeb3f55a7a49a7246915677d3"
+    "mtime": 1786446294.7394924,
+    "ast_hash": "17188052631fca7037f0b1a87b6fb0a7",
+    "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
-    "mtime": 1786436715.3087945,
-    "ast_hash": "15c1a1854d5ba971ec1d7aae5c8cac65",
-    "semantic_hash": "15c1a1854d5ba971ec1d7aae5c8cac65"
+    "mtime": 1786447686.130319,
+    "ast_hash": "7a5a677f0a2887cb282d704887f0d79a",
+    "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceRows.cs": {
-    "mtime": 1786436512.5649114,
-    "ast_hash": "fed1bf5decb14c0eaa67d967cadc3798",
-    "semantic_hash": "fed1bf5decb14c0eaa67d967cadc3798"
+    "mtime": 1786446263.5516548,
+    "ast_hash": "75a2b21c41ffd2d8bdb6a6f846102bf1",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Store/CalibrationReference.cs": {
-    "mtime": 1786436116.758895,
-    "ast_hash": "2a5746bfebea225b54f9d2faf4665d94",
-    "semantic_hash": "2a5746bfebea225b54f9d2faf4665d94"
+    "mtime": 1786446186.7351522,
+    "ast_hash": "f2ae16fba5b8c9f03aa394b5ee4c6f23",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
     "mtime": 1786436068.417762,
@@ -435,8 +435,8 @@
     "semantic_hash": ""
   },
   "tools/graph_freshness.py": {
-    "mtime": 1786446000.4790392,
-    "ast_hash": "b371cbff5d4a0c66c03903b218bb52df",
+    "mtime": 1786447416.9392793,
+    "ast_hash": "a2239a79d96267761d861d3ba9010204",
     "semantic_hash": ""
   },
   ".github/workflows/graph-freshness.yml": {

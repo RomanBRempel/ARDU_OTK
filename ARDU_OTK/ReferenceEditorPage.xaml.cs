@@ -9,6 +9,7 @@ using ARDU_OTK.Services.Fc;
 using ARDU_OTK.Services.Store;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace ARDU_OTK;
@@ -97,8 +98,16 @@ public sealed partial class ReferenceEditorPage : Page
     /// <summary>Ожидаемый состав компасов, выведенный из выбранного эталона.</summary>
     public ObservableCollection<ExpectedCompassSlotRow> Slots { get; } = new();
 
-    /// <summary>Три секции контроля параметров: показываем, не показываем, не контролируем.</summary>
-    public ObservableCollection<ParameterRoleSectionRow> RoleSections { get; } = new();
+    /// <summary>
+    /// Все параметры эталона одним списком, с режимом контроля в каждой строке.
+    /// </summary>
+    /// <remarks>
+    /// Один список, а не три раздела, именно из-за ползунка в строке:
+    /// переключённая строка обязана была бы перепрыгнуть в соседний раздел и
+    /// исчезнуть из-под пальца. Раскладка видна счётчиками над списком и
+    /// фильтром по режиму.
+    /// </remarks>
+    public ObservableCollection<ParameterRoleRow> RoleRows { get; } = new();
 
     /// <summary>Скрипты изделия, входящие в эталон.</summary>
     public ObservableCollection<ReferenceScriptRow> Scripts { get; } = new();
@@ -318,7 +327,12 @@ public sealed partial class ReferenceEditorPage : Page
             var port = _services.ConnectedPort ?? "неизвестный порт";
             var progress = new Progress<string>(text => SnapshotProgressText.Text = text);
 
-            var snapshot = await _services.ReadCompassSnapshotAsync(progress).ConfigureAwait(true);
+            // 🔴 Снимается вся таблица прошивки, а не компасный блок. Эталон
+            // изделия — это конфигурация целиком: снимок по заранее известному
+            // списку имён описал бы только то, о чём приложение уже знает, и
+            // молча потерял бы настройки приёмника, выходов, режимов и
+            // регуляторов — то, чем одна сборка и отличается от другой.
+            var snapshot = await _services.ReadAllParametersAsync(progress).ConfigureAwait(true);
 
             var caption = string.Format(
                 CultureInfo.InvariantCulture,
@@ -326,28 +340,32 @@ public sealed partial class ReferenceEditorPage : Page
                 port,
                 DateTimeOffset.Now);
 
-            ApplyParameters(ReferenceParameters.FromSnapshot(snapshot, caption), caption);
+            ApplyParameters(
+                ReferenceParameters.FromFullSet(snapshot, caption, _services.ConnectedFirmware),
+                caption);
             ErrorBar.IsOpen = false;
 
-            // Непрочитанные имена показываем всегда: молчание о них означало бы,
-            // что оператор считает снимок полным, а он неполон.
-            if (snapshot.Unreadable.Count > 0)
+            // Недостача показывается всегда: молчание о ней означало бы, что
+            // оператор считает снимок полным, а он неполон.
+            if (!snapshot.IsComplete)
             {
                 SnapshotBar.Severity = InfoBarSeverity.Warning;
-                SnapshotBar.Message =
-                    "Борт не отдал: " + string.Join(", ", snapshot.Unreadable)
-                  + ". Этих параметров в эталоне не будет. Для COMPASS_MOT* это норма, если на образце "
-                  + "не выполнялся CompassMot; для остальных имён — повод разобраться до заведения эталона.";
+                SnapshotBar.Message = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Снято {0} параметров, борт объявил {1}. Не отдано {2} — этих имён в эталоне не будет, "
+                  + "и сверять их будет нечем. Повторите снятие или разберитесь с линией связи до заведения эталона.",
+                    snapshot.Values.Count,
+                    snapshot.Declared,
+                    snapshot.Missing.Count);
             }
             else
             {
                 SnapshotBar.Severity = InfoBarSeverity.Success;
                 SnapshotBar.Message = string.Format(
                     CultureInfo.InvariantCulture,
-                    "Снято с борта {0}: параметров {1}, занятых слотов {2}. Прочитано всё.",
+                    "Снято с борта {0}: вся таблица прошивки, {1} параметров. Прочитано всё.",
                     port,
-                    snapshot.Values.Count,
-                    snapshot.OccupiedSlots.Count);
+                    snapshot.Values.Count);
             }
 
             SnapshotBar.IsOpen = true;
@@ -415,6 +433,18 @@ public sealed partial class ReferenceEditorPage : Page
     /// из четырёх поводов рано или поздно разошлось бы с тем, что уйдёт в базу.
     /// Набор — десятки, в худшем случае тысячи имён; это доли миллисекунды.
     /// </remarks>
+    /// <summary>
+    /// Пересобирает список параметров и счётчики по текущему набору и текущей
+    /// карте ролей.
+    /// </summary>
+    /// <remarks>
+    /// Полная пересборка, а не точечная правка: раскладка зависит разом от
+    /// набора, карты ролей, переключателя переноса <c>COMPASS_MOT*</c> и двух
+    /// фильтров, и инкрементальное обновление по каждому из поводов рано или
+    /// поздно разошлось бы с тем, что уйдёт в базу. Полный дамп прошивки —
+    /// это тысяча с небольшим имён; пересборка укладывается в единицы
+    /// миллисекунд, а список виртуализован.
+    /// </remarks>
     private void RebuildRoleSections()
     {
         if (!_ready)
@@ -422,82 +452,80 @@ public sealed partial class ReferenceEditorPage : Page
             return;
         }
 
-        RoleSections.Clear();
+        RoleRows.Clear();
 
         if (_parameters is null)
         {
             RolesEmptyText.Visibility = Visibility.Visible;
-            RoleFilterBox.Visibility = Visibility.Collapsed;
+            RoleFilterPanel.Visibility = Visibility.Collapsed;
             RolesBar.IsOpen = false;
+            RoleCountVisibleText.Text = "0";
+            RoleCountHiddenText.Text = "0";
+            RoleCountOffText.Text = "0";
             return;
         }
 
         RolesEmptyText.Visibility = Visibility.Collapsed;
-        RoleFilterBox.Visibility = Visibility.Visible;
+        RoleFilterPanel.Visibility = Visibility.Visible;
 
-        var filter = RoleFilterBox.Text.Trim();
-
-        var buckets = new Dictionary<ParameterControl, List<ParameterRoleRow>>
+        var nameFilter = RoleFilterBox.Text.Trim();
+        var modeFilter = RoleModeFilterBox.SelectedIndex switch
         {
-            [ParameterControl.ControlledVisible] = new(),
-            [ParameterControl.ControlledHidden] = new(),
-            [ParameterControl.Uncontrolled] = new(),
+            1 => (ParameterControl?)ParameterControl.ControlledVisible,
+            2 => ParameterControl.ControlledHidden,
+            3 => ParameterControl.Uncontrolled,
+            _ => null,
         };
 
-        var totals = new Dictionary<ParameterControl, int>
-        {
-            [ParameterControl.ControlledVisible] = 0,
-            [ParameterControl.ControlledHidden] = 0,
-            [ParameterControl.Uncontrolled] = 0,
-        };
-
+        var visible = 0;
+        var hidden = 0;
+        var off = 0;
         var hazardous = 0;
 
         foreach (var pair in _parameters.Set.Values.OrderBy(static p => p.Key, StringComparer.Ordinal))
         {
             var role = _roles.Classify(pair.Key);
-            totals[role.Control]++;
+
+            switch (role.Control)
+            {
+                case ParameterControl.ControlledVisible: visible++; break;
+                case ParameterControl.ControlledHidden: hidden++; break;
+                default: off++; break;
+            }
 
             if (role.IsHazardousOverride)
             {
                 hazardous++;
             }
 
-            if (filter.Length > 0 && !role.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            if (modeFilter is { } mode && role.Control != mode)
             {
                 continue;
             }
 
-            buckets[role.Control].Add(new ParameterRoleRow(role, pair.Value));
+            if (nameFilter.Length > 0
+                && !role.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            RoleRows.Add(new ParameterRoleRow(role, pair.Value));
         }
 
-        // Порядок секций фиксирован и совпадает с порядком, в котором о них
-        // думает технолог: сначала то, что он видит, потом то, что проверяется
-        // молча, и лишь потом исключённое.
-        foreach (var control in new[]
-                 {
-                     ParameterControl.ControlledVisible,
-                     ParameterControl.ControlledHidden,
-                     ParameterControl.Uncontrolled,
-                 })
-        {
-            RoleSections.Add(new ParameterRoleSectionRow(
-                control,
-                buckets[control],
-                totals[control],
-                // Развёрнута видимая секция; при активном фильтре — все, иначе
-                // найденное в свёрнутой секции невидимо, и фильтр выглядит
-                // сломанным.
-                isExpanded: filter.Length > 0 || control == ParameterControl.ControlledVisible));
-        }
+        RoleCountVisibleText.Text = visible.ToString(CultureInfo.InvariantCulture);
+        RoleCountHiddenText.Text = hidden.ToString(CultureInfo.InvariantCulture);
+        RoleCountOffText.Text = off.ToString(CultureInfo.InvariantCulture);
 
-        UpdateRolesBar(hazardous);
+        UpdateRolesBar(hazardous, visible + hidden + off);
     }
 
-    /// <summary>Плашка над секциями: отступления, опасные отступления, заморозка, испорченное поле.</summary>
-    private void UpdateRolesBar(int hazardous)
+    /// <summary>Плашка над списком: охват, отступления, опасные отступления, заморозка.</summary>
+    private void UpdateRolesBar(int hazardous, int total)
     {
-        var notes = new List<string>(3);
+        var notes = new List<string>(4)
+        {
+            $"Под контролем весь набор эталона: {total.ToString(CultureInfo.InvariantCulture)} имён, а не только компасные.",
+        };
 
         if (_discardedOverrides > 0)
         {
@@ -516,7 +544,7 @@ public sealed partial class ReferenceEditorPage : Page
         {
             notes.Add(
                 $"Отступлений от технологической карты: {_roles.Overrides.Count.ToString(CultureInfo.InvariantCulture)}. "
-              + "Каждое записано с обоснованием и попадёт в протокол.");
+              + "Каждое записано с подписью и временем и попадёт в протокол.");
         }
 
         if (_rolesFrozen)
@@ -528,27 +556,45 @@ public sealed partial class ReferenceEditorPage : Page
             ? InfoBarSeverity.Warning
             : InfoBarSeverity.Informational;
         RolesBar.Message = string.Join(" ", notes);
-        RolesBar.IsOpen = notes.Count > 0;
+        RolesBar.IsOpen = true;
     }
 
+    private void OnRoleModeFilterChanged(object sender, SelectionChangedEventArgs e) => RebuildRoleSections();
+
     /// <summary>
-    /// Переносит параметр в другую секцию — с обоснованием.
+    /// Переключение режима контроля ползунком в строке.
     /// </summary>
     /// <remarks>
-    /// 🔴 Отступление без обоснования не принимается. Через полгода оно
-    /// неотличимо от случайного нажатия, и разобрать по нему рекламацию нельзя:
-    /// в протоколе будет видно, что параметр не проверялся, и не будет видно,
-    /// почему так решили.
+    /// <para>
+    /// Строка остаётся на месте: список один, и переключение меняет только
+    /// счётчики над ним. Пересобирать список здесь запрещено — пересборка
+    /// вырвала бы ползунок из-под пальца на полудвижении.
+    /// </para>
+    /// <para>
+    /// 🔴 Возврат под контроль имени, которое совпасть не может, требует
+    /// подтверждения. Это единственное переключение, которое ломает не выборку
+    /// на экране, а каждый будущий прогон, и молчаливым движением мыши оно
+    /// проходить не должно.
+    /// </para>
     /// </remarks>
-    private async void OnChangeRoleClick(object sender, RoutedEventArgs e)
+    private async void OnRoleSliderChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
-        if (_parameters is null || sender is not Button { Tag: string name })
+        if (!_ready || _parameters is null || sender is not Slider { Tag: string name } slider)
+        {
+            return;
+        }
+
+        var role = _roles.Classify(name);
+        var chosen = ParameterRoleRow.FromSliderIndex(e.NewValue);
+
+        if (chosen == role.Control)
         {
             return;
         }
 
         if (_rolesFrozen)
         {
+            slider.Value = ParameterRoleRow.ToSliderIndex(role.Control);
             ShowError(
                 "Раскладка заморожена",
                 new InvalidOperationException(
@@ -558,128 +604,82 @@ public sealed partial class ReferenceEditorPage : Page
             return;
         }
 
-        var role = _roles.Classify(name);
-
-        var choices = new List<RadioButton>(3);
-        var chooser = new StackPanel { Spacing = 2 };
-        foreach (var control in new[]
-                 {
-                     ParameterControl.ControlledVisible,
-                     ParameterControl.ControlledHidden,
-                     ParameterControl.Uncontrolled,
-                 })
+        if (role.CannotMatch && chosen != ParameterControl.Uncontrolled
+            && !await ConfirmHazardousAsync(name, role))
         {
-            var button = new RadioButton
-            {
-                Content = ParameterRoleMap.SectionTitle(control)
-                    + (control == role.DefaultControl ? " — по технологической карте" : string.Empty),
-                GroupName = "RoleSection",
-                IsChecked = control == role.Control,
-                Tag = control,
-            };
-
-            choices.Add(button);
-            chooser.Children.Add(button);
+            slider.Value = ParameterRoleRow.ToSliderIndex(role.Control);
+            return;
         }
 
-        var justificationBox = new TextBox
-        {
-            AcceptsReturn = true,
-            Header = "Обоснование отступления",
-            MaxHeight = 96,
-            PlaceholderText = "почему для этого эталона правило технологической карты не подходит",
-            Text = role.Override?.Justification ?? string.Empty,
-            TextWrapping = TextWrapping.Wrap,
-        };
+        _roles = chosen == role.DefaultControl
+            ? _roles.Without(name)
+            : _roles.With(new ParameterRoleOverride(
+                name,
+                chosen,
+                Justification: string.Empty,
+                CurrentAuthor(),
+                DateTimeOffset.UtcNow));
 
-        var problem = new InfoBar
-        {
-            IsClosable = false,
-            IsOpen = false,
-            Severity = InfoBarSeverity.Error,
-            Title = "Отступление не принято",
-        };
+        RefreshRoleCounters();
+        UpdateGate();
+    }
 
-        var content = new StackPanel { Spacing = 12, Width = 460 };
-        content.Children.Add(new TextBlock
-        {
-            Text = role.Reason,
-            TextWrapping = TextWrapping.Wrap,
-            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-        });
-
-        if (role.CannotMatch)
-        {
-            content.Children.Add(new InfoBar
-            {
-                IsClosable = false,
-                IsOpen = true,
-                Severity = InfoBarSeverity.Warning,
-                Title = "Совпасть с эталоном это имя не может",
-                Message =
-                    "Значение определяется конкретным экземпляром железа либо ведётся самой прошивкой. "
-                  + "Под контролем оно остановит каждый прогон, а не только прогон неисправного изделия.",
-            });
-        }
-
-        content.Children.Add(chooser);
-        content.Children.Add(justificationBox);
-        content.Children.Add(problem);
-
-        var dialog = new ContentDialog
-        {
-            CloseButtonText = "Отмена",
-            Content = content,
-            DefaultButton = ContentDialogButton.Primary,
-            PrimaryButtonText = "Применить",
-            SecondaryButtonText = role.IsOverridden ? "Вернуть умолчание" : string.Empty,
-            Title = name,
-            XamlRoot = XamlRoot,
-        };
-
-        dialog.PrimaryButtonClick += (_, args) =>
-        {
-            var chosen = (ParameterControl)choices.First(b => b.IsChecked == true).Tag;
-
-            if (chosen != role.DefaultControl && justificationBox.Text.Trim().Length == 0)
-            {
-                // Диалог не закрывается: пустое обоснование — это не «принято
-                // без комментария», это отсутствие того единственного, ради
-                // чего отступление вообще записывается.
-                problem.Message =
-                    "Укажите, почему для этого эталона правило технологической карты не подходит. "
-                  + "Без обоснования отступление не отличить от случайного нажатия.";
-                problem.IsOpen = true;
-                args.Cancel = true;
-            }
-        };
-
-        var result = await dialog.ShowAsync();
-
-        if (result == ContentDialogResult.Secondary)
-        {
-            _roles = _roles.Without(name);
-        }
-        else if (result == ContentDialogResult.Primary)
-        {
-            var chosen = (ParameterControl)choices.First(b => b.IsChecked == true).Tag;
-
-            _roles = chosen == role.DefaultControl
-                ? _roles.Without(name)
-                : _roles.With(new ParameterRoleOverride(
-                    name,
-                    chosen,
-                    justificationBox.Text,
-                    CurrentAuthor(),
-                    DateTimeOffset.UtcNow));
-        }
-        else
+    /// <summary>Пересчитывает счётчики, не трогая список.</summary>
+    private void RefreshRoleCounters()
+    {
+        if (_parameters is null)
         {
             return;
         }
 
-        RebuildRoleSections();
-        UpdateGate();
+        var visible = 0;
+        var hidden = 0;
+        var off = 0;
+        var hazardous = 0;
+
+        foreach (var key in _parameters.Set.Values.Keys)
+        {
+            var role = _roles.Classify(key);
+            switch (role.Control)
+            {
+                case ParameterControl.ControlledVisible: visible++; break;
+                case ParameterControl.ControlledHidden: hidden++; break;
+                default: off++; break;
+            }
+
+            if (role.IsHazardousOverride)
+            {
+                hazardous++;
+            }
+        }
+
+        RoleCountVisibleText.Text = visible.ToString(CultureInfo.InvariantCulture);
+        RoleCountHiddenText.Text = hidden.ToString(CultureInfo.InvariantCulture);
+        RoleCountOffText.Text = off.ToString(CultureInfo.InvariantCulture);
+
+        UpdateRolesBar(hazardous, visible + hidden + off);
+    }
+
+    /// <summary>Спрашивает подтверждение на возврат под контроль имени, которое совпасть не может.</summary>
+    private async Task<bool> ConfirmHazardousAsync(string name, ParameterRole role)
+    {
+        var body = role.Reason
+            + Environment.NewLine + Environment.NewLine
+            + "Под контролем это имя остановит каждый прогон, а не только прогон неисправного изделия: "
+            + "значение определяется конкретным экземпляром железа либо ведётся самой прошивкой, "
+            + "и совпасть с эталоном оно не может.";
+
+        var dialog = new ContentDialog
+        {
+            Title = name,
+            Content = new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap },
+            PrimaryButtonText = "Всё равно контролировать",
+            CloseButtonText = "Отмена",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     /// <summary>Кто подписывает отступление. В правке автор эталона зафиксирован при заведении.</summary>
@@ -906,7 +906,7 @@ public sealed partial class ReferenceEditorPage : Page
     {
         _parameters = null;
         Slots.Clear();
-        RoleSections.Clear();
+        RoleRows.Clear();
 
         ReferencePathBox.Text = string.Empty;
         ReferenceSummaryPanel.Visibility = Visibility.Collapsed;

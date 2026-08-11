@@ -84,6 +84,31 @@ public sealed class ExpectedCompassSlotRow
 /// </remarks>
 public sealed class ParameterRoleRow
 {
+    /// <summary>
+    /// Положение ползунка: не контролируем — контроль — контроль и показ.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Порядок монотонный, по возрастанию внимания к параметру, а не по
+    /// порядку членов <see cref="ParameterControl"/>. Ползунок — это шкала:
+    /// положение «не контролируем» между двумя видами контроля читалось бы как
+    /// «средняя степень», и оператор промахивался бы мимо нужного деления,
+    /// глядя не на подпись, а на положение кружка.
+    /// </remarks>
+    public static ParameterControl FromSliderIndex(double index) => (int)Math.Round(index) switch
+    {
+        0 => ParameterControl.Uncontrolled,
+        1 => ParameterControl.ControlledHidden,
+        _ => ParameterControl.ControlledVisible,
+    };
+
+    /// <inheritdoc cref="FromSliderIndex"/>
+    public static double ToSliderIndex(ParameterControl control) => control switch
+    {
+        ParameterControl.Uncontrolled => 0,
+        ParameterControl.ControlledHidden => 1,
+        _ => 2,
+    };
+
     public ParameterRoleRow(ParameterRole role, double value)
     {
         ArgumentNullException.ThrowIfNull(role);
@@ -91,6 +116,8 @@ public sealed class ParameterRoleRow
         Name = role.Name;
         Control = role.Control;
         CannotMatch = role.CannotMatch;
+        SliderIndex = ToSliderIndex(role.Control);
+        ModeText = ParameterRoleMap.SectionTitle(role.Control);
 
         ValueText = ReferenceParamFile.FormatCanonical(value);
         ReasonText = role.Reason;
@@ -115,6 +142,12 @@ public sealed class ParameterRoleRow
     public string Name { get; }
 
     public ParameterControl Control { get; }
+
+    /// <summary>Положение ползунка 0..2. Привязка односторонняя: применение идёт через обработчик страницы.</summary>
+    public double SliderIndex { get; }
+
+    /// <summary>Подпись текущего режима под ползунком.</summary>
+    public string ModeText { get; }
 
     public string ValueText { get; }
 

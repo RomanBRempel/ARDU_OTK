@@ -180,6 +180,21 @@ public interface IVehicleLink : System.IAsyncDisposable
     Task<ParamValue> ReadParamAsync(string name, CancellationToken ct);
 
     /// <summary>
+    /// Читает всю таблицу параметров борта.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Эталон — это конфигурация изделия целиком, а не компасный блок.
+    /// Чтение по именам из заранее известного списка описывает только то, о
+    /// чём приложение уже знает, и молча теряет всё остальное: настройки
+    /// приёмника, выходов, режимов, регуляторов. Поэтому таблица снимается
+    /// целиком, потоком, а недосланные имена добираются поштучно по индексу.
+    /// </remarks>
+    /// <param name="progress">Куда сообщать «принято N из M»; может быть <c>null</c>.</param>
+    /// <returns>Все прочитанные параметры и список индексов, которых борт так и не прислал.</returns>
+    /// <exception cref="VehicleLinkException">Борт не прислал ни одного параметра.</exception>
+    Task<FullParameterSet> ReadAllParamsAsync(System.IProgress<string>? progress, CancellationToken ct);
+
+    /// <summary>
     /// Пишет параметр. Подтверждение эхом не считается: проверку чтением делает
     /// вызывающий слой.
     /// </summary>
@@ -209,6 +224,26 @@ public interface IVehicleLink : System.IAsyncDisposable
     /// окно ожидания.
     /// </summary>
     Task<PrearmReport> RunPrearmChecksAsync(System.TimeSpan window, CancellationToken ct);
+}
+
+/// <summary>
+/// Полная таблица параметров, снятая с борта.
+/// </summary>
+/// <remarks>
+/// <see cref="Missing"/> обязателен и не может быть свёрнут в «прочитано N».
+/// Набор, в котором чего-то не хватает, и полный набор — разные вещи: по
+/// первому нельзя завести эталон, не сказав оператору, чего в нём нет.
+/// </remarks>
+/// <param name="Values">Имя — значение и тип.</param>
+/// <param name="Declared">Сколько параметров борт обещал в поле <c>param_count</c>.</param>
+/// <param name="Missing">Индексы, которых борт так и не прислал.</param>
+public sealed record FullParameterSet(
+    IReadOnlyDictionary<string, ParamValue> Values,
+    int Declared,
+    IReadOnlyList<int> Missing)
+{
+    /// <summary>Таблица снята целиком.</summary>
+    public bool IsComplete => Missing.Count == 0 && Values.Count >= Declared;
 }
 
 /// <summary>

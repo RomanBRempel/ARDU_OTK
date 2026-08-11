@@ -12,6 +12,10 @@ public static class MavMessageId
     public const uint Heartbeat = 0;
     public const uint SysStatus = 1;
     public const uint ParamRequestRead = 20;
+
+    /// <summary>Запрос всей таблицы параметров борта. Им снимается эталон целиком.</summary>
+    public const uint ParamRequestList = 21;
+
     public const uint ParamValue = 22;
     public const uint ParamSet = 23;
     public const uint GpsRawInt = 24;
@@ -135,6 +139,7 @@ public static class MavlinkCrc
             MavMessageId.Heartbeat => 50,
             MavMessageId.SysStatus => 124,
             MavMessageId.ParamRequestRead => 214,
+            MavMessageId.ParamRequestList => 159,
             MavMessageId.ParamValue => 220,
             MavMessageId.ParamSet => 168,
 
@@ -888,6 +893,23 @@ public sealed class MavlinkEncoder
         payload[3] = targetComponent;
         WriteParamId(payload.Slice(4, ParamIdLength), paramId);
         return Frame(MavMessageId.ParamRequestRead, payload);
+    }
+
+    /// <summary>
+    /// Собирает <c>PARAM_REQUEST_LIST</c> (id 21) — запрос всей таблицы параметров.
+    /// </summary>
+    /// <remarks>
+    /// Борт отвечает потоком <c>PARAM_VALUE</c> в тысячу с лишним сообщений.
+    /// Повторный запрос заставляет прошивку начать поток заново, поэтому
+    /// добирать потерянные имена нужно поштучно через
+    /// <see cref="EncodeParamRequestRead"/> по индексу, а не повтором списка.
+    /// </remarks>
+    public byte[] EncodeParamRequestList(byte targetSystem, byte targetComponent)
+    {
+        Span<byte> payload = stackalloc byte[2];
+        payload[0] = targetSystem;
+        payload[1] = targetComponent;
+        return Frame(MavMessageId.ParamRequestList, payload);
     }
 
     /// <summary>Собирает <c>PARAM_SET</c> (id 23).</summary>

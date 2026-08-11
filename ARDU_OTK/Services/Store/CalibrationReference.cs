@@ -321,6 +321,63 @@ public sealed record ReferenceParameters(
         return Create(caption, sourcePath: string.Empty, text, set);
     }
 
+    /// <summary>
+    /// Собирает эталон из полной таблицы параметров, снятой с образца.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Эталон изделия — это конфигурация целиком, а не компасный блок.
+    /// Снимок по заранее известному списку имён описывает только то, о чём
+    /// приложение уже знало, и молча теряет настройки приёмника, выходов,
+    /// режимов и регуляторов — то есть ровно то, чем одна сборка отличается от
+    /// другой.
+    /// </remarks>
+    /// <param name="set">Полная таблица, снятая <see cref="IVehicleLink.ReadAllParamsAsync"/>.</param>
+    /// <param name="caption">Чем подписать происхождение: порт и время снятия.</param>
+    /// <param name="firmwareBanner">Баннер прошивки образца, если он получен.</param>
+    /// <exception cref="InvalidDataException">Набор пуст.</exception>
+    public static ReferenceParameters FromFullSet(
+        FullParameterSet set,
+        string caption,
+        string? firmwareBanner)
+    {
+        ArgumentNullException.ThrowIfNull(set);
+        ArgumentException.ThrowIfNullOrWhiteSpace(caption);
+
+        var builder = new List<string>(set.Values.Count + 5)
+        {
+            "# Параметры сняты с образцового изделия целиком",
+            "# " + caption,
+        };
+
+        if (!string.IsNullOrWhiteSpace(firmwareBanner))
+        {
+            builder.Add("# прошивка образца: " + firmwareBanner);
+        }
+
+        if (set.Missing.Count > 0)
+        {
+            // Недостача записывается в сам текст: через полгода по эталону
+            // должно быть видно, что он снят не полностью, без обращения к базе.
+            builder.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"# ВНИМАНИЕ: борт не отдал параметров: {set.Missing.Count} из {set.Declared}"));
+        }
+
+        builder.Add(string.Empty);
+
+        foreach (var pair in set.Values.OrderBy(static p => p.Key, StringComparer.Ordinal))
+        {
+            builder.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"{pair.Key},{ReferenceParamFile.FormatCanonical(pair.Value.Value)}"));
+        }
+
+        var text = string.Join("\n", builder);
+        var parsed = ReferenceParamFile.Parse(caption, SplitLines(text));
+
+        return Create(caption, sourcePath: string.Empty, text, parsed);
+    }
+
     private static ReferenceParameters Create(
         string sourceName,
         string sourcePath,

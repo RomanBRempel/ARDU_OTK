@@ -78,14 +78,17 @@ public sealed record ParameterRoleRule(
 /// Отступление технолога от умолчания: имя, новая роль и обоснование.
 /// </summary>
 /// <remarks>
-/// 🔴 Обоснование обязательно и не может быть пустым. Отступление от
-/// технологической карты без записанной причины через полгода неотличимо от
-/// случайного нажатия, и разобрать по нему рекламацию нельзя. Отступление
-/// хранится в эталоне и попадает в протокол.
+/// Отступление хранится в эталоне и попадает в протокол вместе с подписью и
+/// временем. Обоснование необязательно: раскладка задаётся ползунком в строке,
+/// а требование писать текст на каждое из сотен переключений привело бы к
+/// отпискам вида «надо» — они не объясняют ничего и лишь создают видимость
+/// разбора. Что действительно требует подтверждения — возврат под контроль
+/// имени, которое совпасть не может; за это отвечает
+/// <see cref="ParameterRole.IsHazardousOverride"/>.
 /// </remarks>
 /// <param name="Name">Точное имя параметра, без масок.</param>
 /// <param name="Control">Роль, назначенная оператором.</param>
-/// <param name="Justification">Почему отступили от умолчания.</param>
+/// <param name="Justification">Пояснение технолога; может быть пустым.</param>
 /// <param name="By">Кто отступил.</param>
 /// <param name="AtUtc">Когда.</param>
 public sealed record ParameterRoleOverride(
@@ -160,9 +163,16 @@ public sealed class ParameterRoleMap
     /// Первый блок — то, что не может совпасть с эталоном никогда. Он делится
     /// надвое: идентичность железа (параметр называет конкретный датчик
     /// конкретной платы) и величины, которые прошивка переписывает сама
-    /// (счётчики, наземное давление, температура калибровки). Второй блок —
-    /// компасный блок процедуры, его оператор видит. Всё прочее переносится и
-    /// сверяется, но экран собой не занимает.
+    /// (счётчики, наземное давление, температура калибровки). Всё остальное —
+    /// вся прошивка целиком, а не только компас — контролируется.
+    /// </para>
+    /// <para>
+    /// 🔴 По умолчанию под контролем, но <b>без показа</b> оператору не только
+    /// прочие параметры, но и компасный блок. Эталон — это конфигурация изделия
+    /// целиком, в ней тысяча с лишним имён, и любой заранее отобранный список
+    /// «важного» — это чужое мнение о том, за чем следить на конкретной модели.
+    /// Что поднять в видимую секцию, решает технолог ползунком в строке, и его
+    /// решение записывается в эталон.
     /// </para>
     /// </remarks>
     public static IReadOnlyList<ParameterRoleRule> DefaultRules { get; } = new[]
@@ -239,42 +249,78 @@ public sealed class ParameterRoleMap
         // --- Компасный блок процедуры: то, ради чего эталон и заводится -----
         new ParameterRoleRule(
             "COMPASS_OFS*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Жёсткое железо: смещения магнитометра. Переносятся из эталона и подтверждаются обратным чтением."),
         new ParameterRoleRule(
             "COMPASS_DIA*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Мягкое железо, диагональ. Переносится из эталона; калибровка по фиксированному курсу её затем сбрасывает в (1,1,1) — "
           + "это записывается в протокол как факт."),
         new ParameterRoleRule(
             "COMPASS_ODI*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Мягкое железо, внедиагональ. Переносится из эталона; калибровка по фиксированному курсу её затем обнуляет."),
         new ParameterRoleRule(
             "COMPASS_SCALE*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Масштабный коэффициент. Калибровка по фиксированному курсу его не трогает."),
         new ParameterRoleRule(
             "COMPASS_MOT*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Результат CompassMot: зависит от силовой проводки изделия. Переносится только при включённом переключателе."),
         new ParameterRoleRule(
             "COMPASS_ORIENT*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Ориентация датчика. Сверяется, но не переносится: калибровка по фиксированному курсу ориентацию не исправляет, "
           + "и неверное значение даёт «успешно» откалиброванный негодный компас."),
         new ParameterRoleRule(
             "COMPASS_USE*",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Применяется ли компас. Сверяется, не переносится."),
         new ParameterRoleRule(
             "COMPASS_EXTERNAL",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Внешний или внутренний компас. Сверяется по существу: 1 и 2 различаются только правом автоопределения перекрыть значение."),
         new ParameterRoleRule(
             "COMPASS_EXTERN?",
-            ParameterControl.ControlledVisible,
+            ParameterControl.ControlledHidden,
             "Внешний или внутренний компас второго и третьего слотов. Обратите внимание на имя: EXTERN2, а не EXTERNAL2."),
+
+        // --- Что оператор держит перед глазами -------------------------------
+        //
+        // Единственный блок, попадающий в видимую секцию по умолчанию. Это не
+        // «самые важные параметры вообще», а то, по чему на стенде опознают
+        // перепутанную сборку: пять первых каналов приёмника, пять первых
+        // выходов на исполнительные механизмы и таблица полётных режимов.
+        // Расхождение здесь означает не сбитую настройку, а другое изделие.
+        //
+        // 🔴 Маски перечислены поимённо, а не как RC?_* и SERVO?_*. Знак «?» —
+        // это любой знак, и такая маска забрала бы каналы с шестого по девятый,
+        // то есть ровно то, чего просили не показывать. Пять — значит пять.
+        new ParameterRoleRule("RC1_*", ParameterControl.ControlledVisible, RcChannelReason),
+        new ParameterRoleRule("RC2_*", ParameterControl.ControlledVisible, RcChannelReason),
+        new ParameterRoleRule("RC3_*", ParameterControl.ControlledVisible, RcChannelReason),
+        new ParameterRoleRule("RC4_*", ParameterControl.ControlledVisible, RcChannelReason),
+        new ParameterRoleRule("RC5_*", ParameterControl.ControlledVisible, RcChannelReason),
+
+        new ParameterRoleRule("SERVO1_*", ParameterControl.ControlledVisible, ServoOutputReason),
+        new ParameterRoleRule("SERVO2_*", ParameterControl.ControlledVisible, ServoOutputReason),
+        new ParameterRoleRule("SERVO3_*", ParameterControl.ControlledVisible, ServoOutputReason),
+        new ParameterRoleRule("SERVO4_*", ParameterControl.ControlledVisible, ServoOutputReason),
+        new ParameterRoleRule("SERVO5_*", ParameterControl.ControlledVisible, ServoOutputReason),
+
+        new ParameterRoleRule(
+            "FLTMODE*",
+            ParameterControl.ControlledVisible,
+            "Таблица полётных режимов и канал их переключения."),
+        new ParameterRoleRule(
+            "MODE?",
+            ParameterControl.ControlledVisible,
+            "Полётный режим по положению переключателя (наименование Rover и Sub)."),
+        new ParameterRoleRule(
+            "MODE_CH",
+            ParameterControl.ControlledVisible,
+            "Канал переключения полётных режимов (наименование Rover и Sub)."),
 
         // --- Всё остальное --------------------------------------------------
         new ParameterRoleRule(
@@ -282,6 +328,14 @@ public sealed class ParameterRoleMap
             ParameterControl.ControlledHidden,
             "Настройка изделия: переносится с эталона и сверяется, но у стенда оператору читать её не о чем."),
     };
+
+    private const string RcChannelReason =
+        "Канал приёмника из первых пяти. Границы, середина и назначение задают управление изделием: "
+      + "расхождение с эталоном означает другую раскладку пульта, а не сбитую настройку.";
+
+    private const string ServoOutputReason =
+        "Выход на исполнительный механизм из первых пяти. Назначение и границы задают, что именно к нему "
+      + "подключено: расхождение — это другая сборка, а не другая настройка.";
 
     private const string VolatileReason =
         "Прошивка ведёт это значение сама: счётчик, наземная опора или служебная запись. "
@@ -385,24 +439,15 @@ public sealed class ParameterRoleMap
     public bool IsControlled(string name) => Classify(name).IsControlled;
 
     /// <summary>Карта с добавленным или заменённым отступлением.</summary>
-    /// <exception cref="ArgumentException">Обоснование пусто.</exception>
     public ParameterRoleMap With(ParameterRoleOverride item)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentException.ThrowIfNullOrWhiteSpace(item.Name);
 
-        if (string.IsNullOrWhiteSpace(item.Justification))
-        {
-            throw new ArgumentException(
-                "Отступление от умолчания без обоснования не принимается: через полгода оно неотличимо "
-              + "от случайного нажатия, и разобрать по нему рекламацию нельзя.",
-                nameof(item));
-        }
-
         var name = Normalize(item.Name);
         var next = new Dictionary<string, ParameterRoleOverride>(_overrides, StringComparer.Ordinal)
         {
-            [name] = item with { Name = name, Justification = item.Justification.Trim() },
+            [name] = item with { Name = name, Justification = (item.Justification ?? string.Empty).Trim() },
         };
 
         // Отступление, совпавшее с умолчанием, отступлением не является:
@@ -532,10 +577,13 @@ public sealed class ParameterRoleMap
     public static string SectionHint(ParameterControl control) => control switch
     {
         ParameterControl.ControlledVisible =>
-            "Сверяются с бортом и переносятся на него. Их значения видны оператору здесь и попадают в протокол прогона.",
+            "Сверяются, переносятся, и их значения оператор видит на рабочем экране и в протоколе. "
+          + "По умолчанию сюда не попадает ничего: что держать перед глазами на этой модели, решает "
+          + "технолог — заранее отобранный список «важного» был бы чужим мнением о его изделии.",
         ParameterControl.ControlledHidden =>
-            "Сверяются и переносятся наравне с верхней секцией, но у стенда оператору читать их не о чем: "
-          + "на экране они заняли бы место, на котором должно быть видно расхождение по компасу.",
+            "Сверяются с бортом и переносятся на него. Это основной режим для всей прошивки целиком. "
+          + "На рабочем экране не показываются: тысяча с лишним строк вытеснила бы с него то, ради чего "
+          + "оператор на него смотрит.",
         _ =>
             "Из сверки и переноса исключены. Это параметры, которые называют конкретный экземпляр железа "
           + "или которые прошивка ведёт сама: совпасть с эталоном они не могут ни на одной исправной плате, "
@@ -571,13 +619,6 @@ public sealed class ParameterRoleMap
         }
 
         var justification = ReadString(element, "justification");
-        if (string.IsNullOrWhiteSpace(justification))
-        {
-            // Отступление без обоснования не восстанавливается: принять его
-            // значило бы задним числом узаконить то, что при заведении было
-            // запрещено.
-            return false;
-        }
 
         var atUtc = DateTimeOffset.TryParse(
             ReadString(element, "atUtc"),

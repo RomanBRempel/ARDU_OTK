@@ -71,7 +71,7 @@
             конкретное число, и ответ должен быть виден без наведения мыши.
         -->
         <DataTemplate x:Key="ParameterRoleTemplate" x:DataType="local:ParameterRoleRow">
-            <Grid ColumnSpacing="12">
+            <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -113,12 +113,38 @@
                         Visibility="{x:Bind HazardVisibility}" />
                 </StackPanel>
 
-                <Button
+                <!--
+                    Трёхпозиционный ползунок режима контроля. Деления слева
+                    направо: не контролируем — контроль — контроль и показ,
+                    по возрастанию внимания к параметру. Подпись под ползунком
+                    обязательна: положение кружка само по себе не говорит, что
+                    именно выбрано.
+                -->
+                <StackPanel
                     Grid.Column="1"
-                    VerticalAlignment="Top"
-                    Click="OnChangeRoleClick"
-                    Content="Секция…"
-                    Tag="{x:Bind Name}" />
+                    Width="180"
+                    VerticalAlignment="Top">
+                    <Slider
+                        HorizontalAlignment="Stretch"
+                        IsThumbToolTipEnabled="False"
+                        Maximum="2"
+                        Minimum="0"
+                        SmallChange="1"
+                        SnapsTo="Ticks"
+                        StepFrequency="1"
+                        Tag="{x:Bind Name}"
+                        TickFrequency="1"
+                        TickPlacement="Outside"
+                        ValueChanged="OnRoleSliderChanged"
+                        Value="{x:Bind SliderIndex}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind ModeText}"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                </StackPanel>
             </Grid>
         </DataTemplate>
 
@@ -157,64 +183,6 @@
                     Tag="{x:Bind Path}"
                     Visibility="{x:Bind RemoveVisibility}" />
             </Grid>
-        </DataTemplate>
-
-        <!--  Секция раздела контроля: заголовок, счётчик, пояснение и список.  -->
-        <DataTemplate x:Key="ParameterRoleSectionTemplate" x:DataType="local:ParameterRoleSectionRow">
-            <Expander
-                Margin="0,0,0,8"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Stretch"
-                IsExpanded="{x:Bind IsExpanded}">
-                <Expander.Header>
-                    <Grid ColumnSpacing="12" Padding="0,6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                            Text="{x:Bind Title}" />
-                        <TextBlock
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            FontFamily="Consolas"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource BodyTextBlockStyle}"
-                            Text="{x:Bind CountText}" />
-                    </Grid>
-                </Expander.Header>
-
-                <StackPanel Spacing="8">
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="{x:Bind Hint}"
-                        TextWrapping="Wrap" />
-
-                    <TextBlock
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource BodyTextBlockStyle}"
-                        Text="{x:Bind EmptyText}"
-                        TextWrapping="Wrap"
-                        Visibility="{x:Bind EmptyVisibility}" />
-
-                    <!--
-                        Высота ограничена намеренно: полный дамп параметров —
-                        это сотни строк, и без границы список разворачивается
-                        целиком, теряя виртуализацию вместе с отзывчивостью.
-                    -->
-                    <ListView
-                        MaxHeight="360"
-                        IsItemClickEnabled="False"
-                        ItemContainerStyle="{StaticResource RowContainerStyle}"
-                        ItemTemplate="{StaticResource ParameterRoleTemplate}"
-                        ItemsSource="{x:Bind Rows}"
-                        SelectionMode="None"
-                        Visibility="{x:Bind ListVisibility}" />
-                </StackPanel>
-            </Expander>
         </DataTemplate>
 
     </Page.Resources>
@@ -545,13 +513,91 @@
                             Severity="Warning"
                             Title="Отступления от технологической карты" />
 
-                        <TextBox
-                            x:Name="RoleFilterBox"
-                            PlaceholderText="фильтр по имени, например COMPASS_OFS"
-                            TextChanged="OnRoleFilterChanged"
-                            Visibility="Collapsed" />
+                        <!--
+                            Три счётчика вместо трёх раздельных списков. С
+                            ползунком в строке раздельные списки не работают:
+                            переключённая строка обязана была бы перепрыгнуть в
+                            соседний раздел и исчезнуть из-под пальца. Поэтому
+                            список один, а раскладка видна счётчиками и
+                            фильтром по режиму.
+                        -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Padding="10,6" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel Spacing="1">
+                                    <TextBlock
+                                        x:Name="RoleCountVisibleText"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="контроль и показ"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Padding="10,6" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel Spacing="1">
+                                    <TextBlock
+                                        x:Name="RoleCountHiddenText"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="только контроль"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Padding="10,6" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" CornerRadius="4">
+                                <StackPanel Spacing="1">
+                                    <TextBlock
+                                        x:Name="RoleCountOffText"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="0" />
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="не контролируем"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
 
-                        <ItemsControl x:Name="RoleSectionsList" ItemTemplate="{StaticResource ParameterRoleSectionTemplate}" ItemsSource="{x:Bind RoleSections}" />
+                        <Grid ColumnSpacing="8" Visibility="Collapsed" x:Name="RoleFilterPanel">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="RoleFilterBox"
+                                PlaceholderText="фильтр по имени, например COMPASS_OFS"
+                                TextChanged="OnRoleFilterChanged" />
+                            <ComboBox
+                                x:Name="RoleModeFilterBox"
+                                Grid.Column="1"
+                                MinWidth="190"
+                                SelectedIndex="0"
+                                SelectionChanged="OnRoleModeFilterChanged">
+                                <ComboBoxItem Content="все режимы" />
+                                <ComboBoxItem Content="контроль и показ" />
+                                <ComboBoxItem Content="только контроль" />
+                                <ComboBoxItem Content="не контролируем" />
+                            </ComboBox>
+                        </Grid>
+
+                        <ListView
+                            x:Name="RoleList"
+                            MaxHeight="460"
+                            IsItemClickEnabled="False"
+                            ItemContainerStyle="{StaticResource RowContainerStyle}"
+                            ItemTemplate="{StaticResource ParameterRoleTemplate}"
+                            ItemsSource="{x:Bind RoleRows}"
+                            SelectionMode="None" />
                     </StackPanel>
                 </Border>
 
