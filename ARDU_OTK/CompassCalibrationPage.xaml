@@ -10,25 +10,7 @@
 
     <Page.Resources>
 
-        <!--
-            Карточка. Только theme-ресурсы: цеховой ПК может стоять в светлой
-            теме, а стенд наладчика — в тёмной, и оба вида обязаны читаться.
-        -->
-        <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-        </Style>
-
-        <Style x:Key="RowContainerStyle" TargetType="ListViewItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="10,6" />
-            <Setter Property="MinHeight" Value="0" />
-        </Style>
+        <!--  CardBorderStyle и RowContainerStyle — общие, объявлены в App.xaml.  -->
 
         <!--
             Стадия процедуры. Состояние передаётся значком И словом: по одному
@@ -94,6 +76,63 @@
             значком, своим словом и отдельной пояснительной строкой: недостаток
             данных не является мягким «годен».
         -->
+        <!--
+            Не прошедший проверку параметр. Действие стоит справа от значений, а
+            не в контекстном меню: оператор у стенда работает мышью по одному
+            видимому элементу, а не ищет скрытые команды.
+        -->
+        <DataTemplate x:Key="MismatchTemplate" x:DataType="local:ParamMismatchRow">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="{x:Bind Name}" />
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Text="{x:Bind ExpectedText}" />
+                        <TextBlock
+                            FontFamily="Consolas"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            IsTextSelectionEnabled="True"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Text="{x:Bind ActualText}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind Detail}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind OutcomeText, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Top"
+                    Click="OnRewriteOneClick"
+                    Content="Перезаписать из эталона"
+                    IsEnabled="{x:Bind CanRewrite, Mode=OneWay}"
+                    Tag="{x:Bind Name}" />
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="CheckTemplate" x:DataType="local:CalibrationCheckRow">
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
@@ -544,6 +583,72 @@
                                 ItemContainerStyle="{StaticResource RowContainerStyle}"
                                 ItemTemplate="{StaticResource StageTemplate}"
                                 ItemsSource="{x:Bind Stages}"
+                                SelectionMode="None" />
+                        </StackPanel>
+                    </Border>
+
+                    <!--
+                        Не прошедшие проверку параметры стоят отдельной плашкой
+                        над списком проверок: это единственное место экрана, где
+                        оператору предлагается действие, и искать его среди
+                        полусотни строк «норма» он не должен.
+                    -->
+                    <Border x:Name="MismatchCard" Style="{StaticResource CardBorderStyle}" Visibility="Collapsed">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="Не прошли проверку" />
+                                <Button
+                                    x:Name="RewriteAllButton"
+                                    Grid.Column="1"
+                                    Click="OnRewriteAllClick"
+                                    Content="Перезаписать все из эталона" />
+                            </Grid>
+
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Борт держит не то, что требует эталон. Перезапись возвращает эталонное значение и записывается в тот же прогон отдельной строкой аудита. Вердикт прогона она не меняет: изделие сдаётся повторным прогоном целиком, а не подкруткой отдельных параметров."
+                                TextWrapping="Wrap" />
+
+                            <StackPanel
+                                x:Name="RewriteProgressPanel"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Visibility="Collapsed">
+                                <ProgressRing
+                                    x:Name="RewriteRing"
+                                    Width="16"
+                                    Height="16"
+                                    IsActive="False" />
+                                <TextBlock
+                                    x:Name="RewriteProgressText"
+                                    VerticalAlignment="Center"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="" />
+                            </StackPanel>
+
+                            <InfoBar
+                                x:Name="RewriteBar"
+                                IsClosable="False"
+                                IsOpen="False"
+                                Severity="Informational"
+                                Title="Повторная запись" />
+
+                            <ListView
+                                x:Name="MismatchList"
+                                MaxHeight="320"
+                                IsItemClickEnabled="False"
+                                ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                ItemTemplate="{StaticResource MismatchTemplate}"
+                                ItemsSource="{x:Bind Mismatches}"
                                 SelectionMode="None" />
                         </StackPanel>
                     </Border>

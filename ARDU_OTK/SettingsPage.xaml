@@ -18,6 +18,75 @@
 
             <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Настройки" />
 
+            <!--
+                Рабочее место идёт первым: без азимута и оператора прогон вообще
+                не запускается, а обновления и путь к базе — справочная часть.
+            -->
+            <Border
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="14">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Рабочее место" />
+
+                    <InfoBar
+                        x:Name="WorkstationBar"
+                        IsClosable="False"
+                        IsOpen="False"
+                        Severity="Warning"
+                        Title="Стенд не настроен" />
+
+                    <!--
+                        Слово «ИСТИННЫЙ» стоит в самой подписи, а не только в
+                        пояснении: непонимание этого поля тихо губит всю
+                        калибровку, а пояснения читают не все.
+                    -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="ИСТИННЫЙ азимут стапеля, градусы" />
+                        <NumberBox
+                            x:Name="AzimuthBox"
+                            HorizontalAlignment="Left"
+                            MinWidth="200"
+                            LargeChange="10"
+                            Maximum="360"
+                            Minimum="0"
+                            PlaceholderText="не задан"
+                            SmallChange="0.5"
+                            SpinButtonPlacementMode="Compact"
+                            ValueChanged="OnWorkstationChanged" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Азимут истинный — от географического севера, НЕ магнитный. Компас телефона показывает магнитный курс: к его показанию нужно прибавить местное магнитное склонение. Ноль — законное значение (стапель на север), поэтому пустое поле означает «не задан», а не 0°."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Оператор" />
+                        <TextBox
+                            x:Name="OperatorBox"
+                            HorizontalAlignment="Left"
+                            MinWidth="260"
+                            PlaceholderText="фамилия"
+                            TextChanged="OnOperatorChanged" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Подставляется в прогон и в подпись заводимых эталонов."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <TextBlock
+                        x:Name="WorkstationSavedText"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text=""
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <!--  Обновления  -->
             <Border
                 Padding="20"
@@ -73,7 +142,7 @@
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="Реестр прогонов и эталонные профили лежат вне каталога установки, поэтому переживают обновление."
+                        Text="Реестр прогонов и эталоны лежат вне каталога установки, поэтому переживают обновление."
                         TextWrapping="Wrap" />
 
                     <TextBlock

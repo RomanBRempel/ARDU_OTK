@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ARDU ОТК (x64)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/ARDU_OTK/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/ARDU_OTK.exe",
+      "args": [],
+      // Рабочий каталог обязан быть каталогом вывода: MainWindow читает
+      // Assets/AppIcon.ico с диска относительно него, а не как ресурс XAML.
+      "cwd": "${workspaceFolder}/ARDU_OTK/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "justMyCode": true,
+      "enableStepFiltering": true
+    },
+    {
+      "name": "ARDU ОТК — запуск без отладки",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/ARDU_OTK/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64/ARDU_OTK.exe",
+      "cwd": "${workspaceFolder}/ARDU_OTK/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64",
+      "console": "internalConsole",
+      "noDebug": true
+    },
+    {
+      "name": "ARDU ОТК — подключиться к запущенному процессу",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "ARDU_OTK.exe"
+    },
+    {
+      "name": "ARDU ОТК — установленная копия",
+      "type": "coreclr",
+      "request": "launch",
+      // Установленная копия работает с боевым хранилищем, а сборка из bin — с
+      // отладочным (%LOCALAPPDATA%\\ARDU_OTK.Data\\dev). Профили и прогоны у них
+      // разные: это разные базы, а не пропавшие данные.
+      "program": "${env:LOCALAPPDATA}/ARDU_OTK/current/ARDU_OTK.exe",
+      "cwd": "${env:LOCALAPPDATA}/ARDU_OTK/current",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}

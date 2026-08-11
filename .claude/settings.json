@@ -1,14 +1,43 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/mavlink/master/message_definitions/v1.0/ardupilotmega.xml' -UseBasicParsing\\).Content; $lines = $x -split \"`n\"; foreach \\($p in @\\('value=\"42424\"','value=\"42425\"','value=\"42426\"','id=\"191\"'\\)\\) { $m = $lines | Select-String -Pattern \\([regex]::Escape\\($p\\)\\) | Select-Object -First 1; if \\($m\\) { \"=== $p ===\"; $lines[\\($m.LineNumber-1\\)..\\([Math]::Min\\($m.LineNumber+22,$lines.Count-1\\)\\)] -join \"`n\"; \"\" } else { \"=== $p NOT FOUND ===\" } })",
-      "Bash(curl -s https://raw.githubusercontent.com/ArduPilot/ardupilot/master/ArduCopter/GCS_MAVLink_Copter.cpp)",
-      "Bash(curl -s https://raw.githubusercontent.com/ArduPilot/ardupilot/master/ArduCopter/Parameters.cpp)",
-      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/ardupilot/master/libraries/AP_Compass/AP_Compass_Calibration.cpp' -UseBasicParsing\\).Content; $x)",
+      "Bash(python tools/graph_freshness.py*)",
+      "PowerShell(python tools/graph_freshness.py*)",
+      "PowerShell(graphify *)",
+      "Bash(curl -s https://raw.githubusercontent.com/ArduPilot/*)",
+      "Bash(curl -sL https://ardupilot.org/*)",
+      "WebFetch(domain:ardupilot.org)",
       "WebFetch(domain:grep.app)",
-      "Bash(curl -sL \"https://ardupilot.org/copter/docs/parameters.html\")",
-      "PowerShell($ProgressPreference='SilentlyContinue'; $x = \\(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/ArduPilot/ardupilot/master/libraries/AP_Compass/AP_Compass.cpp' -UseBasicParsing\\).Content; \\($x -split \"`n\" | Select-String -Pattern 'AP_GROUPINFO|AP_SUBGROUPINFO' | ForEach-Object { $_.Line.Trim\\(\\) }\\) -join \"`n\")",
-      "Bash(python -c ' *)"
+      "Skill(schedule)",
+      "Skill(schedule:*)",
+      "PowerShell(Get-Process ARDU_OTK -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }; Start-Sleep 2; \"остановлено\")",
+      "PowerShell(Remove-Item \"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\" -ErrorAction SilentlyContinue; $exe=\"C:\\\\#Data\\\\ARDU_OTK\\\\ARDU_OTK\\\\bin\\\\x64\\\\Debug\\\\net10.0-windows10.0.26100.0\\\\win-x64\\\\ARDU_OTK.exe\"; $p=Start-Process $exe -PassThru; Start-Sleep 15; if \\($p.HasExited\\) { \"EXITED 0x{0:X8}\" -f $p.ExitCode } else { \"RUNNING — оставлено открытым\" }; $l=\"$env:LOCALAPPDATA\\\\ARDU_OTK.Data\\\\startup-errors.log\"; if \\(Test-Path $l\\) { \"ошибка:\"; \\(Get-Content $l -TotalCount 4\\) -join \"`n\" } else { \"ошибок нет\" })"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/tools/graph_freshness.py\" --hook SessionStart",
+            "timeout": 60,
+            "statusMessage": "Проверка свежести графа знаний"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/tools/graph_freshness.py\" --hook PostToolUse",
+            "timeout": 30
+          }
+        ]
+      }
     ]
   }
 }

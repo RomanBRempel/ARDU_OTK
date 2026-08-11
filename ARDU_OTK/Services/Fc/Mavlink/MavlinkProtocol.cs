@@ -19,6 +19,10 @@ public static class MavMessageId
     public const uint Attitude = 30;
     public const uint CommandLong = 76;
     public const uint CommandAck = 77;
+
+    /// <summary>Файловый обмен с бортом (MAVFTP). Им читаются скрипты с SD-карты.</summary>
+    public const uint FileTransferProtocol = 110;
+
     public const uint ScaledImu2 = 116;
     public const uint ScaledImu3 = 129;
     public const uint StatusText = 253;
@@ -142,6 +146,7 @@ public static class MavlinkCrc
             MavMessageId.Attitude => 39,
             MavMessageId.CommandLong => 152,
             MavMessageId.CommandAck => 143,
+            MavMessageId.FileTransferProtocol => 84,
             MavMessageId.ScaledImu2 => 76,
             MavMessageId.ScaledImu3 => 46,
             MavMessageId.StatusText => 83,
@@ -933,6 +938,39 @@ public sealed class MavlinkEncoder
         payload[31] = targetComponent;
         payload[32] = confirmation;
         return Frame(MavMessageId.CommandLong, payload);
+    }
+
+    /// <summary>
+    /// Собирает <c>FILE_TRANSFER_PROTOCOL</c> (id 110).
+    /// </summary>
+    /// <param name="ftpPayload">
+    /// Полезная нагрузка MAVFTP ровно <see cref="MavFtpPayload.Length"/> байт —
+    /// заголовок вместе с данными. Короче нельзя: поле объявлено как
+    /// <c>uint8_t[251]</c>, и смещения внутри него фиксированы.
+    /// </param>
+    /// <remarks>
+    /// <c>target_network</c> всегда 0: маршрутизации между сетями на стенде нет,
+    /// борт подключён кабелем напрямую.
+    /// </remarks>
+    public byte[] EncodeFileTransferProtocol(
+        byte targetSystem,
+        byte targetComponent,
+        ReadOnlySpan<byte> ftpPayload)
+    {
+        if (ftpPayload.Length != MavFtpPayload.Length)
+        {
+            throw new ArgumentException(
+                $"Нагрузка MAVFTP обязана быть ровно {MavFtpPayload.Length} байт, получено {ftpPayload.Length}.",
+                nameof(ftpPayload));
+        }
+
+        Span<byte> payload = stackalloc byte[3 + MavFtpPayload.Length];
+        payload.Clear();
+        payload[0] = 0;
+        payload[1] = targetSystem;
+        payload[2] = targetComponent;
+        ftpPayload.CopyTo(payload[3..]);
+        return Frame(MavMessageId.FileTransferProtocol, payload);
     }
 
     /// <summary>

@@ -117,6 +117,30 @@ public enum WriteOutcome
     Failed,
 }
 
+/// <summary>
+/// Параметр, не прошедший проверку: борт держит не то, что требует эталон.
+/// </summary>
+/// <remarks>
+/// 🔴 Расхождения собираются все, а не до первого. Останов на первом давал
+/// оператору одно имя из десяти и заставлял искать остальные девять
+/// перезапусками прогона — по одному имени за прогон, каждый со снятием платы
+/// со стапеля. Полный список позволяет решить, что это: единичный сбой записи
+/// или негодный эталон.
+/// </remarks>
+/// <param name="Name">Имя параметра.</param>
+/// <param name="Stage">Стадия, на которой расхождение обнаружено.</param>
+/// <param name="Expected">Что требует эталон.</param>
+/// <param name="Actual">Что борт отдал при обратном чтении.</param>
+/// <param name="Type">Тип параметра на борту — нужен для повторной записи.</param>
+/// <param name="Detail">Пояснение для оператора и для протокола.</param>
+public sealed record ParamMismatch(
+    string Name,
+    CalibrationStage Stage,
+    double Expected,
+    double Actual,
+    MavParamType Type,
+    string Detail);
+
 /// <summary>Запись аудита по одному параметру.</summary>
 public sealed record ParamWriteRecord(
     string Name,
@@ -132,12 +156,26 @@ public sealed record ParamWriteRecord(
 /// <param name="JigAzimuthDeg">Азимут стапеля, градусы, ИСТИННЫЙ.</param>
 /// <param name="UnitId">Серийный номер борта, введённый оператором.</param>
 /// <param name="Operator">Кто выполняет.</param>
+/// <param name="Roles">
+/// Роли параметров эталона: что сверяется и переносится, а что исключено.
+/// <c>null</c> — умолчания технологической карты
+/// (<see cref="ParameterRoleMap.Default"/>).
+/// </param>
 public sealed record CalibrationRequest(
     string PortName,
     string ReferenceFilePath,
     double JigAzimuthDeg,
     string UnitId,
-    string Operator);
+    string Operator,
+    ParameterRoleMap? Roles = null)
+{
+    /// <summary>
+    /// Действующая карта ролей. Единственное место, где подставляется
+    /// умолчание: <c>null</c> не должен разъезжаться по стадиям процедуры и
+    /// проверяться в каждой заново.
+    /// </summary>
+    public ParameterRoleMap EffectiveRoles => Roles ?? ParameterRoleMap.Default;
+}
 
 /// <summary>Допуски процедуры. Значения по умолчанию — из технологической карты.</summary>
 public sealed record CalibrationTolerances
@@ -198,7 +236,28 @@ public sealed record CalibrationRunResult(
     IReadOnlyList<StatusTextEvent> PrearmMessages,
     string? FirmwareBanner,
     DateTimeOffset StartedUtc,
-    DateTimeOffset EndedUtc);
+    DateTimeOffset EndedUtc)
+{
+    /// <summary>
+    /// Параметры, не прошедшие проверку, — все, а не только тот, на котором
+    /// прогон остановился.
+    /// </summary>
+    public IReadOnlyList<ParamMismatch> Mismatches { get; init; } = Array.Empty<ParamMismatch>();
+
+    /// <summary>
+    /// Ключ прогона в реестре. <c>0</c> — прогон не был открыт (отказ до
+    /// первой записи).
+    /// </summary>
+    /// <remarks>
+    /// Нужен повторной записи параметра: попытка исправления — такое же
+    /// свидетельство, как и сам прогон, и она обязана лечь в тот же прогон, а
+    /// не потеряться.
+    /// </remarks>
+    public long RunId { get; init; }
+
+    /// <summary>Порт, на котором выполнялся прогон, — по нему возвращаются к борту для повторной записи.</summary>
+    public string PortName { get; init; } = string.Empty;
+}
 
 /// <summary>Строка реестра для списка истории.</summary>
 public sealed record RunSummary(

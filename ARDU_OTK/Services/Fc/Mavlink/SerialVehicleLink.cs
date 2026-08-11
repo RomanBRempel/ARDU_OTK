@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Ports;
 using System.Text;
 using System.Threading.Channels;
@@ -20,7 +21,7 @@ namespace ARDU_OTK.Services.Fc.Mavlink;
 /// станция, и их телеметрия не должна попасть в замер.
 /// </para>
 /// </remarks>
-public sealed class SerialVehicleLink : IVehicleLink
+public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
 {
     /// <summary>
     /// Скорость порта. Через USB CDC это значение — фикция: композитное
@@ -997,6 +998,426 @@ public sealed class SerialVehicleLink : IVehicleLink
     }
 
     // ------------------------------------------------------- подписки
+
+    // ------------------------------------------------------------ MAVFTP
+
+    /// <summary>Таймаут одного обмена MAVFTP.</summary>
+    private static readonly TimeSpan FtpTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>Сколько раз повторяется потерянный обмен.</summary>
+    private const int FtpRetries = 3;
+
+    /// <summary>
+    /// Верхняя граница размера читаемого файла.
+    /// </summary>
+    /// <remarks>
+    /// Скрипт Lua на борту — единицы килобайт. Граница стоит не ради экономии
+    /// памяти, а против зацикливания: сервер, отвечающий пустыми кусками без
+    /// признака конца файла, иначе тянул бы чтение бесконечно.
+    /// </remarks>
+    private const int FtpMaxFileBytes = 1 << 20;
+
+    private readonly SemaphoreSlim _ftpGate = new(1, 1);
+
+    private ushort _ftpSequence;
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<MavFtpEntry>> ListDirectoryAsync(string path, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        EnsureConnected();
+
+        await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var entries = new List<MavFtpEntry>();
+            uint offset = 0;
+
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var reply = await FtpRequestAsync(
+                    session: 0,
+                    MavFtpOpcode.ListDirectory,
+                    offset,
+                    Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
+                    allowNak: true,
+                    ct).ConfigureAwait(false);
+
+                if (reply.Opcode == MavFtpOpcode.Nak)
+                {
+                    if (reply.Error == MavFtpError.EndOfFile)
+                    {
+                        break;
+                    }
+
+                    throw new VehicleLinkException(
+                        $"Каталог «{path}» не прочитан: {reply.DescribeError()}.");
+                }
+
+                var consumed = MavFtpDirectory.Parse(reply.Data.Span, entries);
+                if (consumed == 0)
+                {
+                    // Ответ без записей и без признака конца — дальше двигаться
+                    // некуда, а повтор дал бы тот же ответ. Считаем каталог
+                    // прочитанным, а не зацикливаемся.
+                    break;
+                }
+
+                offset += (uint)consumed;
+            }
+
+            return entries;
+        }
+        finally
+        {
+            _ftpGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> ReadFileAsync(string path, IProgress<long>? progress, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        EnsureConnected();
+
+        await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var open = await FtpRequestAsync(
+                session: 0,
+                MavFtpOpcode.OpenFileRO,
+                offset: 0,
+                Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
+                allowNak: true,
+                ct).ConfigureAwait(false);
+
+            if (open.Opcode == MavFtpOpcode.Nak)
+            {
+                throw new VehicleLinkException($"Файл «{path}» не открыт: {open.DescribeError()}.");
+            }
+
+            var session = open.Session;
+            var content = new List<byte>(4096);
+
+            try
+            {
+                uint offset = 0;
+                while (true)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var chunk = await FtpRequestAsync(
+                        session,
+                        MavFtpOpcode.ReadFile,
+                        offset,
+                        ReadOnlyMemory<byte>.Empty,
+                        allowNak: true,
+                        ct,
+                        requestedSize: MavFtpPayload.MaxDataLength).ConfigureAwait(false);
+
+                    if (chunk.Opcode == MavFtpOpcode.Nak)
+                    {
+                        if (chunk.Error == MavFtpError.EndOfFile)
+                        {
+                            break;
+                        }
+
+                        throw new VehicleLinkException($"Файл «{path}» не дочитан: {chunk.DescribeError()}.");
+                    }
+
+                    if (chunk.Data.Length == 0)
+                    {
+                        // Пустой ACK без EOF: файл кончился, но сервер сообщил об
+                        // этом иначе. Продолжать нечем.
+                        break;
+                    }
+
+                    content.AddRange(chunk.Data.ToArray());
+                    offset += (uint)chunk.Data.Length;
+                    progress?.Report(content.Count);
+
+                    if (content.Count > FtpMaxFileBytes)
+                    {
+                        throw new VehicleLinkException(
+                            $"Файл «{path}» превысил {FtpMaxFileBytes / 1024} КиБ. "
+                          + "Для скрипта это ненормальный размер; чтение прервано.");
+                    }
+                }
+            }
+            finally
+            {
+                await TerminateFtpSessionAsync(session).ConfigureAwait(false);
+            }
+
+            return content.ToArray();
+        }
+        finally
+        {
+            _ftpGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task WriteFileAsync(
+        string path,
+        ReadOnlyMemory<byte> content,
+        IProgress<long>? progress,
+        CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        EnsureConnected();
+
+        await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            // 🔴 У борта файловая сессия одна. Сессия, не закрытая предыдущим
+            // обменом — оборванным кабелем, снятым питанием станции, аварийным
+            // выходом приложения, — блокирует создание файла до перезагрузки
+            // борта, и отказ приходит общим кодом Fail, по которому причину не
+            // угадать. Сброс перед записью убирает этот класс отказов целиком.
+            // Ответ на сам сброс не нужен и не ожидается: часть прошивок на него
+            // не отвечает вовсе. Ждать его — значит подменить полезную гигиену
+            // отказом там, где всё в порядке.
+            try
+            {
+                await FtpRequestAsync(
+                    session: 0,
+                    MavFtpOpcode.ResetSessions,
+                    offset: 0,
+                    ReadOnlyMemory<byte>.Empty,
+                    allowNak: true,
+                    ct).ConfigureAwait(false);
+            }
+            catch (VehicleLinkException ex)
+            {
+                Log(MavSeverity.Debug, $"Сброс файловых сессий не подтверждён: {ex.Message}");
+            }
+
+            // CreateFile создаёт файл заново, обрезая существующий. Именно это и
+            // нужно: дозапись поверх старого содержимого дала бы склейку двух
+            // скриптов, синтаксически верную и делающую не то.
+            var create = await FtpRequestAsync(
+                session: 0,
+                MavFtpOpcode.CreateFile,
+                offset: 0,
+                Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
+                allowNak: true,
+                ct).ConfigureAwait(false);
+
+            if (create.Opcode == MavFtpOpcode.Nak)
+            {
+                throw new VehicleLinkException($"Файл «{path}» не создан: {create.DescribeError()}.");
+            }
+
+            var session = create.Session;
+
+            try
+            {
+                var written = 0;
+                while (written < content.Length)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var size = Math.Min(MavFtpPayload.MaxDataLength, content.Length - written);
+                    var chunk = content.Slice(written, size);
+
+                    var ack = await FtpRequestAsync(
+                        session,
+                        MavFtpOpcode.WriteFile,
+                        (uint)written,
+                        chunk,
+                        allowNak: true,
+                        ct).ConfigureAwait(false);
+
+                    if (ack.Opcode == MavFtpOpcode.Nak)
+                    {
+                        throw new VehicleLinkException(
+                            $"Файл «{path}» не дописан со смещения {written}: {ack.DescribeError()}.");
+                    }
+
+                    written += size;
+                    progress?.Report(written);
+                }
+            }
+            finally
+            {
+                // Сессия закрывается в любом случае: у борта их единицы, и
+                // брошенная сессия делает следующую запись невозможной до
+                // перезагрузки.
+                await TerminateFtpSessionAsync(session).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _ftpGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RemoveFileAsync(string path, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        EnsureConnected();
+
+        await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var reply = await FtpRequestAsync(
+                session: 0,
+                MavFtpOpcode.RemoveFile,
+                offset: 0,
+                Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
+                allowNak: true,
+                ct).ConfigureAwait(false);
+
+            // Отсутствие файла — это уже требуемое состояние, а не отказ:
+            // повторное удаление не должно валить операцию.
+            if (reply.Opcode == MavFtpOpcode.Nak && reply.Error != MavFtpError.FileNotFound)
+            {
+                throw new VehicleLinkException($"Файл «{path}» не удалён: {reply.DescribeError()}.");
+            }
+        }
+        finally
+        {
+            _ftpGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Один обмен MAVFTP с повторами.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Ответ опознаётся по номеру запроса плюс единица — так предписывает
+    /// протокол и так поступают наземные станции. Опознание по одному лишь коду
+    /// операции недопустимо: после повтора в канале оказываются два ответа на
+    /// два разных запроса с одинаковым кодом, и второй кусок файла встал бы на
+    /// место первого.
+    /// </remarks>
+    /// <param name="allowNak">
+    /// <c>true</c> — отказ возвращается вызывающему как значение. Так сделано
+    /// потому, что <see cref="MavFtpError.EndOfFile"/> — это штатное завершение
+    /// чтения, а не сбой, и превращать его в исключение значит управлять
+    /// нормальным ходом дела через исключения.
+    /// </param>
+    /// <param name="requestedSize">
+    /// Сколько байт запрашивается у сервера. Осмысленно для чтения: поле
+    /// <c>size</c> в запросе означает не длину данных, а желаемый объём ответа.
+    /// </param>
+    private async Task<MavFtpPayload> FtpRequestAsync(
+        byte session,
+        MavFtpOpcode opcode,
+        uint offset,
+        ReadOnlyMemory<byte> data,
+        bool allowNak,
+        CancellationToken ct,
+        int requestedSize = -1)
+    {
+        // ReadOnlyMemory, а не ReadOnlySpan: ссылочная структура не может быть
+        // параметром асинхронного метода — она не переживает точку ожидания.
+        byte[] payload = MavFtpPayload.EncodeRequest(_ftpSequence, session, opcode, offset, data.Span);
+        if (requestedSize >= 0)
+        {
+            payload[4] = (byte)Math.Min(requestedSize, MavFtpPayload.MaxDataLength);
+        }
+
+        for (var attempt = 0; ; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var expected = unchecked((ushort)(_ftpSequence + 1));
+
+            try
+            {
+                using FrameSubscription subscription = Subscribe(frame =>
+                    frame.MessageId == MavMessageId.FileTransferProtocol
+                    && MavFtpPayload.TryDecode(frame.Payload.Span, out var reply)
+                    && reply.Sequence == expected);
+
+                byte[] frame = _encoder.EncodeFileTransferProtocol(TargetSystem, TargetComponent, payload);
+                await SendAsync(frame, ct).ConfigureAwait(false);
+
+                MavlinkFrame answer = await subscription
+                    .ReadAsync(FtpTimeout, $"ответ MAVFTP на {opcode}", ct)
+                    .ConfigureAwait(false);
+
+                if (!MavFtpPayload.TryDecode(answer.Payload.Span, out var result))
+                {
+                    throw new VehicleLinkException($"Ответ MAVFTP на {opcode} не разбирается.");
+                }
+
+                // Номер двигается только после принятого ответа: иначе повтор
+                // ушёл бы с новым номером, и запоздавший ответ на прошлую
+                // попытку был бы принят за ответ на текущую.
+                unchecked
+                {
+                    _ftpSequence += 2;
+                }
+
+                if (result.Opcode == MavFtpOpcode.Nak && !allowNak)
+                {
+                    throw new VehicleLinkException(
+                        $"Борт отклонил операцию MAVFTP {opcode}: {result.DescribeError()}.");
+                }
+
+                return result;
+            }
+            catch (VehicleLinkException) when (attempt < FtpRetries)
+            {
+                Log(MavSeverity.Debug, $"MAVFTP {opcode}: попытка {attempt + 1} не удалась, повтор.");
+
+                // Номер обязан смениться и у повтора, иначе запоздавший ответ на
+                // предыдущую попытку не отличить от ответа на новую.
+                unchecked
+                {
+                    _ftpSequence += 2;
+                }
+
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0), _ftpSequence);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Закрывает файловую сессию, не позволяя отказу закрытия скрыть исход
+    /// самой операции.
+    /// </summary>
+    /// <remarks>
+    /// Вызывается из <c>finally</c>, поэтому исключений не выпускает: сессий у
+    /// борта единицы, но потерянная сессия — меньшая беда, чем подменённая
+    /// причина отказа чтения.
+    /// </remarks>
+    private async Task TerminateFtpSessionAsync(byte session)
+    {
+        try
+        {
+            await FtpRequestAsync(
+                session,
+                MavFtpOpcode.TerminateSession,
+                offset: 0,
+                ReadOnlyMemory<byte>.Empty,
+                allowNak: true,
+                CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log(MavSeverity.Debug, $"Сессия MAVFTP {session} не закрыта: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Приводит путь к виду, который ждёт сервер: без ведущего слэша и с прямыми
+    /// разделителями.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Обратный слэш Windows на борту разделителем не является: он попадает
+    /// в имя файла, и вместо <c>APM/scripts/x.lua</c> сервер ищет файл с именем
+    /// <c>APM\scripts\x.lua</c> в корне — получая «файл не найден» там, где файл
+    /// есть.
+    /// </remarks>
+    private static string NormalizeFtpPath(string path) =>
+        path.Replace('\\', '/').TrimStart('/');
 
     private FrameSubscription Subscribe(Func<MavlinkFrame, bool> predicate)
     {

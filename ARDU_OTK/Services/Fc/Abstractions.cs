@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ARDU_OTK.Services.Fc.Mavlink;
 
 namespace ARDU_OTK.Services.Fc;
 
@@ -207,6 +209,58 @@ public interface IVehicleLink : System.IAsyncDisposable
     /// окно ожидания.
     /// </summary>
     Task<PrearmReport> RunPrearmChecksAsync(System.TimeSpan window, CancellationToken ct);
+}
+
+/// <summary>
+/// Файловый обмен с бортом по MAVFTP.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Отдельный интерфейс, а не члены <see cref="IVehicleLink"/>: файлы нужны
+/// только скриптовой части, и процедура калибровки не должна зависеть от того,
+/// умеет ли канал их читать. Прошивка без MAVFTP — законный случай, и он обязан
+/// отличаться от сбоя связи.
+/// </para>
+/// <para>
+/// 🔴 Обмен последовательный по одному куску за раз, без пакетного чтения
+/// (<c>BurstReadFile</c>). Скрипты Lua — единицы килобайт, выигрыш пакетного
+/// режима на таком объёме измеряется долями секунды, а цена — отдельный конечный
+/// автомат с досылкой потерянных кусков и разбором признака завершения.
+/// </para>
+/// </remarks>
+public interface IVehicleFileTransfer
+{
+    /// <summary>Перечисляет содержимое каталога на карте борта.</summary>
+    /// <param name="path">Путь без ведущего слэша, например <c>APM/scripts</c>.</param>
+    /// <exception cref="VehicleLinkException">Каталога нет, либо прошивка не поддерживает MAVFTP.</exception>
+    Task<IReadOnlyList<MavFtpEntry>> ListDirectoryAsync(string path, CancellationToken ct);
+
+    /// <summary>Читает файл целиком.</summary>
+    /// <exception cref="VehicleLinkException">Файла нет либо чтение прервано отказом.</exception>
+    Task<byte[]> ReadFileAsync(string path, System.IProgress<long>? progress, CancellationToken ct);
+
+    /// <summary>
+    /// Создаёт файл заново и записывает содержимое.
+    /// </summary>
+    /// <remarks>
+    /// Существующий файл перезаписывается: частичная запись поверх старого
+    /// содержимого оставила бы на борту склейку двух скриптов, которая
+    /// синтаксически верна и делает не то.
+    /// </remarks>
+    /// <exception cref="VehicleLinkException">Запись отклонена бортом.</exception>
+    Task WriteFileAsync(string path, ReadOnlyMemory<byte> content, System.IProgress<long>? progress, CancellationToken ct);
+
+    /// <summary>
+    /// Удаляет файл с карты борта.
+    /// </summary>
+    /// <remarks>
+    /// Нужно для скрипта, который есть на целевом борту и которого нет в
+    /// эталоне: оставленный лишний скрипт исполняется наравне с остальными, и
+    /// изделие ведёт себя не так, как эталонное, при полностью совпавших
+    /// параметрах.
+    /// </remarks>
+    /// <exception cref="VehicleLinkException">Удаление отклонено бортом.</exception>
+    Task RemoveFileAsync(string path, CancellationToken ct);
 }
 
 /// <summary>Итог предполётных проверок.</summary>

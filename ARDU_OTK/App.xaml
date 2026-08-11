@@ -10,7 +10,29 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <!--
+                Карточка. Только theme-ресурсы: цеховой ПК может стоять в светлой
+                теме, а стенд наладчика — в тёмной, и оба вида обязаны читаться.
+                Стиль живёт здесь, а не на страницах: две копии одного оформления
+                расходятся при первой же правке.
+            -->
+            <Style x:Key="CardBorderStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+            </Style>
+
+            <Style x:Key="RowContainerStyle" TargetType="ListViewItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="10,6" />
+                <Setter Property="MinHeight" Value="0" />
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

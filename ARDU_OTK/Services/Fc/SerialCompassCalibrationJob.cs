@@ -310,6 +310,7 @@ public sealed class SerialCompassCalibrationJob
     private async Task<string?> RunVerifyTopologyAsync(RunContext c, CancellationToken ct)
     {
         var reference = c.Reference!;
+        var roles = c.Request.EffectiveRoles;
 
         var slots = new List<CompassSlot>(MaxSlots);
         for (var slot = 1; slot <= MaxSlots; slot++)
@@ -372,7 +373,8 @@ public sealed class SerialCompassCalibrationJob
                 return mismatch;
             }
 
-            if (reference.TryGet(names.Orient, out var refOrient)
+            if (IsControlled(roles, names.Orient)
+                && reference.TryGet(names.Orient, out var refOrient)
                 && (int)Math.Round(refOrient) != s.Orientation)
             {
                 // COMPASS_ORIENT* обязан быть верным ДО калибровки по
@@ -383,13 +385,15 @@ public sealed class SerialCompassCalibrationJob
                      + "Калибровка по фиксированному курсу не исправляет ориентацию.";
             }
 
-            if (reference.TryGet(names.Use, out var refUse)
+            if (IsControlled(roles, names.Use)
+                && reference.TryGet(names.Use, out var refUse)
                 && (int)Math.Round(refUse) != s.UseFlag)
             {
                 return $"Слот {s.Slot}: поле USE — борт {s.UseFlag}, эталон {(int)Math.Round(refUse)}.";
             }
 
-            if (reference.TryGet(names.External, out var refExternal))
+            if (IsControlled(roles, names.External)
+                && reference.TryGet(names.External, out var refExternal))
             {
                 var refFlag = (int)Math.Round(refExternal);
                 var refExternalness = refFlag != 0;
@@ -449,6 +453,7 @@ public sealed class SerialCompassCalibrationJob
     private async Task<string?> RunWriteReferenceAsync(RunContext c, CancellationToken ct)
     {
         var reference = c.Reference!;
+        var roles = c.Request.EffectiveRoles;
 
         // Mission Planner помечает COMPASS_DEV_ID* как ReadOnly, но это
         // ограничение самого GCS: PARAM_SET прошивка примет и значение
@@ -470,6 +475,20 @@ public sealed class SerialCompassCalibrationJob
                 {
                     // Страховка от опечатки в списке переносимых имён.
                     _progress.Log(MavSeverity.Warning, $"Параметр {name} в списке запрещённых к записи — пропущен.");
+                    continue;
+                }
+
+                // Неконтролируемое имя не переносится и не сверяется. Пропуск
+                // называется вслух с причиной: молчаливое исключение
+                // неотличимо от забытого параметра, и разобрать по протоколу,
+                // почему его нет, будет нечем.
+                var role = roles.Classify(name);
+                if (!role.IsControlled)
+                {
+                    c.UncontrolledNames.Add(name);
+                    _progress.Log(
+                        MavSeverity.Notice,
+                        $"{name} не контролируется этим эталоном — не переносится и не сверяется. " + role.Reason);
                     continue;
                 }
 
@@ -504,21 +523,53 @@ public sealed class SerialCompassCalibrationJob
 
         if (c.Pending.Count == 0)
         {
-            return "Эталон не содержит ни одного переносимого параметра компаса — переносить нечего.";
+            return c.UncontrolledNames.Count == 0
+                ? "Эталон не содержит ни одного переносимого параметра компаса — переносить нечего."
+                : "Все переносимые параметры компаса выведены этим эталоном из-под контроля "
+                  + $"({string.Join(", ", c.UncontrolledNames)}) — переносить нечего. "
+                  + "Проверьте раскладку контроля параметров в эталоне.";
         }
 
         await AddCheckAsync(c, new CheckResult(
             "write.reference",
             "Перенос калибровочных данных",
             CheckOutcome.Pass,
-            c.SkippedNames.Count == 0
-                ? $"Обработано параметров: {c.Pending.Count}. Пропусков нет."
-                : $"Обработано параметров: {c.Pending.Count}. Нет в эталоне ({c.SkippedNames.Count}): "
-                  + string.Join(", ", c.SkippedNames),
+            DescribeTransfer(c),
             c.Pending.Count,
             null), ct).ConfigureAwait(false);
 
         return null;
+    }
+
+    /// <summary>
+    /// Строка протокола о переносе: сколько обработано и что осталось за
+    /// бортом, с раздельным указанием причины.
+    /// </summary>
+    private static string DescribeTransfer(RunContext c)
+    {
+        var text = new StringBuilder(160);
+        text.Append(CultureInfo.InvariantCulture, $"Обработано параметров: {c.Pending.Count}.");
+
+        if (c.SkippedNames.Count > 0)
+        {
+            text.Append(CultureInfo.InvariantCulture, $" Нет в эталоне ({c.SkippedNames.Count}): ");
+            text.Append(string.Join(", ", c.SkippedNames));
+            text.Append('.');
+        }
+
+        if (c.UncontrolledNames.Count > 0)
+        {
+            text.Append(CultureInfo.InvariantCulture, $" Не контролируется эталоном ({c.UncontrolledNames.Count}): ");
+            text.Append(string.Join(", ", c.UncontrolledNames));
+            text.Append('.');
+        }
+
+        if (c.SkippedNames.Count == 0 && c.UncontrolledNames.Count == 0)
+        {
+            text.Append(" Пропусков нет.");
+        }
+
+        return text.ToString();
     }
 
     // ------------------------------------------------------------------
@@ -577,12 +628,37 @@ public sealed class SerialCompassCalibrationJob
 
             if (outcome == WriteOutcome.Mismatch)
             {
-                return string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Параметр {0}: записано {1:G9}, обратное чтение дало {2:G9} (было {3:G9}). "
-                  + "Это не схлопывание — борт не принял значение.",
-                    p.Name, p.Requested, readBack.Value, p.Before);
+                // 🔴 Не выходим на первом расхождении. Прогон всё равно
+                // провален, но оператору нужен весь список: одно имя из десяти
+                // заставляет искать остальные девять повторными прогонами, по
+                // одному за прогон, каждый со снятием платы со стапеля.
+                c.Mismatches.Add(new ParamMismatch(
+                    p.Name,
+                    CalibrationStage.VerifyWrites,
+                    p.Requested,
+                    readBack.Value,
+                    readBack.Type,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Записано {0:G9}, обратное чтение дало {1:G9} (было {2:G9}). "
+                      + "Это не схлопывание — борт не принял значение.",
+                        p.Requested, readBack.Value, p.Before)));
             }
+        }
+
+        if (c.Mismatches.Count > 0)
+        {
+            await AddCheckAsync(c, new CheckResult(
+                "write.verified",
+                "Обратное чтение записанных параметров",
+                CheckOutcome.Fail,
+                DescribeMismatches(c.Mismatches),
+                c.Mismatches.Count,
+                0), ct).ConfigureAwait(false);
+
+            return "Борт не принял значения " + c.Mismatches.Count.ToString(CultureInfo.InvariantCulture)
+                 + " параметров: " + string.Join(", ", c.Mismatches.Select(static m => m.Name))
+                 + ". Список с фактическими значениями — в разделе «Не прошли проверку».";
         }
 
         await AddCheckAsync(c, new CheckResult(
@@ -595,6 +671,15 @@ public sealed class SerialCompassCalibrationJob
 
         return null;
     }
+
+    /// <summary>Полный список расхождений одной строкой — для протокола.</summary>
+    private static string DescribeMismatches(IReadOnlyList<ParamMismatch> mismatches) =>
+        string.Join(
+            "; ",
+            mismatches.Select(static m => string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}: эталон {1:G9}, борт {2:G9}",
+                m.Name, m.Expected, m.Actual)));
 
     // ------------------------------------------------------------------
     // Стадия 6. Reboot
@@ -654,11 +739,34 @@ public sealed class SerialCompassCalibrationJob
             var expected = p.Accepted ?? p.Requested;
             if (!ValuesEqual(readBack.Value, expected, readBack.Type, _tolerances.ParamVerifyTolerance))
             {
-                return string.Format(
-                    CultureInfo.InvariantCulture,
-                    "Параметр {0} не пережил перезагрузку: до ребута {1:G9}, после {2:G9}.",
-                    p.Name, expected, readBack.Value);
+                c.Mismatches.Add(new ParamMismatch(
+                    p.Name,
+                    CalibrationStage.ReReadControlSample,
+                    expected,
+                    readBack.Value,
+                    readBack.Type,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Не пережил перезагрузку: до ребута {0:G9}, после {1:G9}.",
+                        expected, readBack.Value)));
             }
+        }
+
+        var lost = c.Mismatches.Count(static m => m.Stage == CalibrationStage.ReReadControlSample);
+        if (lost > 0)
+        {
+            await AddCheckAsync(c, new CheckResult(
+                "persist.control",
+                "Контрольная выборка после перезагрузки",
+                CheckOutcome.Fail,
+                DescribeMismatches(c.Mismatches.Where(
+                    static m => m.Stage == CalibrationStage.ReReadControlSample).ToArray()),
+                lost,
+                0), ct).ConfigureAwait(false);
+
+            return $"Перезагрузку не пережили {lost.ToString(CultureInfo.InvariantCulture)} из "
+                 + $"{control.Length.ToString(CultureInfo.InvariantCulture)} параметров контрольной выборки. "
+                 + "Список с фактическими значениями — в разделе «Не прошли проверку».";
         }
 
         await AddCheckAsync(c, new CheckResult(
@@ -988,7 +1096,12 @@ public sealed class SerialCompassCalibrationJob
             c.PrearmMessages.ToArray(),
             SafeBanner(),
             c.StartedUtc,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow)
+        {
+            Mismatches = c.Mismatches.ToArray(),
+            RunId = c.RunId,
+            PortName = c.Request.PortName,
+        };
 
         if (c.RunOpen)
         {
@@ -1126,7 +1239,23 @@ public sealed class SerialCompassCalibrationJob
 
         public List<string> SkippedNames { get; } = new();
 
+        /// <summary>
+        /// Имена, выведенные эталоном из-под контроля.
+        /// </summary>
+        /// <remarks>
+        /// Список отдельный от <see cref="SkippedNames"/> намеренно: «в эталоне
+        /// этого нет» и «этого мы не контролируем» — разные факты с разными
+        /// последствиями, и слитые в одну строку протокола они превращаются в
+        /// «часть параметров не перенесена», по которой ничего не разберёшь.
+        /// </remarks>
+        public List<string> UncontrolledNames { get; } = new();
+
         public List<PendingWrite> Pending { get; } = new();
+
+        /// <summary>
+        /// Все расхождения прогона, а не только то, на котором он остановился.
+        /// </summary>
+        public List<ParamMismatch> Mismatches { get; } = new();
 
         /// <summary>Очередь STATUSTEXT: событие приходит из потока канала, разбирается из потока прогона.</summary>
         public ConcurrentQueue<StatusTextEvent> Inbox { get; } = new();
@@ -1267,6 +1396,29 @@ public sealed class SerialCompassCalibrationJob
         => name.StartsWith(CompassPrefix + "DEV_ID", StringComparison.Ordinal)
         || (name.StartsWith(CompassPrefix + "PRIO", StringComparison.Ordinal)
             && name.EndsWith("_ID", StringComparison.Ordinal));
+
+    /// <summary>
+    /// Сверяется ли имя с эталоном.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пропуск обязан быть сказан вслух. Молчаливо не проверенный параметр
+    /// неотличим в протоколе от проверенного и совпавшего, и прогон, где
+    /// половина сверок не выполнялась, выглядит так же, как прогон, где всё
+    /// сошлось.
+    /// </remarks>
+    private bool IsControlled(ParameterRoleMap roles, string name)
+    {
+        var role = roles.Classify(name);
+        if (role.IsControlled)
+        {
+            return true;
+        }
+
+        _progress.Log(
+            MavSeverity.Notice,
+            $"{name} не контролируется этим эталоном — сверка пропущена. " + role.Reason);
+        return false;
+    }
 
     private static bool IsOffsetName(string name)
         => name.StartsWith(CompassPrefix + "OFS", StringComparison.Ordinal);

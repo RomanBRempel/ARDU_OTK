@@ -44,8 +44,12 @@ git push origin v0.2.0
 
 ```powershell
 dotnet publish ARDU_OTK\ARDU_OTK.csproj -c Release -r win-x64 -p:Version=0.1.0 -o publish
-vpk pack --packId ARDU_OTK --packVersion 0.1.0 --packDir publish --mainExe ARDU_OTK.exe --outputDir releases
+vpk pack --packId ARDU_OTK --packVersion 0.1.0 --packDir publish --mainExe ARDU_OTK.exe `
+  --packTitle "ARDU OTK" --packAuthors ARDU --icon ARDU_OTK\Assets\AppIcon.ico --outputDir releases
 ```
+
+`--packTitle` и `--icon` обязательны и здесь: без них локально собранный установщик и ярлык
+получают дефолтную иконку Velopack, и локальная сборка перестаёт совпадать с релизной.
 
 `vpk` ставится командой `dotnet tool install -g vpk --version 1.2.0`. Версия CLI обязана
 совпадать с версией пакета `Velopack` в csproj.

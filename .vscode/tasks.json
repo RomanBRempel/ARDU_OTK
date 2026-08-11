@@ -1,0 +1,96 @@
+{
+  // Платформа задаётся явно во всех задачах: в csproj объявлены только
+  // x86/x64/ARM64, а сборка без -p:Platform уходит в AnyCPU, которого в списке
+  // нет, и падает ещё до компиляции.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "detail": "Отладочная сборка приложения (x64)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/ARDU_OTK/ARDU_OTK.csproj",
+        "-c",
+        "Debug",
+        "-p:Platform=x64",
+        "--nologo"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "clear": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "rebuild",
+      "detail": "Пересобрать с нуля (после смены пакетов или странных ошибок XAML)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/ARDU_OTK/ARDU_OTK.csproj",
+        "-c",
+        "Debug",
+        "-p:Platform=x64",
+        "--no-incremental",
+        "--nologo"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish",
+      "detail": "Release-публикация в publish/ (self-contained, win-x64)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/ARDU_OTK/ARDU_OTK.csproj",
+        "-c",
+        "Release",
+        "-r",
+        "win-x64",
+        "-p:Version=${input:version}",
+        "-o",
+        "${workspaceFolder}/publish",
+        "--nologo"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "pack",
+      "detail": "Собрать установщик Velopack в releases/ (сначала выполняет publish)",
+      "dependsOn": "publish",
+      "dependsOrder": "sequence",
+      "type": "process",
+      "command": "vpk",
+      "args": [
+        "pack",
+        "--packId",
+        "ARDU_OTK",
+        "--packVersion",
+        "${input:version}",
+        "--packDir",
+        "${workspaceFolder}/publish",
+        "--mainExe",
+        "ARDU_OTK.exe",
+        "--outputDir",
+        "${workspaceFolder}/releases"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "version",
+      "type": "promptString",
+      "description": "Версия SemVer, например 0.2.0 или 0.2.0-alpha.5",
+      "default": "0.2.0"
+    }
+  ]
+}

@@ -1,21 +1,31 @@
 using System;
+using System.Globalization;
+using System.Threading.Tasks;
 using ARDU_OTK.Services;
+using ARDU_OTK.Services.Store;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace ARDU_OTK;
 
 /// <summary>
-/// Настройки рабочего места: обновления и сведения о хранилище.
+/// Настройки: рабочее место, обновления и сведения о хранилище.
 /// </summary>
 /// <remarks>
 /// Проверка обновлений живёт здесь, а не на рабочем экране: на заглавной
 /// странице оператор занят бортом и эталоном, и кнопка обновления там только
-/// отвлекает.
+/// отвлекает. Азимут стапеля и оператор — наоборот, настраиваются один раз на
+/// стенд и потому тоже не место на рабочем экране.
 /// </remarks>
 public sealed partial class SettingsPage : Page
 {
+    private readonly AppServices _services = AppServices.Instance;
     private readonly UpdateService _updates = AppServices.Instance.Updates;
+
+    /// <summary>Пока идёт первичное заполнение полей, обработчики не сохраняют.</summary>
+    private bool _loading;
+
+    private WorkstationSettings _settings = new();
 
     public SettingsPage()
     {
@@ -26,7 +36,7 @@ public sealed partial class SettingsPage : Page
         Unloaded += OnUnloaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         VersionText.Text = _updates.CurrentVersion is { } version
             ? $"Версия {version}"
@@ -34,7 +44,7 @@ public sealed partial class SettingsPage : Page
 
         try
         {
-            StorePathText.Text = AppServices.Instance.Store.DatabaseFilePath;
+            StorePathText.Text = _services.Store.DatabaseFilePath;
         }
         catch (Exception ex)
         {
@@ -43,6 +53,99 @@ public sealed partial class SettingsPage : Page
         }
 
         RenderState();
+        await LoadWorkstationAsync().ConfigureAwait(true);
+    }
+
+    // --- Рабочее место ----------------------------------------------------
+
+    private async Task LoadWorkstationAsync()
+    {
+        _loading = true;
+        try
+        {
+            _settings = await _services.LoadSettingsAsync().ConfigureAwait(true);
+
+            // 🔴 NaN, а не 0: пустой NumberBox означает «не задан», а ноль —
+            // законный азимут (стапель на север). Подставить сюда ноль значило
+            // бы молча настроить стенд на север.
+            AzimuthBox.Value = _settings.JigAzimuthDeg ?? double.NaN;
+            OperatorBox.Text = _settings.DefaultOperator;
+        }
+        catch (Exception ex)
+        {
+            ShowWorkstationProblem("Настройки не прочитаны: " + ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        RenderWorkstation();
+    }
+
+    private void OnWorkstationChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) =>
+        _ = SaveWorkstationAsync();
+
+    private void OnOperatorChanged(object sender, TextChangedEventArgs e) =>
+        _ = SaveWorkstationAsync();
+
+    /// <summary>
+    /// Сохраняет настройки стенда.
+    /// </summary>
+    /// <remarks>
+    /// Кнопки «Сохранить» здесь нет намеренно: настройка из двух полей, которую
+    /// забыли подтвердить, — это ненастроенный стенд, о котором оператор думает,
+    /// что он настроен. Запись идёт по каждому изменению.
+    /// </remarks>
+    private async Task SaveWorkstationAsync()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        var azimuth = AzimuthBox.Value;
+        _settings = _settings with
+        {
+            JigAzimuthDeg = double.IsNaN(azimuth) ? null : azimuth,
+            DefaultOperator = OperatorBox.Text.Trim(),
+        };
+
+        try
+        {
+            await _services.SaveSettingsAsync(_settings).ConfigureAwait(true);
+            WorkstationSavedText.Text = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Сохранено в {DateTimeOffset.Now:HH:mm:ss}.");
+        }
+        catch (Exception ex)
+        {
+            ShowWorkstationProblem("Настройки не сохранены: " + ex.Message, InfoBarSeverity.Error);
+            return;
+        }
+
+        RenderWorkstation();
+    }
+
+    private void RenderWorkstation()
+    {
+        if (_settings.IsComplete)
+        {
+            WorkstationBar.IsOpen = false;
+            return;
+        }
+
+        ShowWorkstationProblem(
+            "Не задано: " + string.Join(", ", _settings.Problems)
+          + ". Без этого прогон запустить нельзя.",
+            InfoBarSeverity.Warning);
+    }
+
+    private void ShowWorkstationProblem(string message, InfoBarSeverity severity)
+    {
+        WorkstationBar.Severity = severity;
+        WorkstationBar.Message = message;
+        WorkstationBar.IsOpen = true;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) =>

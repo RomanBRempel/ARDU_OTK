@@ -48,10 +48,16 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
 {
     /// <summary>Версия схемы, которую понимает эта сборка.</summary>
     /// <remarks>
-    /// v2 добавила профили изделий (<see cref="CalibrationProfile"/>), настройки
-    /// рабочего места и привязку прогона к профилю.
+    /// v2 добавила эталоны изделий (<see cref="CalibrationReference"/>), настройки
+    /// рабочего места и привязку прогона к эталону. v3 привела имена к единому
+    /// понятию «эталон»: таблица <c>Profile</c> стала <c>Reference</c>, её поля
+    /// <c>Reference*</c> — <c>SourceName</c>/<c>Param*</c>, а <c>Run.ProfileId</c> —
+    /// <c>Run.ReferenceId</c>. v4 добавила отступления технолога от умолчаний по
+    /// ролям параметров (<see cref="ParameterRoleMap"/>): что эталон контролирует
+    /// и что показывает оператору. v5 добавила скрипты изделия
+    /// (<see cref="ReferenceScript"/>) — их пути и содержимое.
     /// </remarks>
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 5;
 
     // Формат меток времени: UTC, фиксированная ширина. Такой текст сравнивается
     // и сортируется лексикографически ровно как хронологически — на этом держатся
@@ -63,43 +69,50 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     private const string VerdictAborted = "aborted";
 
     /// <summary>Литерал версии схемы. Обязан совпадать с <see cref="SchemaVersion"/>: PRAGMA не принимает параметр.</summary>
-    private const string SetSchemaVersionSql = "PRAGMA user_version = 2;";
+    private const string SetSchemaVersionSql = "PRAGMA user_version = 5;";
 
     /// <summary>
-    /// Профили изделий и настройки рабочего места.
+    /// Эталоны изделий и настройки рабочего места — текущая, третья версия.
     /// </summary>
     /// <remarks>
-    /// 🔴 Один и тот же текст используется и при создании базы с нуля, и в
-    /// миграции v1→v2. Два пути создания одной таблицы неизбежно расходятся, и
-    /// расхождение обнаруживается только на машине, которая обновлялась, — то
-    /// есть в цеху, а не у разработчика.
+    /// 🔴 Этот текст описывает <b>сегодняшнюю</b> схему и используется только при
+    /// создании базы с нуля. Миграции ниже держат собственные <b>замороженные</b>
+    /// литералы своих версий и на него не ссылаются: миграция, собранная из
+    /// текущей схемы, переписывает историю при каждой правке — база, прошедшая
+    /// v1→v2 сегодня, получала бы не ту форму, что вчера, и следующая миграция
+    /// натыкалась бы на столбцы, которых не ожидала.
     /// </remarks>
-    private const string ProfileSchemaSql = """
-        -- Профиль изделия: постоянная часть технологической карты. Эталон хранится
-        -- содержимым, а не путём: файл на сетевом ресурсе исчезает ровно тогда,
-        -- когда по нему разбирают рекламацию.
+    private const string ReferenceSchemaSql = """
+        -- Эталон изделия: постоянная часть технологической карты. Параметры
+        -- хранятся содержимым, а не путём к файлу: файл на сетевом ресурсе
+        -- исчезает ровно тогда, когда по нему разбирают рекламацию.
         --
         -- Ожидаемый состав компасов здесь НЕ хранится: он полностью выводится из
-        -- ReferenceText, и вторая копия той же истины со временем разойдётся с первой.
-        CREATE TABLE IF NOT EXISTS Profile (
+        -- ParamText, и вторая копия той же истины со временем разойдётся с первой.
+        CREATE TABLE IF NOT EXISTS Reference (
             Id                    INTEGER PRIMARY KEY,
             Name                  TEXT    NOT NULL,
             NameNormalized        TEXT    NOT NULL UNIQUE,
             Description           TEXT    NOT NULL DEFAULT '',
-            ReferenceFileName     TEXT    NOT NULL,
-            ReferenceFormat       TEXT    NOT NULL,
-            ReferenceText         TEXT    NOT NULL,
-            ReferenceHash         TEXT    NOT NULL,
+            SourceName            TEXT    NOT NULL,
+            ParamFormat           TEXT    NOT NULL,
+            ParamText             TEXT    NOT NULL,
+            ParamHash             TEXT    NOT NULL,
             ParamCount            INTEGER NOT NULL,
             HeadingVsJigDeg       REAL    NOT NULL,
             InterCompassSpreadDeg REAL    NOT NULL,
             TransferMotorComp     INTEGER NOT NULL DEFAULT 1,
+            -- Только ОТСТУПЛЕНИЯ от умолчаний технологической карты, не полная
+            -- раскладка ролей. Полная раскладка в базе означала бы, что эталон,
+            -- заведённый до правки карты, навсегда остался бы с прежними
+            -- умолчаниями и молча разошёлся бы с ней.
+            ParamRoles            TEXT    NOT NULL DEFAULT '',
             CreatedBy             TEXT    NOT NULL,
             CreatedUtc            TEXT    NOT NULL,
             RetiredUtc            TEXT
         );
 
-        -- Настройки рабочего места: азимут стапеля, оператор, последний профиль.
+        -- Настройки рабочего места: азимут стапеля, оператор, последний эталон.
         -- Ключ-значение, потому что набор растёт, а схему ради каждой галки
         -- мигрировать нельзя — миграция требует резервной копии всей базы.
         CREATE TABLE IF NOT EXISTS Setting (
@@ -108,14 +121,29 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             UpdatedUtc   TEXT NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS IX_Profile_Active ON Profile(NameNormalized) WHERE RetiredUtc IS NULL;
+        -- Скрипты изделия: путь на карте борта и содержимое. Хранятся
+        -- содержимым, а не ссылкой, по той же причине, что и параметры.
+        -- Путь входит в тождество: прошивка исполняет всё, что лежит в каталоге
+        -- скриптов, и тот же текст под другим именем — другой скрипт.
+        CREATE TABLE IF NOT EXISTS ReferenceScript (
+            Id          INTEGER PRIMARY KEY,
+            ReferenceId INTEGER NOT NULL REFERENCES Reference(Id) ON DELETE CASCADE,
+            ScriptPath  TEXT    NOT NULL,
+            ScriptText  TEXT    NOT NULL,
+            ScriptHash  TEXT    NOT NULL,
+            ByteCount   INTEGER NOT NULL,
+            UNIQUE (ReferenceId, ScriptPath)
+        );
+
+        CREATE INDEX IF NOT EXISTS IX_Reference_Active ON Reference(NameNormalized) WHERE RetiredUtc IS NULL;
+        CREATE INDEX IF NOT EXISTS IX_ReferenceScript ON ReferenceScript(ReferenceId, ScriptPath);
         """;
 
     /// <summary>
-    /// Полная схема текущей версии. Профили создаются первыми: на них ссылается
-    /// столбец <c>Run.ProfileId</c>.
+    /// Полная схема текущей версии. Эталоны создаются первыми: на них ссылается
+    /// столбец <c>Run.ReferenceId</c>.
     /// </summary>
-    private const string CreateSchemaSql = ProfileSchemaSql + "\n" + CoreSchemaSql;
+    private const string CreateSchemaSql = ReferenceSchemaSql + "\n" + CoreSchemaSql;
 
     private const string CoreSchemaSql = """
         -- Изделие: борт так, как его называет предприятие. Ключ — нормализованный
@@ -151,12 +179,12 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             CheckCount       INTEGER NOT NULL DEFAULT 0,
             FailedCheckCount INTEGER NOT NULL DEFAULT 0,
 
-            -- Профиль, по которому сдавали. NULL законен и означает ровно одно:
-            -- прогон сделан до введения профилей (схема v1). Имя дублируется
-            -- снимком по той же причине, что и UnitIdAtRun: профиль могли
+            -- Эталон, по которому сдавали. NULL законен и означает ровно одно:
+            -- прогон сделан до введения эталонов (схема v1). Имя дублируется
+            -- снимком по той же причине, что и UnitIdAtRun: эталон могли
             -- переименовать, а протокол обязан читаться так, как его подписывали.
-            ProfileId        INTEGER REFERENCES Profile(Id) ON DELETE RESTRICT,
-            ProfileNameAtRun TEXT
+            ReferenceId        INTEGER REFERENCES Reference(Id) ON DELETE RESTRICT,
+            ReferenceNameAtRun TEXT
         );
 
         -- Аудит записи параметров. ON DELETE RESTRICT намеренно: это единственное
@@ -204,7 +232,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         CREATE INDEX IF NOT EXISTS IX_RunCheck_Run     ON RunCheck(RunId, Id);
         CREATE INDEX IF NOT EXISTS IX_RunMessage_Run   ON RunMessage(RunId, ReceivedUtc);
         CREATE INDEX IF NOT EXISTS IX_Unit_LastSeen    ON Unit(LastSeenUtc DESC);
-        CREATE INDEX IF NOT EXISTS IX_Run_Profile      ON Run(ProfileId, StartedUtc DESC);
+        CREATE INDEX IF NOT EXISTS IX_Run_Reference      ON Run(ReferenceId, StartedUtc DESC);
         """;
 
     private readonly AppPaths _paths;
@@ -267,12 +295,12 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     public static string NormalizeUnitId(string? raw) => NormalizeName(raw);
 
     /// <summary>
-    /// Общая нормализация человеко-введённых имён: борта и профиля.
+    /// Общая нормализация человеко-введённых имён: борта и эталона.
     /// </summary>
     /// <remarks>
-    /// Имя профиля нормализуется по тем же правилам и по той же причине, что и
+    /// Имя эталона нормализуется по тем же правилам и по той же причине, что и
     /// идентификатор борта: иначе «Гриф-2» и «Гриф-2 » заводятся как два разных
-    /// профиля, и половина плат уезжает сданной по профилю-двойнику.
+    /// эталона, и половина плат уезжает сданной по эталону-двойнику.
     /// </remarks>
     public static string NormalizeName(string? raw)
     {
@@ -811,7 +839,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     // ==================================================================
-    // Профили изделий
+    // Эталоны изделий
     // ==================================================================
 
     /// <summary>Верхняя граница допусков процедуры, градусы.</summary>
@@ -824,22 +852,23 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     /// </remarks>
     private const double MaxToleranceDeg = 90.0;
 
-    private const string ProfileColumnsSql = """
-        SELECT p.Id, p.Name, p.Description, p.ReferenceFileName, p.ReferenceFormat, p.ReferenceText,
-               p.ReferenceHash, p.ParamCount, p.HeadingVsJigDeg, p.InterCompassSpreadDeg,
+    private const string ReferenceColumnsSql = """
+        SELECT p.Id, p.Name, p.Description, p.SourceName, p.ParamFormat, p.ParamText,
+               p.ParamHash, p.ParamCount, p.HeadingVsJigDeg, p.InterCompassSpreadDeg,
                p.TransferMotorComp, p.CreatedBy, p.CreatedUtc, p.RetiredUtc,
-               (SELECT COUNT(*) FROM Run r WHERE r.ProfileId = p.Id) AS RunCount
-        FROM Profile p
+               (SELECT COUNT(*) FROM Run r WHERE r.ReferenceId = p.Id) AS RunCount,
+               p.ParamRoles
+        FROM Reference p
         """;
 
     /// <summary>
-    /// Профили в порядке имени; выведенные из обращения — в конце.
+    /// Эталоны в порядке имени; выведенные из обращения — в конце.
     /// </summary>
     /// <param name="includeRetired">
-    /// Включать выведенные из обращения. Для выбора профиля перед прогоном —
+    /// Включать выведенные из обращения. Для выбора эталона перед прогоном —
     /// <c>false</c>; для раздела настроек и для чтения истории — <c>true</c>.
     /// </param>
-    public async Task<IReadOnlyList<CalibrationProfile>> ListProfilesAsync(
+    public async Task<IReadOnlyList<CalibrationReference>> ListReferencesAsync(
         bool includeRetired = false,
         CancellationToken ct = default)
     {
@@ -850,18 +879,18 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         {
             await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
-            command.CommandText = ProfileColumnsSql + """
+            command.CommandText = ReferenceColumnsSql + """
 
                 WHERE $includeRetired = 1 OR p.RetiredUtc IS NULL
                 ORDER BY p.RetiredUtc IS NOT NULL, p.NameNormalized;
                 """;
             AddParameter(command, "$includeRetired", includeRetired ? 1L : 0L);
 
-            var rows = new List<CalibrationProfile>();
+            var rows = new List<CalibrationReference>();
             await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
             {
-                rows.Add(ReadProfile(reader));
+                rows.Add(ReadReference(reader));
             }
 
             return rows;
@@ -872,8 +901,8 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         }
     }
 
-    /// <summary>Профиль по ключу. <c>null</c>, если такого нет.</summary>
-    public async Task<CalibrationProfile?> GetProfileAsync(long profileId, CancellationToken ct = default)
+    /// <summary>Эталон по ключу. <c>null</c>, если такого нет.</summary>
+    public async Task<CalibrationReference?> GetReferenceAsync(long referenceId, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
@@ -882,14 +911,14 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         {
             await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
             await using var command = connection.CreateCommand();
-            command.CommandText = ProfileColumnsSql + """
+            command.CommandText = ReferenceColumnsSql + """
 
                 WHERE p.Id = $id;
                 """;
-            AddParameter(command, "$id", profileId);
+            AddParameter(command, "$id", referenceId);
 
             await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
-            return await reader.ReadAsync(ct).ConfigureAwait(false) ? ReadProfile(reader) : null;
+            return await reader.ReadAsync(ct).ConfigureAwait(false) ? ReadReference(reader) : null;
         }
         finally
         {
@@ -898,11 +927,57 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     /// <summary>
-    /// Заводит профиль и возвращает его ключ.
+    /// Скрипты эталона в порядке пути.
+    /// </summary>
+    /// <remarks>
+    /// Отдельным запросом, а не столбцом в строке эталона: содержимое скриптов
+    /// — это килобайты текста, и тянуть их в список эталонов, где показывают
+    /// только имя и хеш, значит читать их при каждом открытии экрана.
+    /// </remarks>
+    public async Task<IReadOnlyList<ReferenceScript>> GetReferenceScriptsAsync(
+        long referenceId,
+        CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT ScriptPath, ScriptText, ScriptHash, ByteCount
+                FROM ReferenceScript
+                WHERE ReferenceId = $id
+                ORDER BY ScriptPath;
+                """;
+            AddParameter(command, "$id", referenceId);
+
+            var rows = new List<ReferenceScript>();
+            await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                rows.Add(new ReferenceScript(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetInt32(3)));
+            }
+
+            return rows;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Заводит эталон и возвращает его ключ.
     /// </summary>
     /// <exception cref="ArgumentException">Заготовка не проходит проверку.</exception>
-    /// <exception cref="CalibrationStoreException">Профиль с таким именем уже есть.</exception>
-    public async Task<long> CreateProfileAsync(NewCalibrationProfile draft, CancellationToken ct = default)
+    /// <exception cref="CalibrationStoreException">Эталон с таким именем уже есть.</exception>
+    public async Task<long> CreateReferenceAsync(NewCalibrationReference draft, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(draft);
         ThrowIfDisposed();
@@ -911,17 +986,24 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         var normalized = NormalizeName(name);
         if (normalized.Length == 0)
         {
-            throw new ArgumentException("Имя профиля пусто.", nameof(draft));
+            throw new ArgumentException("Имя эталона пусто.", nameof(draft));
         }
 
-        if (draft.Reference is null || string.IsNullOrWhiteSpace(draft.Reference.Text))
+        if (draft.Parameters is null || string.IsNullOrWhiteSpace(draft.Parameters.Text))
         {
             throw new ArgumentException(
-                "Профиль без содержимого эталона не имеет смысла: переносить будет нечего.", nameof(draft));
+                "Эталон без параметров не имеет смысла: переносить будет нечего.", nameof(draft));
         }
 
         ValidateTolerance(draft.HeadingVsJigDeg, "допуск курса против азимута стапеля", nameof(draft));
         ValidateTolerance(draft.InterCompassSpreadDeg, "допуск расхождения курсов между компасами", nameof(draft));
+
+        // Переключатель переноса COMPASS_MOT* хранится своим столбцом, и карта
+        // ролей обязана быть согласована с ним: иначе эталон утверждал бы
+        // одновременно «MOT переносим» и «MOT не контролируем».
+        var roleOverrides = (draft.Roles ?? ParameterRoleMap.Default)
+            .WithMotorCompTransfer(draft.TransferMotorComp)
+            .SerializeOverrides();
 
         var nowUtc = FormatUtc(DateTimeOffset.UtcNow);
 
@@ -939,36 +1021,57 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                     connection,
                     transaction,
                     """
-                    INSERT INTO Profile (
-                        Name, NameNormalized, Description, ReferenceFileName, ReferenceFormat,
-                        ReferenceText, ReferenceHash, ParamCount, HeadingVsJigDeg,
-                        InterCompassSpreadDeg, TransferMotorComp, CreatedBy, CreatedUtc)
+                    INSERT INTO Reference (
+                        Name, NameNormalized, Description, SourceName, ParamFormat,
+                        ParamText, ParamHash, ParamCount, HeadingVsJigDeg,
+                        InterCompassSpreadDeg, TransferMotorComp, ParamRoles, CreatedBy, CreatedUtc)
                     VALUES (
-                        $name, $normalized, $description, $fileName, $format,
+                        $name, $normalized, $description, $sourceName, $format,
                         $text, $hash, $paramCount, $heading,
-                        $spread, $motorComp, $createdBy, $created);
+                        $spread, $motorComp, $paramRoles, $createdBy, $created);
                     """,
                     ct,
                     ("$name", name),
                     ("$normalized", normalized),
                     ("$description", draft.Description?.Trim() ?? string.Empty),
-                    ("$fileName", draft.Reference.FileName ?? string.Empty),
-                    ("$format", draft.Reference.Format ?? string.Empty),
-                    ("$text", draft.Reference.Text),
-                    ("$hash", draft.Reference.Hash ?? string.Empty),
-                    ("$paramCount", (long)draft.Reference.ParamCount),
+                    ("$sourceName", draft.Parameters.SourceName ?? string.Empty),
+                    ("$format", draft.Parameters.Format ?? string.Empty),
+                    ("$text", draft.Parameters.Text),
+                    ("$hash", draft.Parameters.Hash ?? string.Empty),
+                    ("$paramCount", (long)draft.Parameters.ParamCount),
                     ("$heading", draft.HeadingVsJigDeg),
                     ("$spread", draft.InterCompassSpreadDeg),
                     ("$motorComp", draft.TransferMotorComp ? 1L : 0L),
+                    ("$paramRoles", roleOverrides),
                     ("$createdBy", draft.CreatedBy?.Trim() ?? string.Empty),
                     ("$created", nowUtc)).ConfigureAwait(false);
 
-                var profileId = Convert.ToInt64(
+                var referenceId = Convert.ToInt64(
                     await ScalarAsync(connection, transaction, "SELECT last_insert_rowid();", ct).ConfigureAwait(false),
                     CultureInfo.InvariantCulture);
 
+                // Скрипты ложатся той же транзакцией: эталон, у которого
+                // параметры записались, а скрипты нет, описывал бы изделие,
+                // которого не существует.
+                foreach (var script in draft.Scripts ?? Array.Empty<ReferenceScript>())
+                {
+                    await ExecuteAsync(
+                        connection,
+                        transaction,
+                        """
+                        INSERT INTO ReferenceScript (ReferenceId, ScriptPath, ScriptText, ScriptHash, ByteCount)
+                        VALUES ($referenceId, $path, $text, $hash, $bytes);
+                        """,
+                        ct,
+                        ("$referenceId", referenceId),
+                        ("$path", script.Path),
+                        ("$text", script.Text),
+                        ("$hash", script.Hash),
+                        ("$bytes", (long)script.ByteCount)).ConfigureAwait(false);
+                }
+
                 await CommitAsync(transaction, ct).ConfigureAwait(false);
-                return profileId;
+                return referenceId;
             }
         }
         finally
@@ -978,32 +1081,44 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     /// <summary>
-    /// Правит профиль.
+    /// Правит эталон.
     /// </summary>
     /// <remarks>
     /// <para>
     /// 🔴 Эталон неизменяем — ни при каких условиях. Подменённый эталон делает
-    /// ложными все прогоны, уже сданные по этому профилю: реестр утверждал бы,
+    /// ложными все прогоны, уже сданные по этому эталону: реестр утверждал бы,
     /// что плату сдавали по набору, которого в тот момент не существовало.
-    /// Другой эталон — это другой профиль.
+    /// Другие параметры — это другой эталон.
     /// </para>
     /// <para>
     /// Допуски неизменяемы с первого прогона по той же причине. Имя и описание
     /// править можно всегда: это подпись, а не суть, и в прогоне уже лежит
     /// снимок имени на момент сдачи.
     /// </para>
+    /// <para>
+    /// 🔴 Раскладка ролей параметров заморожена тем же правилом и по той же
+    /// причине: она определяет, что именно сверялось с бортом. Задним числом
+    /// вывести имя из-под контроля значит объявить прошедшими проверки, которых
+    /// в тех прогонах не выполнялось.
+    /// </para>
     /// </remarks>
+    /// <param name="roles">
+    /// Роли параметров эталона. <c>null</c> — оставить как есть; при непустом
+    /// значении переключатель <paramref name="transferMotorComp"/> считается
+    /// главнее и карта приводится к нему.
+    /// </param>
     /// <exception cref="CalibrationStoreException">
-    /// Профиля нет, имя занято либо предпринята попытка изменить допуски
-    /// профиля, по которому уже сдавали платы.
+    /// Эталона нет, имя занято либо предпринята попытка изменить допуски или
+    /// роли эталона, по которому уже сдавали платы.
     /// </exception>
-    public async Task UpdateProfileAsync(
-        long profileId,
+    public async Task UpdateReferenceAsync(
+        long referenceId,
         string name,
         string description,
         double headingVsJigDeg,
         double interCompassSpreadDeg,
         bool transferMotorComp,
+        ParameterRoleMap? roles = null,
         CancellationToken ct = default)
     {
         ThrowIfDisposed();
@@ -1012,7 +1127,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         var normalized = NormalizeName(trimmedName);
         if (normalized.Length == 0)
         {
-            throw new ArgumentException("Имя профиля пусто.", nameof(name));
+            throw new ArgumentException("Имя эталона пусто.", nameof(name));
         }
 
         ValidateTolerance(headingVsJigDeg, "допуск курса против азимута стапеля", nameof(headingVsJigDeg));
@@ -1025,38 +1140,44 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
             await using (transaction.ConfigureAwait(false))
             {
-                var current = await ReadProfileCoreAsync(connection, transaction, profileId, ct).ConfigureAwait(false)
+                var current = await ReadReferenceCoreAsync(connection, transaction, referenceId, ct).ConfigureAwait(false)
                     ?? throw new CalibrationStoreException(
-                        $"Профиль {profileId} не найден: правка отменена.");
+                        $"Эталон {referenceId} не найден: правка отменена.");
+
+                var roleOverrides = roles is null
+                    ? current.ParamRoles
+                    : roles.WithMotorCompTransfer(transferMotorComp).SerializeOverrides();
 
                 var tolerancesChanged =
                     !NearlyEqual(current.HeadingVsJigDeg, headingVsJigDeg)
                     || !NearlyEqual(current.InterCompassSpreadDeg, interCompassSpreadDeg)
-                    || current.TransferMotorComp != transferMotorComp;
+                    || current.TransferMotorComp != transferMotorComp
+                    || !string.Equals(current.ParamRoles, roleOverrides, StringComparison.Ordinal);
 
                 if (tolerancesChanged && current.RunCount > 0)
                 {
                     throw new CalibrationStoreException(
-                        $"По профилю «{current.Name}» уже сдано прогонов: {current.RunCount}. " +
-                        "Допуски и правило переноса COMPASS_MOT* менять нельзя — прогоны в реестре " +
-                        "выполнялись по прежним значениям, и правка сделала бы реестр ложным. " +
-                        "Заведите новый профиль.");
+                        $"По эталону «{current.Name}» уже сдано прогонов: {current.RunCount}. " +
+                        "Допуски, правило переноса COMPASS_MOT* и раскладку контроля параметров менять " +
+                        "нельзя — прогоны в реестре выполнялись по прежним значениям, и правка сделала бы " +
+                        "реестр ложным. Заведите новый эталон.");
                 }
 
-                await ThrowIfNameTakenAsync(connection, transaction, normalized, profileId, trimmedName, ct)
+                await ThrowIfNameTakenAsync(connection, transaction, normalized, referenceId, trimmedName, ct)
                     .ConfigureAwait(false);
 
                 await ExecuteAsync(
                     connection,
                     transaction,
                     """
-                    UPDATE Profile SET
+                    UPDATE Reference SET
                         Name                  = $name,
                         NameNormalized        = $normalized,
                         Description           = $description,
                         HeadingVsJigDeg       = $heading,
                         InterCompassSpreadDeg = $spread,
-                        TransferMotorComp     = $motorComp
+                        TransferMotorComp     = $motorComp,
+                        ParamRoles            = $paramRoles
                     WHERE Id = $id;
                     """,
                     ct,
@@ -1066,7 +1187,8 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                     ("$heading", headingVsJigDeg),
                     ("$spread", interCompassSpreadDeg),
                     ("$motorComp", transferMotorComp ? 1L : 0L),
-                    ("$id", profileId)).ConfigureAwait(false);
+                    ("$paramRoles", roleOverrides),
+                    ("$id", referenceId)).ConfigureAwait(false);
 
                 await CommitAsync(transaction, ct).ConfigureAwait(false);
             }
@@ -1078,29 +1200,29 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     /// <summary>
-    /// Выводит профиль из обращения либо возвращает его в обращение.
+    /// Выводит эталон из обращения либо возвращает его в обращение.
     /// </summary>
     /// <remarks>
-    /// Удаления профиля нет и не будет: <c>Run.ProfileId</c> ссылается на него с
-    /// <c>ON DELETE RESTRICT</c>, потому что профиль — часть доказательства того,
-    /// по чему сдавали плату. Выведенный из обращения профиль не предлагается
+    /// Удаления эталона нет и не будет: <c>Run.ReferenceId</c> ссылается на него с
+    /// <c>ON DELETE RESTRICT</c>, потому что эталон — часть доказательства того,
+    /// по чему сдавали плату. Выведенный из обращения эталон не предлагается
     /// для новых прогонов, но остаётся читаемым в истории.
     /// </remarks>
-    public async Task SetProfileRetiredAsync(long profileId, bool retired, CancellationToken ct = default)
+    public async Task SetReferenceRetiredAsync(long referenceId, bool retired, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
         var affected = await RunGuardedNonQueryAsync(
             """
-            UPDATE Profile SET RetiredUtc = $retiredUtc WHERE Id = $id;
+            UPDATE Reference SET RetiredUtc = $retiredUtc WHERE Id = $id;
             """,
             ct,
             ("$retiredUtc", retired ? FormatUtc(DateTimeOffset.UtcNow) : null),
-            ("$id", profileId)).ConfigureAwait(false);
+            ("$id", referenceId)).ConfigureAwait(false);
 
         if (affected == 0)
         {
-            throw new CalibrationStoreException($"Профиль {profileId} не найден.");
+            throw new CalibrationStoreException($"Эталон {referenceId} не найден.");
         }
     }
 
@@ -1110,7 +1232,9 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
 
     private const string SettingJigAzimuth = "workstation.jigAzimuthDeg";
     private const string SettingOperator = "workstation.operator";
-    private const string SettingLastProfile = "workstation.lastProfileId";
+    private const string SettingLastReference = "workstation.lastReferenceId";
+    private const string SettingAutoConnect = "workstation.autoConnect";
+    private const string SettingLastPort = "workstation.lastPort";
 
     /// <summary>
     /// Настройки стенда. Отсутствующий ключ означает «не настроено» и никогда не
@@ -1146,10 +1270,13 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                         ? azimuth
                         : null,
                 DefaultOperator = values.TryGetValue(SettingOperator, out var op) ? op : string.Empty,
-                LastProfileId = values.TryGetValue(SettingLastProfile, out var profileText)
-                    && long.TryParse(profileText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastProfile)
-                        ? lastProfile
+                LastReferenceId = values.TryGetValue(SettingLastReference, out var referenceIdText)
+                    && long.TryParse(referenceIdText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var lastReference)
+                        ? lastReference
                         : null,
+                AutoConnect = values.TryGetValue(SettingAutoConnect, out var autoText)
+                    && string.Equals(autoText, "1", StringComparison.Ordinal),
+                LastPortName = values.TryGetValue(SettingLastPort, out var port) ? port : string.Empty,
             };
         }
         finally
@@ -1190,9 +1317,18 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                     settings.DefaultOperator?.Trim(), nowUtc, ct).ConfigureAwait(false);
 
                 await UpsertSettingAsync(
-                    connection, transaction, SettingLastProfile,
-                    settings.LastProfileId?.ToString(CultureInfo.InvariantCulture), nowUtc, ct)
+                    connection, transaction, SettingLastReference,
+                    settings.LastReferenceId?.ToString(CultureInfo.InvariantCulture), nowUtc, ct)
                     .ConfigureAwait(false);
+
+                await UpsertSettingAsync(
+                    connection, transaction, SettingAutoConnect,
+                    settings.AutoConnect ? "1" : "0", nowUtc, ct).ConfigureAwait(false);
+
+                await UpsertSettingAsync(
+                    connection, transaction, SettingLastPort,
+                    string.IsNullOrWhiteSpace(settings.LastPortName) ? null : settings.LastPortName.Trim(),
+                    nowUtc, ct).ConfigureAwait(false);
 
                 await CommitAsync(transaction, ct).ConfigureAwait(false);
             }
@@ -1234,43 +1370,44 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     // ------------------------------------------------------------------
-    // Помощники профилей
+    // Помощники эталонов
     // ------------------------------------------------------------------
 
-    private static CalibrationProfile ReadProfile(SqliteDataReader reader) => new(
+    private static CalibrationReference ReadReference(SqliteDataReader reader) => new(
         Id: reader.GetInt64(0),
         Name: reader.GetString(1),
         Description: reader.GetString(2),
-        ReferenceFileName: reader.GetString(3),
-        ReferenceFormat: reader.GetString(4),
-        ReferenceText: reader.GetString(5),
-        ReferenceHash: reader.GetString(6),
+        SourceName: reader.GetString(3),
+        ParamFormat: reader.GetString(4),
+        ParamText: reader.GetString(5),
+        ParamHash: reader.GetString(6),
         ParamCount: reader.GetInt32(7),
         HeadingVsJigDeg: reader.GetDouble(8),
         InterCompassSpreadDeg: reader.GetDouble(9),
         TransferMotorComp: reader.GetInt64(10) != 0,
+        ParamRoles: reader.GetString(15),
         CreatedBy: reader.GetString(11),
         CreatedUtc: ParseUtc(reader.GetString(12)),
         RetiredUtc: reader.IsDBNull(13) ? null : ParseUtc(reader.GetString(13)),
         RunCount: reader.GetInt32(14));
 
-    /// <summary>Только те поля профиля, которые нужны проверкам правки.</summary>
+    /// <summary>Только те поля эталона, которые нужны проверкам правки.</summary>
     private static async Task<(string Name, double HeadingVsJigDeg, double InterCompassSpreadDeg,
-        bool TransferMotorComp, int RunCount)?> ReadProfileCoreAsync(
+        bool TransferMotorComp, string ParamRoles, int RunCount)?> ReadReferenceCoreAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
-        long profileId,
+        long referenceId,
         CancellationToken ct)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            SELECT p.Name, p.HeadingVsJigDeg, p.InterCompassSpreadDeg, p.TransferMotorComp,
-                   (SELECT COUNT(*) FROM Run r WHERE r.ProfileId = p.Id)
-            FROM Profile p
+            SELECT p.Name, p.HeadingVsJigDeg, p.InterCompassSpreadDeg, p.TransferMotorComp, p.ParamRoles,
+                   (SELECT COUNT(*) FROM Run r WHERE r.ReferenceId = p.Id)
+            FROM Reference p
             WHERE p.Id = $id;
             """;
-        AddParameter(command, "$id", profileId);
+        AddParameter(command, "$id", referenceId);
 
         await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (!await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -1279,7 +1416,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         }
 
         return (reader.GetString(0), reader.GetDouble(1), reader.GetDouble(2),
-            reader.GetInt64(3) != 0, reader.GetInt32(4));
+            reader.GetInt64(3) != 0, reader.GetString(4), reader.GetInt32(5));
     }
 
     /// <summary>
@@ -1297,7 +1434,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            SELECT Id FROM Profile
+            SELECT Id FROM Reference
             WHERE NameNormalized = $normalized AND ($excludeId IS NULL OR Id <> $excludeId)
             LIMIT 1;
             """;
@@ -1308,9 +1445,9 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         if (existing is not null && existing is not DBNull)
         {
             throw new CalibrationStoreException(
-                $"Профиль с именем «{displayName}» уже есть (запись {existing}). " +
-                "Имена профилей сравниваются без учёта регистра и лишних пробелов: " +
-                "два профиля-двойника развели бы историю сдачи по разным записям.");
+                $"Эталон с именем «{displayName}» уже есть (запись {existing}). " +
+                "Имена эталонов сравниваются без учёта регистра и лишних пробелов: " +
+                "два эталона-двойника развели бы историю сдачи по разным записям.");
         }
     }
 
@@ -1490,6 +1627,9 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         var sql = fromVersion switch
         {
             1 => MigrateV1ToV2Sql,
+            2 => MigrateV2ToV3Sql,
+            3 => MigrateV3ToV4Sql,
+            4 => MigrateV4ToV5Sql,
             _ => throw new CalibrationStoreException(
                 $"Миграция схемы с версии {fromVersion} не реализована в этой сборке. " +
                 "Хранилище оставлено на последней исправной версии."),
@@ -1504,14 +1644,23 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     }
 
     /// <summary>
-    /// v1 → v2: профили изделий, настройки рабочего места, привязка прогона к профилю.
+    /// v1 → v2: эталоны изделий, настройки рабочего места, привязка прогона к эталону.
     /// </summary>
     /// <remarks>
     /// <para>
+    /// 🔴 Литерал <b>заморожен</b> в форме версии 2 и намеренно не собирается из
+    /// <see cref="ReferenceSchemaSql"/>. Миграция описывает переход между двумя
+    /// историческими состояниями; если её собирать из текущей схемы, то правка
+    /// схемы задним числом меняет то, что миграция уже сделала на других машинах,
+    /// и следующая миграция начинает работать по предположениям, которые не
+    /// выполняются. Имена здесь старые (<c>Profile</c>, <c>ProfileId</c>) — их
+    /// переименовывает следующая ступень.
+    /// </para>
+    /// <para>
     /// Существующие прогоны не переписываются: у них <c>ProfileId IS NULL</c>, и
-    /// это честное «прогон сделан до введения профилей». Задним числом приписать
-    /// им профиль нельзя — никто не знает, каким эталоном их сдавали, кроме уже
-    /// записанного <c>ReferencePath</c>/<c>ReferenceHash</c>.
+    /// это честное «прогон сделан до введения эталонов». Задним числом приписать
+    /// им эталон нельзя — никто не знает, чем их сдавали, кроме уже записанного
+    /// <c>ReferencePath</c>/<c>ReferenceHash</c>.
     /// </para>
     /// <para>
     /// Оба <c>ALTER TABLE</c> добавляют столбцы без значения по умолчанию.
@@ -1519,7 +1668,32 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     /// столбец с <c>REFERENCES</c> обязан иметь умолчание <c>NULL</c>.
     /// </para>
     /// </remarks>
-    private const string MigrateV1ToV2Sql = ProfileSchemaSql + """
+    private const string MigrateV1ToV2Sql = """
+        CREATE TABLE IF NOT EXISTS Profile (
+            Id                    INTEGER PRIMARY KEY,
+            Name                  TEXT    NOT NULL,
+            NameNormalized        TEXT    NOT NULL UNIQUE,
+            Description           TEXT    NOT NULL DEFAULT '',
+            ReferenceFileName     TEXT    NOT NULL,
+            ReferenceFormat       TEXT    NOT NULL,
+            ReferenceText         TEXT    NOT NULL,
+            ReferenceHash         TEXT    NOT NULL,
+            ParamCount            INTEGER NOT NULL,
+            HeadingVsJigDeg       REAL    NOT NULL,
+            InterCompassSpreadDeg REAL    NOT NULL,
+            TransferMotorComp     INTEGER NOT NULL DEFAULT 1,
+            CreatedBy             TEXT    NOT NULL,
+            CreatedUtc            TEXT    NOT NULL,
+            RetiredUtc            TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS Setting (
+            Name         TEXT PRIMARY KEY,
+            SettingValue TEXT NOT NULL,
+            UpdatedUtc   TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS IX_Profile_Active ON Profile(NameNormalized) WHERE RetiredUtc IS NULL;
 
         ALTER TABLE Run ADD COLUMN ProfileId        INTEGER REFERENCES Profile(Id) ON DELETE RESTRICT;
         ALTER TABLE Run ADD COLUMN ProfileNameAtRun TEXT;
@@ -1527,6 +1701,99 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         CREATE INDEX IF NOT EXISTS IX_Run_Profile ON Run(ProfileId, StartedUtc DESC);
 
         PRAGMA user_version = 2;
+        """;
+
+    /// <summary>
+    /// v2 → v3: единое наименование. «Эталон изделия» и «эталон» были двумя
+    /// словами для одного, и в интерфейсе они путались.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Переименование, а не пересоздание: данные переезжают как есть, ни одна
+    /// строка не переписывается. <c>ALTER TABLE … RENAME TO</c> в SQLite сам
+    /// правит ссылку внешнего ключа в определении <c>Run</c>, поэтому отдельно
+    /// её чинить не нужно.
+    /// </para>
+    /// <para>
+    /// Ключ настройки переименовывается тем же переходом: иначе стенд после
+    /// обновления «забыл» бы выбранный эталон — не отказ, но необъяснимая для
+    /// оператора мелочь, а таких мелочей и складывается недоверие к программе.
+    /// </para>
+    /// </remarks>
+    private const string MigrateV2ToV3Sql = """
+        ALTER TABLE Profile RENAME TO Reference;
+
+        ALTER TABLE Reference RENAME COLUMN ReferenceFileName TO SourceName;
+        ALTER TABLE Reference RENAME COLUMN ReferenceFormat   TO ParamFormat;
+        ALTER TABLE Reference RENAME COLUMN ReferenceText     TO ParamText;
+        ALTER TABLE Reference RENAME COLUMN ReferenceHash     TO ParamHash;
+
+        ALTER TABLE Run RENAME COLUMN ProfileId        TO ReferenceId;
+        ALTER TABLE Run RENAME COLUMN ProfileNameAtRun TO ReferenceNameAtRun;
+
+        DROP INDEX IF EXISTS IX_Profile_Active;
+        DROP INDEX IF EXISTS IX_Run_Profile;
+
+        CREATE INDEX IF NOT EXISTS IX_Reference_Active ON Reference(NameNormalized) WHERE RetiredUtc IS NULL;
+        CREATE INDEX IF NOT EXISTS IX_Run_Reference    ON Run(ReferenceId, StartedUtc DESC);
+
+        UPDATE Setting SET Name = 'workstation.lastReferenceId'
+        WHERE Name = 'workstation.lastProfileId';
+
+        PRAGMA user_version = 3;
+        """;
+
+    /// <summary>
+    /// v3 → v4: отступления технолога от умолчаний по ролям параметров.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Столбец добавляется с умолчанием — пустой строкой, и это не заглушка, а
+    /// содержательное значение: «отступлений нет, эталон работает целиком по
+    /// технологической карте». Именно так и обстояло дело со всеми эталонами,
+    /// заведёнными до появления ролей, — приписывать им задним числом какую-то
+    /// раскладку было бы выдумкой.
+    /// </para>
+    /// <para>
+    /// 🔴 Литерал заморожен в форме версии 4 и не собирается из
+    /// <see cref="ReferenceSchemaSql"/> — см. <see cref="MigrateV1ToV2Sql"/>.
+    /// </para>
+    /// </remarks>
+    private const string MigrateV3ToV4Sql = """
+        ALTER TABLE Reference ADD COLUMN ParamRoles TEXT NOT NULL DEFAULT '';
+
+        PRAGMA user_version = 4;
+        """;
+
+    /// <summary>
+    /// v4 → v5: скрипты изделия.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Только новая таблица: ни одна строка существующих эталонов не
+    /// переписывается. Эталон без скриптов — это эталон изделия, у которого
+    /// скриптов нет, и таким он и остаётся. Приписать задним числом скрипты
+    /// эталонам, заведённым до появления этой возможности, нельзя: чем сдавали
+    /// платы по ним, знает только сам прогон.
+    /// </para>
+    /// <para>
+    /// 🔴 Литерал заморожен в форме версии 5 — см. <see cref="MigrateV1ToV2Sql"/>.
+    /// </para>
+    /// </remarks>
+    private const string MigrateV4ToV5Sql = """
+        CREATE TABLE IF NOT EXISTS ReferenceScript (
+            Id          INTEGER PRIMARY KEY,
+            ReferenceId INTEGER NOT NULL REFERENCES Reference(Id) ON DELETE CASCADE,
+            ScriptPath  TEXT    NOT NULL,
+            ScriptText  TEXT    NOT NULL,
+            ScriptHash  TEXT    NOT NULL,
+            ByteCount   INTEGER NOT NULL,
+            UNIQUE (ReferenceId, ScriptPath)
+        );
+
+        CREATE INDEX IF NOT EXISTS IX_ReferenceScript ON ReferenceScript(ReferenceId, ScriptPath);
+
+        PRAGMA user_version = 5;
         """;
 
     private static async Task VerifyIntegrityAsync(SqliteConnection connection, CancellationToken ct)

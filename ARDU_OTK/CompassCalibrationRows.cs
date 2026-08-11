@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -132,6 +133,111 @@ public sealed class CalibrationCheckRow
 
     private static Visibility Visible(CheckOutcome actual, CheckOutcome expected) =>
         actual == expected ? Visibility.Visible : Visibility.Collapsed;
+}
+
+/// <summary>
+/// Строка параметра, не прошедшего проверку, с действием «перезаписать из
+/// эталона».
+/// </summary>
+/// <remarks>
+/// Строка изменяема: после нажатия кнопки исход записи дописывается сюда же.
+/// Заводить ради этого второй список «что перезаписано» значило бы заставить
+/// оператора сличать глазами два перечня имён.
+/// </remarks>
+public sealed class ParamMismatchRow : INotifyPropertyChanged
+{
+    private string _outcomeText = string.Empty;
+    private Visibility _outcomeVisibility = Visibility.Collapsed;
+    private bool _canRewrite = true;
+
+    public ParamMismatchRow(ParamMismatch mismatch)
+    {
+        ArgumentNullException.ThrowIfNull(mismatch);
+
+        Source = mismatch;
+        Name = mismatch.Name;
+        Detail = mismatch.Detail;
+        StageText = mismatch.Stage.ToString();
+
+        ExpectedText = string.Format(CultureInfo.InvariantCulture, "эталон {0:G9}", mismatch.Expected);
+        ActualText = string.Format(CultureInfo.InvariantCulture, "борт {0:G9}", mismatch.Actual);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public ParamMismatch Source { get; }
+
+    public string Name { get; }
+
+    public string Detail { get; }
+
+    public string StageText { get; }
+
+    public string ExpectedText { get; }
+
+    public string ActualText { get; }
+
+    /// <summary>Исход повторной записи. Пусто, пока её не пытались выполнить.</summary>
+    public string OutcomeText
+    {
+        get => _outcomeText;
+        private set => Set(ref _outcomeText, value);
+    }
+
+    public Visibility OutcomeVisibility
+    {
+        get => _outcomeVisibility;
+        private set => Set(ref _outcomeVisibility, value);
+    }
+
+    /// <summary>Кнопка доступна: перезапись ещё не удалась и сейчас не идёт.</summary>
+    public bool CanRewrite
+    {
+        get => _canRewrite;
+        set => Set(ref _canRewrite, value);
+    }
+
+    /// <summary>Записывает исход попытки и гасит кнопку, если борт значение принял.</summary>
+    public void ApplyOutcome(ParamWriteRecord record)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+
+        OutcomeText = record.Outcome switch
+        {
+            WriteOutcome.Verified => string.Format(
+                CultureInfo.InvariantCulture,
+                "Перезаписано и подтверждено обратным чтением: {0:G9}. Вердикт прогона не меняется — "
+              + "сдавать изделие следует повторным прогоном целиком.",
+                record.ReadBack ?? record.Requested),
+
+            WriteOutcome.Failed =>
+                "Перезапись не выполнена: борт не ответил. Проверьте кабель и питание.",
+
+            _ => string.Format(
+                CultureInfo.InvariantCulture,
+                "Борт снова не принял значение: записывали {0:G9}, обратное чтение дало {1:G9}. "
+              + "Дело не в сбое связи — параметр либо только для чтения, либо перекрывается прошивкой.",
+                record.Requested,
+                record.ReadBack ?? double.NaN),
+        };
+
+        OutcomeVisibility = Visibility.Visible;
+
+        // Повторять успешную запись незачем, а безуспешную — бессмысленно тем
+        // же способом: оба раза кнопка должна перестать звать на новое нажатие.
+        CanRewrite = false;
+    }
+
+    private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }
 
 /// <summary>Строка журнала операций.</summary>

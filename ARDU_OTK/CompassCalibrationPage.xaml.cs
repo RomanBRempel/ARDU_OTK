@@ -48,6 +48,21 @@ public sealed partial class CompassCalibrationPage : Page
     /// <summary>Чтение истории прогонов. Подставляется хостом.</summary>
     public Func<Task<IReadOnlyList<RunSummary>>>? LoadHistory { get; set; }
 
+    /// <summary>
+    /// Повторная запись эталонных значений на борт. Подставляется хостом.
+    /// </summary>
+    /// <remarks>
+    /// Отдельная точка входа, а не часть <see cref="RunJob"/>: перезапись — это
+    /// не продолжение прогона, а действие после него, и в реестре она обязана
+    /// выглядеть именно так.
+    /// </remarks>
+    public Func<long, string, IReadOnlyList<ParamMismatch>, IProgress<string>?, CancellationToken,
+        Task<IReadOnlyList<ParamWriteRecord>>>? RewriteFromReference
+    { get; set; }
+
+    /// <summary>Параметры, не прошедшие проверку в последнем прогоне.</summary>
+    public ObservableCollection<ParamMismatchRow> Mismatches { get; } = new();
+
     public ObservableCollection<CalibrationStageRow> Stages { get; } = new();
 
     public ObservableCollection<CalibrationCheckRow> Checks { get; } = new();
@@ -68,6 +83,7 @@ public sealed partial class CompassCalibrationPage : Page
         {
             RunJob = services.RunCompassCalibrationAsync;
             LoadHistory = services.LoadHistoryAsync;
+            RewriteFromReference = services.RewriteFromReferenceAsync;
         }
     }
 
@@ -292,6 +308,7 @@ public sealed partial class CompassCalibrationPage : Page
     {
         SetRunning(true);
         Checks.Clear();
+        ClearMismatches();
         BuildStageRows();
         VerdictBar.IsOpen = false;
         ErrorBar.IsOpen = false;
@@ -377,6 +394,145 @@ public sealed partial class CompassCalibrationPage : Page
                 }
             }
         }
+
+        ShowMismatches(result);
+    }
+
+    // --- Не прошедшие проверку параметры -----------------------------------
+
+    /// <summary>Прогон, к которому относятся расхождения, — попытки перезаписи ложатся в него.</summary>
+    private long _mismatchRunId;
+
+    private string _mismatchPort = string.Empty;
+
+    private bool _rewriting;
+
+    private void ClearMismatches()
+    {
+        Mismatches.Clear();
+        _mismatchRunId = 0;
+        _mismatchPort = string.Empty;
+
+        MismatchCard.Visibility = Visibility.Collapsed;
+        RewriteBar.IsOpen = false;
+        RewriteProgressPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowMismatches(CalibrationRunResult result)
+    {
+        Mismatches.Clear();
+        _mismatchRunId = result.RunId;
+        _mismatchPort = result.PortName;
+
+        foreach (var mismatch in result.Mismatches)
+        {
+            Mismatches.Add(new ParamMismatchRow(mismatch));
+        }
+
+        MismatchCard.Visibility = Mismatches.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        RewriteAllButton.IsEnabled = Mismatches.Count > 0 && CanRewrite();
+    }
+
+    /// <summary>
+    /// Возможна ли перезапись вообще: нужен хост, порт и незанятый стенд.
+    /// </summary>
+    private bool CanRewrite() =>
+        RewriteFromReference is not null && _mismatchPort.Length > 0 && !_running && !_rewriting;
+
+    private async void OnRewriteOneClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string name })
+        {
+            return;
+        }
+
+        var row = Mismatches.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.Ordinal));
+        if (row is not null)
+        {
+            await RewriteAsync(new[] { row }).ConfigureAwait(true);
+        }
+    }
+
+    private async void OnRewriteAllClick(object sender, RoutedEventArgs e) =>
+        await RewriteAsync(Mismatches.Where(static r => r.CanRewrite).ToArray()).ConfigureAwait(true);
+
+    /// <summary>
+    /// Возвращается к борту и пишет эталонные значения выбранных параметров.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Вердикт прогона не пересматривается ни при каком исходе. Плата,
+    /// провалившая проверку, остаётся проваленной: сдавать её следует повторным
+    /// прогоном целиком. Иначе в реестре появилось бы изделие, «прошедшее»
+    /// проверку, которую оно не проходило.
+    /// </remarks>
+    private async Task RewriteAsync(IReadOnlyList<ParamMismatchRow> rows)
+    {
+        if (rows.Count == 0 || !CanRewrite())
+        {
+            return;
+        }
+
+        SetRewriting(true);
+        RewriteBar.IsOpen = false;
+
+        try
+        {
+            var progress = new Progress<string>(text => RewriteProgressText.Text = text);
+
+            var records = await RewriteFromReference!(
+                _mismatchRunId,
+                _mismatchPort,
+                rows.Select(static r => r.Source).ToArray(),
+                progress,
+                CancellationToken.None).ConfigureAwait(true);
+
+            foreach (var record in records)
+            {
+                var row = rows.FirstOrDefault(r => string.Equals(r.Name, record.Name, StringComparison.Ordinal));
+                row?.ApplyOutcome(record);
+            }
+
+            var accepted = records.Count(static r => r.Outcome == WriteOutcome.Verified);
+            var refused = records.Count - accepted;
+
+            RewriteBar.Severity = refused == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
+            RewriteBar.Message = refused == 0
+                ? $"Перезаписано и подтверждено обратным чтением: {accepted}. Вердикт прогона не изменился — "
+                  + "изделие сдаётся повторным прогоном целиком."
+                : $"Принято бортом: {accepted}, отклонено: {refused}. Отклонённые имена разбирать по журналу — "
+                  + "повторная запись тем же способом их не возьмёт.";
+            RewriteBar.IsOpen = true;
+        }
+        catch (Exception ex)
+        {
+            ShowError("Повторная запись не выполнена", ex);
+        }
+        finally
+        {
+            SetRewriting(false);
+        }
+    }
+
+    private void SetRewriting(bool rewriting)
+    {
+        _rewriting = rewriting;
+
+        RewriteRing.IsActive = rewriting;
+        RewriteProgressPanel.Visibility = rewriting ? Visibility.Visible : Visibility.Collapsed;
+        RewriteProgressText.Text = string.Empty;
+
+        RewriteAllButton.IsEnabled = !rewriting && Mismatches.Any(static r => r.CanRewrite) && CanRewrite();
+
+        // Кнопки строк гасятся на время записи все разом: порт открыт
+        // монопольно, и второе нажатие получило бы отказ доступа, а не
+        // повторную попытку.
+        foreach (var row in Mismatches)
+        {
+            if (row.OutcomeVisibility == Visibility.Collapsed)
+            {
+                row.CanRewrite = !rewriting;
+            }
+        }
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => _cts?.Cancel();
@@ -385,6 +541,7 @@ public sealed partial class CompassCalibrationPage : Page
     {
         Checks.Clear();
         LogEntries.Clear();
+        ClearMismatches();
         BuildStageRows();
         VerdictBar.IsOpen = false;
         ErrorBar.IsOpen = false;

@@ -117,12 +117,166 @@ public sealed class AppServices
         }
     }
 
+    /// <summary>
+    /// Повторно записывает на борт эталонные значения параметров, не прошедших
+    /// проверку.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Вердикт прогона это действие <b>не меняет</b>. Прогон, на котором борт
+    /// не принял значение, остаётся проваленным: изделие сдаётся повторным
+    /// прогоном целиком, а не подкруткой отдельных параметров задним числом.
+    /// Иначе в реестре появилась бы плата, «прошедшая» проверку, которую она не
+    /// проходила.
+    /// </para>
+    /// <para>
+    /// Попытка ложится в тот же прогон отдельными записями аудита. Молчаливая
+    /// перезапись оставила бы борт с иными значениями, чем те, по которым
+    /// закрыт прогон, — и расхождение всплыло бы только при разборе рекламации.
+    /// </para>
+    /// <para>
+    /// Порт открывается заново: к моменту нажатия кнопки соединение прогона уже
+    /// закрыто, а наблюдательное могло быть поднято на том же порту — его
+    /// приходится погасить, потому что COM открывается монопольно.
+    /// </para>
+    /// </remarks>
+    /// <param name="runId">Прогон, в который лягут записи аудита. <c>0</c> — прогон не открывался, аудит пропускается.</param>
+    /// <param name="portName">Порт борта.</param>
+    /// <param name="mismatches">Что перезаписать.</param>
+    /// <param name="progress">Куда сообщать ход; может быть <c>null</c>.</param>
+    /// <param name="ct">Токен отмены.</param>
+    /// <returns>Исход по каждому имени в порядке входного списка.</returns>
+    public async Task<IReadOnlyList<ParamWriteRecord>> RewriteFromReferenceAsync(
+        long runId,
+        string portName,
+        IReadOnlyList<ParamMismatch> mismatches,
+        IProgress<string>? progress,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentNullException.ThrowIfNull(mismatches);
+
+        if (mismatches.Count == 0)
+        {
+            return Array.Empty<ParamWriteRecord>();
+        }
+
+        _procedureRunning = true;
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+
+            return await Task.Run(
+                async () =>
+                {
+                    var records = new List<ParamWriteRecord>(mismatches.Count);
+
+                    var link = new SerialVehicleLink();
+                    await using (link.ConfigureAwait(false))
+                    {
+                        await link.ConnectAsync(portName, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                        if (!link.IsConnected)
+                        {
+                            throw new VehicleLinkException(
+                                $"Порт {portName} открыт, но HEARTBEAT не получен: перезаписывать нечего и некуда.");
+                        }
+
+                        foreach (var mismatch in mismatches)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            progress?.Report($"Запись {mismatch.Name}…");
+
+                            var record = await RewriteOneAsync(link, mismatch, ct).ConfigureAwait(false);
+                            records.Add(record);
+
+                            if (runId > 0)
+                            {
+                                try
+                                {
+                                    await Store.RecordWriteAsync(runId, record, ct).ConfigureAwait(false);
+                                }
+                                catch (CalibrationStoreException ex)
+                                {
+                                    // Отказ реестра не отменяет уже выполненную
+                                    // запись в борт и не должен её скрыть.
+                                    progress?.Report($"Аудит {mismatch.Name} не записан: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+
+                    return (IReadOnlyList<ParamWriteRecord>)records;
+                },
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _procedureRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Одна повторная запись: пишем и тут же проверяем независимым чтением.
+    /// </summary>
+    /// <remarks>
+    /// Эхо <c>PARAM_SET</c> подтверждением не считается — оно широковещательное
+    /// и приходит с недостоверным индексом. Провалившаяся повторная запись
+    /// возвращается исходом <see cref="WriteOutcome.Mismatch"/>, а не
+    /// исключением: оператору нужен результат по всем именам, а не останов на
+    /// первом упрямом.
+    /// </remarks>
+    private static async Task<ParamWriteRecord> RewriteOneAsync(
+        SerialVehicleLink link,
+        ParamMismatch mismatch,
+        CancellationToken ct)
+    {
+        double? before = null;
+        try
+        {
+            var current = await link.ReadParamAsync(mismatch.Name, ct).ConfigureAwait(false);
+            before = current.Value;
+
+            await link.WriteParamAsync(mismatch.Name, (float)mismatch.Expected, current.Type, ct)
+                .ConfigureAwait(false);
+
+            var readBack = await link.ReadParamAsync(mismatch.Name, ct).ConfigureAwait(false);
+
+            var accepted = ReferenceParamFile.ValuesEqual(mismatch.Expected, readBack);
+
+            return new ParamWriteRecord(
+                mismatch.Name,
+                before,
+                mismatch.Expected,
+                readBack.Value,
+                accepted ? WriteOutcome.Verified : WriteOutcome.Mismatch,
+                DateTimeOffset.UtcNow);
+        }
+        catch (VehicleLinkException)
+        {
+            return new ParamWriteRecord(
+                mismatch.Name,
+                before,
+                mismatch.Expected,
+                null,
+                WriteOutcome.Failed,
+                DateTimeOffset.UtcNow);
+        }
+    }
+
     /// <inheritdoc cref="InitializeAsync"/>
     public Task<IReadOnlyList<RunSummary>> LoadHistoryAsync() => Task.Run(() => Store.ListRunsAsync());
 
     /// <inheritdoc cref="InitializeAsync"/>
-    public Task<IReadOnlyList<CalibrationProfile>> LoadProfilesAsync() =>
-        Task.Run(() => Store.ListProfilesAsync());
+    public Task<IReadOnlyList<CalibrationReference>> LoadReferencesAsync() =>
+        Task.Run(() => Store.ListReferencesAsync());
+
+    /// <inheritdoc cref="InitializeAsync"/>
+    public Task<WorkstationSettings> LoadSettingsAsync() =>
+        Task.Run(() => Store.GetWorkstationSettingsAsync());
+
+    /// <inheritdoc cref="InitializeAsync"/>
+    public Task SaveSettingsAsync(WorkstationSettings settings) =>
+        Task.Run(() => Store.SaveWorkstationSettingsAsync(settings));
 
     // --- Связь с полётным контроллером ------------------------------------
 
@@ -174,6 +328,241 @@ public sealed class AppServices
             LinkChanged?.Invoke(this, EventArgs.Empty);
         },
         ct);
+
+    /// <summary>
+    /// Снимает эталон компасов с подключённого образцового изделия.
+    /// </summary>
+    /// <remarks>
+    /// Читает по уже открытому каналу — ради этого живое соединение и держится.
+    /// Отдельного подключения не делает: второй открыватель того же COM-порта
+    /// получил бы отказ, а закрывать наблюдательный канал ради снимка значило бы
+    /// гасить индикатор в момент, когда оператор смотрит на борт.
+    /// </remarks>
+    /// <exception cref="VehicleLinkException">Связи нет либо борт не отдал состав компасов.</exception>
+    public Task<CompassSnapshot> ReadCompassSnapshotAsync(
+        IProgress<string>? progress = null,
+        CancellationToken ct = default) => Task.Run(
+        () =>
+        {
+            var link = _link;
+            if (link is not { IsConnected: true })
+            {
+                throw new VehicleLinkException(
+                    "Нет связи с бортом: снимать эталон не с чего. Подключите образцовое изделие.");
+            }
+
+            return CompassParameterSnapshot.ReadAsync(link, progress, ct);
+        },
+        ct);
+
+    /// <summary>Читает один параметр по уже открытому наблюдательному каналу.</summary>
+    /// <exception cref="VehicleLinkException">Связи нет либо борт имени не знает.</exception>
+    public Task<double> ReadParameterAsync(string name, CancellationToken ct = default) => Task.Run(
+        async () =>
+        {
+            var link = _link;
+            if (link is not { IsConnected: true })
+            {
+                throw new VehicleLinkException("Нет связи с бортом.");
+            }
+
+            var value = await link.ReadParamAsync(name, ct).ConfigureAwait(false);
+            return (double)value.Value;
+        },
+        ct);
+
+    /// <summary>
+    /// Снимает скрипты с подключённого образцового изделия.
+    /// </summary>
+    /// <remarks>
+    /// Читает по уже открытому каналу — как и снимок компасов, и по той же
+    /// причине: второй открыватель того же COM-порта получил бы отказ.
+    /// </remarks>
+    /// <param name="unreadable">Сюда попадают файлы, которые прочитать не удалось.</param>
+    /// <exception cref="VehicleLinkException">Связи нет.</exception>
+    public Task<IReadOnlyList<ReferenceScript>> ReadScriptsAsync(
+        List<string> unreadable,
+        IProgress<string>? progress = null,
+        CancellationToken ct = default) => Task.Run(
+        () =>
+        {
+            var link = _link;
+            if (link is not { IsConnected: true })
+            {
+                throw new VehicleLinkException(
+                    "Нет связи с бортом: снимать скрипты не с чего. Подключите образцовое изделие.");
+            }
+
+            return ScriptTransfer.ReadAllAsync(link, progress, unreadable, ct);
+        },
+        ct);
+
+    /// <summary>
+    /// Сверяет скрипты целевого борта с эталоном.
+    /// </summary>
+    /// <remarks>
+    /// Открывает собственное соединение: сверка выполняется после прогона,
+    /// когда канал процедуры уже закрыт. Наблюдательное соединение при этом
+    /// гасится — COM-порт открывается монопольно.
+    /// </remarks>
+    /// <returns>Расхождения; пустой список — скрипты борта совпали с эталоном.</returns>
+    public async Task<IReadOnlyList<ScriptDifference>> VerifyScriptsAsync(
+        string portName,
+        IReadOnlyList<ReferenceScript> expected,
+        IProgress<string>? progress,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentNullException.ThrowIfNull(expected);
+
+        _procedureRunning = true;
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+
+            return await Task.Run(
+                async () =>
+                {
+                    var link = new SerialVehicleLink();
+                    await using (link.ConfigureAwait(false))
+                    {
+                        await link.ConnectAsync(portName, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                        if (!link.IsConnected)
+                        {
+                            throw new VehicleLinkException($"Порт {portName} открыт, но HEARTBEAT не получен.");
+                        }
+
+                        var unreadable = new List<string>();
+                        var actual = await ScriptTransfer
+                            .ReadAllAsync(link, progress, unreadable, ct)
+                            .ConfigureAwait(false);
+
+                        return ScriptTransfer.Compare(expected, actual, unreadable);
+                    }
+                },
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _procedureRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Приводит скрипты целевого борта к эталону: дописывает недостающие,
+    /// переписывает разошедшиеся, удаляет лишние.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Вердикт прогона это действие не меняет — ровно как повторная запись
+    /// параметров. Изделие сдаётся повторным прогоном целиком.
+    /// </para>
+    /// <para>
+    /// 🔴 Записанный скрипт начнёт исполняться только после перезагрузки борта:
+    /// Lua подхватывается при старте. Сказать об этом обязан вызывающий —
+    /// молчание здесь означало бы «применено», чего не произошло.
+    /// </para>
+    /// </remarks>
+    /// <returns>Пути, по которым действие выполнено, и текст отказа по остальным.</returns>
+    public async Task<IReadOnlyList<(string Path, string? Failure)>> ApplyScriptsAsync(
+        string portName,
+        IReadOnlyList<ScriptDifference> differences,
+        IProgress<string>? progress,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(portName);
+        ArgumentNullException.ThrowIfNull(differences);
+
+        if (differences.Count == 0)
+        {
+            return Array.Empty<(string, string?)>();
+        }
+
+        _procedureRunning = true;
+        try
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+
+            return await Task.Run(
+                async () =>
+                {
+                    var outcomes = new List<(string Path, string? Failure)>(differences.Count);
+
+                    var link = new SerialVehicleLink();
+                    await using (link.ConfigureAwait(false))
+                    {
+                        await link.ConnectAsync(portName, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                        if (!link.IsConnected)
+                        {
+                            throw new VehicleLinkException(
+                                $"Порт {portName} открыт, но HEARTBEAT не получен.");
+                        }
+
+                        foreach (var difference in differences)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            outcomes.Add(await ApplyOneScriptAsync(link, difference, progress, ct)
+                                .ConfigureAwait(false));
+                        }
+                    }
+
+                    return (IReadOnlyList<(string, string?)>)outcomes;
+                },
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _procedureRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Одно действие над скриптом с проверкой обратным чтением.
+    /// </summary>
+    /// <remarks>
+    /// Обратное чтение обязательно и здесь: подтверждения записи MAVFTP
+    /// достаточно, чтобы знать, что борт принял байты, но не чтобы знать, что
+    /// на карте лежит именно тот файл. Сверка по SHA-256 отвечает на второй
+    /// вопрос.
+    /// </remarks>
+    private static async Task<(string Path, string? Failure)> ApplyOneScriptAsync(
+        SerialVehicleLink link,
+        ScriptDifference difference,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (difference.Outcome == ScriptComparison.ExtraOnBoard)
+            {
+                progress?.Report($"Удаление {difference.Path}…");
+                await link.RemoveFileAsync(difference.Path, ct).ConfigureAwait(false);
+                return (difference.Path, null);
+            }
+
+            if (difference.Expected is not { } script)
+            {
+                return (difference.Path, "нечего записывать: в эталоне этого скрипта нет");
+            }
+
+            progress?.Report($"Запись {difference.Path}…");
+            await link.WriteFileAsync(script.Path, script.ToBytes(), null, ct).ConfigureAwait(false);
+
+            progress?.Report($"Сверка {difference.Path}…");
+            var readBack = await link.ReadFileAsync(script.Path, null, ct).ConfigureAwait(false);
+            var actual = ReferenceScript.ComputeHash(readBack);
+
+            return string.Equals(actual, script.Hash, StringComparison.Ordinal)
+                ? (difference.Path, null)
+                : (difference.Path,
+                    $"обратное чтение дало другой файл: эталон {ReferenceParameters.ShortHash(script.Hash)}, "
+                  + $"борт {ReferenceParameters.ShortHash(actual)}");
+        }
+        catch (Exception ex) when (ex is VehicleLinkException or InvalidDataException)
+        {
+            return (difference.Path, ex.Message);
+        }
+    }
 
     public Task DisconnectAsync() => Task.Run(async () =>
     {
