@@ -175,9 +175,9 @@
     "semantic_hash": "6dfdea4bafb30a3f33dbe2bb80940f86"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786432253.400614,
-    "ast_hash": "aef6f54dd2b4717bf24e994ea831b5a4",
-    "semantic_hash": "aef6f54dd2b4717bf24e994ea831b5a4"
+    "mtime": 1786433330.6565087,
+    "ast_hash": "215583fcdf378346b808328bce83e4e4",
+    "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
     "mtime": 1786432285.380833,
