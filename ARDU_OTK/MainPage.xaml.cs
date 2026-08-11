@@ -972,6 +972,15 @@ public sealed partial class MainPage : Page
                 ScriptDiffs.Add(new ScriptDifferenceRow(difference));
             }
 
+            // 🔴 Совпавшие показываются наравне с разошедшимися и с теми же
+            // подробностями: путь, имя, размер, хеш. Слово «совпали» без них
+            // ничего не доказывает — по нему не понять, что именно сравнивали.
+            var problematic = differences.Select(static d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var script in expected.Where(sc => !problematic.Contains(sc.Path)))
+            {
+                ScriptDiffs.Add(new ScriptDifferenceRow(script));
+            }
+
             ScriptsStateText.Text = expected.Count == 0 && differences.Count == 0
                 ? "Эталон без скриптов, и на борту их нет."
                 : differences.Count == 0

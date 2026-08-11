@@ -93,6 +93,34 @@ public sealed class ScriptDifferenceRow : INotifyPropertyChanged
     private Visibility _outcomeVisibility = Visibility.Collapsed;
     private bool _canApply = true;
 
+    /// <summary>
+    /// Совпавший скрипт: путь, имя и размер.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Совпавшие показываются наравне с разошедшимися и с теми же
+    /// подробностями. Слово «совпали» без пути, имени и размера ничего не
+    /// доказывает: по нему нельзя понять, что именно сравнивали и был ли на
+    /// борту вообще тот файл, о котором идёт речь.
+    /// </remarks>
+    public ScriptDifferenceRow(ReferenceScript script)
+    {
+        ArgumentNullException.ThrowIfNull(script);
+
+        Path = script.Path;
+        FileName = script.FileName;
+        SizeText = string.Create(CultureInfo.InvariantCulture, $"{script.ByteCount} байт");
+        HashText = ReferenceParameters.ShortHash(script.Hash);
+        Detail = string.Empty;
+
+        KindText = "совпал";
+        ActionText = string.Empty;
+        ActionVisibility = Visibility.Collapsed;
+        _canApply = false;
+
+        MatchVisibility = Visibility.Visible;
+        DiffVisibility = Visibility.Collapsed;
+    }
+
     public ScriptDifferenceRow(ScriptDifference difference)
     {
         ArgumentNullException.ThrowIfNull(difference);
@@ -101,6 +129,14 @@ public sealed class ScriptDifferenceRow : INotifyPropertyChanged
         Path = difference.Path;
         FileName = difference.Path[(difference.Path.LastIndexOf('/') + 1)..];
         Detail = difference.Detail;
+
+        SizeText = difference.Expected is { } expected
+            ? string.Create(CultureInfo.InvariantCulture, $"{expected.ByteCount} байт")
+            : string.Empty;
+
+        HashText = difference.Expected is { } withHash
+            ? ReferenceParameters.ShortHash(withHash.Hash)
+            : ReferenceParameters.ShortHash(difference.ActualHash);
 
         KindText = difference.Outcome switch
         {
@@ -128,13 +164,20 @@ public sealed class ScriptDifferenceRow : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ScriptDifference Source { get; }
+    /// <summary>Расхождение; <c>null</c> — строка о совпавшем скрипте.</summary>
+    public ScriptDifference? Source { get; }
 
     public string Path { get; }
 
     public string FileName { get; }
 
     public string KindText { get; }
+
+    /// <summary>Размер по эталону. Пусто, если эталон об этом файле молчит.</summary>
+    public string SizeText { get; } = string.Empty;
+
+    /// <summary>Первые разряды SHA-256 — по ним файл и опознаётся.</summary>
+    public string HashText { get; } = string.Empty;
 
     public string Detail { get; }
 
@@ -221,10 +264,13 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         Detail = string.Empty;
         _canWrite = false;
 
-        ExpectedText = "эталон " + ReferenceParamFile.FormatCanonical(expected);
+        // 🔴 Без слов «эталон» и «борт» в каждой строке: это заголовки
+        // колонок, а не часть значения. Повторённые полсотни раз, они
+        // вытесняют собой сами числа, ради которых оператор в список и смотрит.
+        ExpectedText = ReferenceParamFile.FormatCanonical(expected);
         ActualText = actual is { } value
-            ? string.Create(CultureInfo.InvariantCulture, $"борт {value:G9}")
-            : "на борту нет";
+            ? string.Create(CultureInfo.InvariantCulture, $"{value:G9}")
+            : "нет";
 
         // Помеченные показывать и так все на виду: значок «показываемый» рядом
         // с каждой строкой был бы шумом.
@@ -248,12 +294,12 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         DiffVisibility = Visibility.Visible;
 
         ExpectedText = difference.Expected is { } expected
-            ? "эталон " + ReferenceParamFile.FormatCanonical(expected)
-            : "эталон молчит";
+            ? ReferenceParamFile.FormatCanonical(expected)
+            : "—";
 
         ActualText = difference.Actual is { } actual
-            ? string.Create(CultureInfo.InvariantCulture, $"борт {actual:G9}")
-            : "на борту нет";
+            ? string.Create(CultureInfo.InvariantCulture, $"{actual:G9}")
+            : "нет";
 
         VisibleBadgeVisibility = difference.Visible ? Visibility.Visible : Visibility.Collapsed;
 

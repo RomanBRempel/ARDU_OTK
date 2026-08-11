@@ -185,5 +185,15 @@
   "183": "byte",
   "184": "int",
   "185": "uint",
-  "186": "ushort"
+  "186": "ushort",
+  "187": "CalibrationReference",
+  "188": "IReadOnlyList",
+  "189": "List",
+  "190": "ParameterDifferenceRow",
+  "191": "ParameterProgress",
+  "192": "ParameterTransferPlan",
+  "193": "string",
+  "194": "Task",
+  "195": "VehicleLiveState",
+  "196": "WorkstationSettings"
 }

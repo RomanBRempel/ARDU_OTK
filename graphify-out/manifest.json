@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786460707.030346,
-    "ast_hash": "a09b36e61585415b023e35550043057f",
+    "mtime": 1786461243.0799396,
+    "ast_hash": "703c8ae59022ce28cbeae37c539e592e",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786460841.905115,
-    "ast_hash": "08a94231bfcf62c26374e54cd3686a48",
+    "mtime": 1786461319.4614613,
+    "ast_hash": "bb2a84e314b3c8300f15a7be5f7143a2",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -205,8 +205,8 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786459199.3680904,
-    "ast_hash": "1f23c7953c4fc2bc6cf5e963a0fe1817",
+    "mtime": 1786461353.7575016,
+    "ast_hash": "5261f0b8edf10916d9a713fa25ec89cb",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/AcceptanceRows.cs": {
-    "mtime": 1786460308.4221556,
-    "ast_hash": "67dca207582be8f4870dc18d1fe06700",
+    "mtime": 1786461259.220036,
+    "ast_hash": "89efe3127e48b93c90fbcd72ca3f8a86",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
