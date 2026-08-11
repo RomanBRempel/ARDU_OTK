@@ -387,6 +387,7 @@ public sealed class AppServices
     /// <exception cref="VehicleLinkException">Связи нет либо борт не отдал ни одного параметра.</exception>
     public Task<FullParameterSet> ReadAllParametersAsync(
         IProgress<string>? progress = null,
+        IProgress<ParameterProgress>? detail = null,
         CancellationToken ct = default) => Task.Run(
         () =>
         {
@@ -397,7 +398,7 @@ public sealed class AppServices
                     "Нет связи с бортом: снимать эталон не с чего. Подключите образцовое изделие.");
             }
 
-            return link.ReadAllParamsAsync(progress, null, ct);
+            return link.ReadAllParamsAsync(progress, detail, ct);
         },
         ct);
 

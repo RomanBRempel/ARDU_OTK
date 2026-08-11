@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using ARDU_OTK.Services.Fc;
+using ARDU_OTK.Services.Store;
 using Microsoft.UI.Xaml;
 
 namespace ARDU_OTK;
@@ -76,6 +77,120 @@ public sealed class AcceptanceStepRow : INotifyPropertyChanged
 
     private void Raise(string name) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+/// <summary>
+/// Строка сверки скриптов.
+/// </summary>
+/// <remarks>
+/// Скрипты стоят своей колонкой рядом с параметрами, а не в общем списке:
+/// это другая сущность — файл на карте, а не число, — и действие над ней
+/// другое: залить или удалить, а не записать значение.
+/// </remarks>
+public sealed class ScriptDifferenceRow : INotifyPropertyChanged
+{
+    private string _outcomeText = string.Empty;
+    private Visibility _outcomeVisibility = Visibility.Collapsed;
+    private bool _canApply = true;
+
+    public ScriptDifferenceRow(ScriptDifference difference)
+    {
+        ArgumentNullException.ThrowIfNull(difference);
+
+        Source = difference;
+        Path = difference.Path;
+        FileName = difference.Path[(difference.Path.LastIndexOf('/') + 1)..];
+        Detail = difference.Detail;
+
+        KindText = difference.Outcome switch
+        {
+            ScriptComparison.MissingOnBoard => "нет на борту",
+            ScriptComparison.ContentDiffers => "содержимое другое",
+            ScriptComparison.ExtraOnBoard => "лишний на борту",
+            ScriptComparison.Unreadable => "не прочитан",
+            _ => "совпал",
+        };
+
+        ActionText = difference.Outcome == ScriptComparison.ExtraOnBoard ? "Удалить" : "Залить";
+
+        // Нечитаемый файл действием не лечится: сначала нужно понять, почему
+        // борт его не отдал.
+        _canApply = difference.Outcome != ScriptComparison.Unreadable;
+        ActionVisibility = _canApply ? Visibility.Visible : Visibility.Collapsed;
+
+        MatchVisibility = difference.Outcome == ScriptComparison.Match
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        DiffVisibility = difference.Outcome == ScriptComparison.Match
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public ScriptDifference Source { get; }
+
+    public string Path { get; }
+
+    public string FileName { get; }
+
+    public string KindText { get; }
+
+    public string Detail { get; }
+
+    public string ActionText { get; }
+
+    public Visibility ActionVisibility { get; }
+
+    public Visibility MatchVisibility { get; }
+
+    public Visibility DiffVisibility { get; }
+
+    public string OutcomeText
+    {
+        get => _outcomeText;
+        private set
+        {
+            _outcomeText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OutcomeText)));
+        }
+    }
+
+    public Visibility OutcomeVisibility
+    {
+        get => _outcomeVisibility;
+        private set
+        {
+            _outcomeVisibility = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OutcomeVisibility)));
+        }
+    }
+
+    public bool CanApply
+    {
+        get => _canApply;
+        set
+        {
+            _canApply = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanApply)));
+        }
+    }
+
+    /// <summary>Записывает исход действия и гасит кнопку.</summary>
+    /// <remarks>
+    /// 🔴 Про перезагрузку сказано прямо. Записанный скрипт подхватывается
+    /// прошивкой только при старте, и молчание об этом читалось бы как
+    /// «применено», чего не произошло.
+    /// </remarks>
+    public void ApplyOutcome(string? failure)
+    {
+        OutcomeText = failure is null
+            ? "Выполнено и подтверждено обратным чтением. Исполняться начнёт после перезагрузки борта."
+            : "Не выполнено: " + failure;
+
+        OutcomeVisibility = Visibility.Visible;
+        CanApply = false;
+    }
 }
 
 /// <summary>

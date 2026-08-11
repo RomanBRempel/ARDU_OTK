@@ -544,6 +544,9 @@ public sealed partial class MainPage : Page
     /// <summary>Параметры, которые эталон помечен показывать оператору.</summary>
     public ObservableCollection<WatchedParameterRow> Watched { get; } = new();
 
+    /// <summary>Сверка скриптов изделия.</summary>
+    public ObservableCollection<ScriptDifferenceRow> ScriptDiffs { get; } = new();
+
     private AcceptanceSession? _session;
     private CancellationTokenSource? _acceptanceCts;
     private bool _acceptanceBusy;
@@ -668,6 +671,8 @@ public sealed partial class MainPage : Page
                   + "до этого калибровки заблокированы.");
 
             AppendLog(MavSeverity.Info, $"Повторная сверка: расхождений {after.Differences.Count}.");
+
+            await CompareScriptsAsync(reference, ct).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -898,7 +903,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var board = _session?.LastBoard;
+        var board = _session?.LastBoard ?? _previewBoard;
         var shown = Differences.Select(static d => d.Name).ToHashSet(StringComparer.Ordinal);
         var added = 0;
 
@@ -931,6 +936,113 @@ public sealed partial class MainPage : Page
             ? $"Эталон помечен показывать {added} имён — их эталонные значения ниже. "
               + "Значения борта появятся после сверки."
             : CompareStateText.Text + $" Ниже расхождений — {added} наблюдаемых имён, они сошлись.";
+    }
+
+    // --- Скрипты изделия ----------------------------------------------------
+
+    /// <summary>
+    /// Сверяет скрипты борта с эталоном.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Скрипты — часть конфигурации изделия наравне с параметрами. Прошивка
+    /// исполняет всё, что лежит в каталоге скриптов: лишний файл делает изделие
+    /// непохожим на эталонное при полностью совпавших параметрах, а
+    /// недостающий отнимает часть поведения.
+    /// </remarks>
+    private async Task CompareScriptsAsync(CalibrationReference reference, CancellationToken ct)
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        ScriptDiffs.Clear();
+
+        try
+        {
+            var expected = await _services.Store.GetReferenceScriptsAsync(reference.Id, ct)
+                .ConfigureAwait(true);
+
+            var progress = new Progress<string>(text => ScriptsStateText.Text = text);
+            var differences = await _session.CompareScriptsAsync(expected, progress, ct)
+                .ConfigureAwait(true);
+
+            foreach (var difference in differences)
+            {
+                ScriptDiffs.Add(new ScriptDifferenceRow(difference));
+            }
+
+            ScriptsStateText.Text = expected.Count == 0 && differences.Count == 0
+                ? "Эталон без скриптов, и на борту их нет."
+                : differences.Count == 0
+                    ? $"Скрипты совпали с эталоном: {expected.Count}."
+                    : $"Скриптов в эталоне {expected.Count}, расходится {differences.Count}.";
+
+            AppendLog(MavSeverity.Info, "Сверка скриптов: " + ScriptsStateText.Text);
+        }
+        catch (Exception ex)
+        {
+            ScriptsStateText.Text = "Скрипты не сверены: " + ex.Message;
+            AppendLog(MavSeverity.Error, "Сверка скриптов не выполнена: " + ex.Message);
+        }
+        finally
+        {
+            UpdateAcceptanceCommands();
+        }
+    }
+
+    private async void OnApplyScriptClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string path })
+        {
+            var row = ScriptDiffs.FirstOrDefault(r => string.Equals(r.Path, path, StringComparison.Ordinal));
+            if (row is not null)
+            {
+                await ApplyScriptsAsync(new[] { row }).ConfigureAwait(true);
+            }
+        }
+    }
+
+    private async void OnApplyAllScriptsClick(object sender, RoutedEventArgs e) =>
+        await ApplyScriptsAsync(ScriptDiffs.Where(static r => r.CanApply).ToArray()).ConfigureAwait(true);
+
+    private async Task ApplyScriptsAsync(IReadOnlyList<ScriptDifferenceRow> rows)
+    {
+        if (_session is null || rows.Count == 0 || _acceptanceBusy)
+        {
+            return;
+        }
+
+        SetAcceptanceBusy(true);
+        try
+        {
+            var progress = new Progress<string>(text => ScriptsStateText.Text = text);
+            var outcomes = await _session
+                .ApplyScriptsAsync(rows.Select(static r => r.Source).ToArray(), progress, CancellationToken.None)
+                .ConfigureAwait(true);
+
+            foreach (var (path, failure) in outcomes)
+            {
+                var row = rows.FirstOrDefault(r => string.Equals(r.Path, path, StringComparison.Ordinal));
+                row?.ApplyOutcome(failure);
+            }
+
+            var ok = outcomes.Count(static o => o.Failure is null);
+            ScriptsStateText.Text =
+                $"Выполнено {ok} из {outcomes.Count}. Изменения вступят в силу после перезагрузки борта: "
+              + "Lua подхватывается при старте.";
+
+            AppendLog(MavSeverity.Info, "Скрипты: " + ScriptsStateText.Text);
+        }
+        catch (Exception ex)
+        {
+            ScriptsStateText.Text = "Не выполнено: " + ex.Message;
+            AppendLog(MavSeverity.Error, "Работа со скриптами не выполнена: " + ex.Message);
+        }
+        finally
+        {
+            SetAcceptanceBusy(false);
+        }
     }
 
     private async void OnWriteOneClick(object sender, RoutedEventArgs e)
@@ -1157,6 +1269,7 @@ public sealed partial class MainPage : Page
 
         WriteAllButton.IsEnabled = live && Differences.Any(static d => d.CanWrite);
         AcceptDiffButton.IsEnabled = live && Differences.Count > 0 && !_diffAccepted;
+        ApplyAllScriptsButton.IsEnabled = live && ScriptDiffs.Any(static r => r.CanApply);
 
         LevelButton.IsEnabled = live && resolved;
         CompassCalButton.IsEnabled = live && resolved;
@@ -1576,8 +1689,9 @@ public sealed partial class MainPage : Page
 
         // Наблюдаемые имена показываются сразу после выбора эталона: пока
         // сверки не было, в списке стоят эталонные значения. Пересобирается
-        // только когда сверка ещё не выполнялась — иначе затёрло бы её итог.
-        if (_session is null)
+        // только когда никакой сверки ещё не выполнялось — иначе затёрло бы
+        // её итог.
+        if (_session is null && _previewBoard is null && !_previewBusy)
         {
             Differences.Clear();
             RenderWatched();
@@ -1651,8 +1765,83 @@ public sealed partial class MainPage : Page
         if (connected)
         {
             _ = LoadCompassIdentityAsync();
+            _ = PreviewCompareAsync();
         }
     }
+
+    /// <summary>
+    /// Сверяет борт с эталоном сразу после подключения, не дожидаясь запуска
+    /// приёмки.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Сверка ничего на борту не меняет: это одно чтение таблицы параметров.
+    /// Поэтому ждать «Старта», чтобы узнать, чем плата отличается от эталона,
+    /// незачем — оператор видит это сразу, как только положил её на стенд, и
+    /// решает, стоит ли вообще запускать процедуру.
+    /// </para>
+    /// <para>
+    /// Во время приёмки не выполняется: там сверка идёт своим чередом и
+    /// повторное чтение тысячи имён отняло бы у процедуры канал.
+    /// </para>
+    /// </remarks>
+    private async Task PreviewCompareAsync()
+    {
+        if (_selectedReference is not { } reference
+            || _acceptanceBusy
+            || _session is not null
+            || _previewBusy)
+        {
+            return;
+        }
+
+        _previewBusy = true;
+        try
+        {
+            CompareStateText.Text = "Вычитываю прошивку борта…";
+            CompareProgress.Visibility = Visibility.Visible;
+            CompareProgress.IsIndeterminate = true;
+
+            var progress = new Progress<string>(text =>
+            {
+                CompareStateText.Text = text;
+                AnimateCompareProgress(text);
+            });
+
+            var detail = new Progress<ParameterProgress>(ShowReadTick);
+
+            var board = await _services.ReadAllParametersAsync(progress, detail).ConfigureAwait(true);
+
+            var plan = ParameterTransfer.Plan(
+                reference.ParseParameters().Values,
+                board.Values,
+                reference.ToRoleMap());
+
+            _previewBoard = board;
+            ShowCompare(plan, plan.IsClean
+                ? "Борт совпал с эталоном. Приёмку можно запускать."
+                : $"Расходится параметров: {plan.Differences.Count}. Это предварительная сверка — "
+                  + "борт не тронут. Запись пойдёт только по «Старту приёмки».");
+
+            AppendLog(MavSeverity.Info,
+                $"Предварительная сверка: совпало {plan.Matched}, расходится {plan.Differences.Count}.");
+        }
+        catch (Exception ex)
+        {
+            CompareStateText.Text = "Предварительная сверка не выполнена: " + ex.Message;
+        }
+        finally
+        {
+            CompareProgress.Visibility = Visibility.Collapsed;
+            CompareTickPanel.Visibility = Visibility.Collapsed;
+            _previewBusy = false;
+        }
+    }
+
+    private bool _previewBusy;
+
+    /// <summary>Таблица борта из предварительной сверки — по ней показываются наблюдаемые значения.</summary>
+    private FullParameterSet? _previewBoard;
 
     // --- Указатель положения -----------------------------------------------
 

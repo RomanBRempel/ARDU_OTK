@@ -178,5 +178,12 @@
   "176": "ParameterDifferenceRow",
   "177": "Path",
   "178": "ReferenceScript",
-  "179": "ScriptDifference"
+  "179": "ScriptDifference",
+  "180": "VehicleLiveState",
+  "181": "Visibility",
+  "182": "WorkstationSettings",
+  "183": "byte",
+  "184": "int",
+  "185": "uint",
+  "186": "ushort"
 }

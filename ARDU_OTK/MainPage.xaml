@@ -184,6 +184,62 @@
             </Grid>
         </DataTemplate>
 
+        <!--
+            Скрипт изделия. Стоит своей колонкой рядом с параметрами: это
+            другая сущность — файл на карте, а не число, — и действие над ней
+            другое: залить или удалить, а не записать значение.
+        -->
+        <DataTemplate x:Key="ScriptTemplate" x:DataType="local:ScriptDifferenceRow">
+            <Grid ColumnSpacing="8" Padding="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Width="14" VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="11"
+                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                        Glyph="&#xE73E;"
+                        Visibility="{x:Bind MatchVisibility}" />
+                    <FontIcon
+                        FontSize="11"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xEA39;"
+                        Visibility="{x:Bind DiffVisibility}" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        IsTextSelectionEnabled="True"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind FileName}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind KindText}" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="{x:Bind OutcomeText, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="2"
+                    VerticalAlignment="Top"
+                    Click="OnApplyScriptClick"
+                    Content="{x:Bind ActionText}"
+                    IsEnabled="{x:Bind CanApply, Mode=OneWay}"
+                    Tag="{x:Bind Path}"
+                    Visibility="{x:Bind ActionVisibility}" />
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="MagTemplate" x:DataType="local:CompassRow">
             <Grid Padding="0,4" ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
@@ -976,21 +1032,83 @@
                             оператор смотрит на расхождения, потом ищет
                             глазами, что там с наблюдаемыми, и обратно.
                         -->
-                        <ListView
-                            x:Name="DiffList"
-                            Grid.Row="6"
-                            IsItemClickEnabled="False"
-                            ItemContainerStyle="{StaticResource RowContainerStyle}"
-                            ItemTemplate="{StaticResource DifferenceTemplate}"
-                            ItemsSource="{x:Bind Differences}"
-                            SelectionMode="None">
-                            <ListView.ItemContainerTransitions>
-                                <TransitionCollection>
-                                    <AddDeleteThemeTransition />
-                                    <ReorderThemeTransition />
-                                </TransitionCollection>
-                            </ListView.ItemContainerTransitions>
-                        </ListView>
+                        <Grid Grid.Row="6" ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <ListView
+                                x:Name="DiffList"
+                                IsItemClickEnabled="False"
+                                ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                ItemTemplate="{StaticResource DifferenceTemplate}"
+                                ItemsSource="{x:Bind Differences}"
+                                SelectionMode="None">
+                                <ListView.ItemContainerTransitions>
+                                    <TransitionCollection>
+                                        <AddDeleteThemeTransition />
+                                        <ReorderThemeTransition />
+                                    </TransitionCollection>
+                                </ListView.ItemContainerTransitions>
+                            </ListView>
+
+                            <!--
+                                Скрипты рядом с параметрами, а не под ними:
+                                прошивка исполняет всё, что лежит в каталоге
+                                скриптов, и лишний файл делает изделие
+                                непохожим на эталонное при полностью совпавших
+                                параметрах. Смотреть на них надо тем же
+                                взглядом.
+                            -->
+                            <Grid Grid.Column="1" RowSpacing="4">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Text="Скрипты" />
+                                    <Button
+                                        x:Name="ApplyAllScriptsButton"
+                                        Grid.Column="1"
+                                        Click="OnApplyAllScriptsClick"
+                                        Content="Привести к эталону"
+                                        IsEnabled="False" />
+                                </Grid>
+
+                                <TextBlock
+                                    x:Name="ScriptsStateText"
+                                    Grid.Row="1"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="Сверка скриптов не выполнялась."
+                                    TextWrapping="Wrap" />
+
+                                <ListView
+                                    x:Name="ScriptList"
+                                    Grid.Row="2"
+                                    IsItemClickEnabled="False"
+                                    ItemContainerStyle="{StaticResource RowContainerStyle}"
+                                    ItemTemplate="{StaticResource ScriptTemplate}"
+                                    ItemsSource="{x:Bind ScriptDiffs}"
+                                    SelectionMode="None">
+                                    <ListView.ItemContainerTransitions>
+                                        <TransitionCollection>
+                                            <AddDeleteThemeTransition />
+                                        </TransitionCollection>
+                                    </ListView.ItemContainerTransitions>
+                                </ListView>
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </Border>
 
