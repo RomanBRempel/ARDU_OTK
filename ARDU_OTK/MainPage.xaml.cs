@@ -1749,13 +1749,8 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void RenderExpansion()
     {
-        PlacePopup(
-            _portsExpanded, PortPopup, PortPopupRoot, PortCard, FcSelector,
-            PortsAbove, PortsAboveHost, PortSpacer);
-
-        PlacePopup(
-            _referencesExpanded, ReferencePopup, ReferencePopupRoot, ReferenceCard, ReferenceSelector,
-            ReferencesAbove, ReferencesAboveHost, ReferenceSpacer);
+        PlacePopup(_portsExpanded, PortPopup, PortPopupRoot, PortCard, FcSelector);
+        PlacePopup(_referencesExpanded, ReferencePopup, ReferencePopupRoot, ReferenceCard, ReferenceSelector);
     }
 
     /// <summary>
@@ -1763,18 +1758,23 @@ public sealed partial class MainPage : Page
     /// плашки «выше» уходят над ней, «ниже» — под неё, а прозрачная прокладка
     /// занимает ровно место самой карточки.
     /// </summary>
-    /// <summary>Промежуток между блоками раскрытия — тот же, что в разметке.</summary>
-    private const double PopupItemSpacing = 6;
-
+    /// <summary>
+    /// Открывает список выбора прямо под плашкой.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Раньше слой поднимался так, чтобы одна плашка встала над карточкой, а
+    /// остальные под ней, и место карточки занимала прозрачная прокладка.
+    /// Красиво, пока высоты совпадают: подъём считался по замеру одного блока,
+    /// и любое изменение оформления или размера шрифта разъезжалось со списком —
+    /// раскрытие наползало на саму карточку. Обычный выпадающий список под
+    /// карточкой ничего не считает и потому не разъезжается.
+    /// </remarks>
     private static void PlacePopup(
         bool open,
         Popup popup,
         FrameworkElement root,
         FrameworkElement card,
-        UIElement origin,
-        Panel above,
-        FrameworkElement aboveHost,
-        FrameworkElement spacer)
+        UIElement origin)
     {
         if (!open)
         {
@@ -1791,24 +1791,10 @@ public sealed partial class MainPage : Page
         }
 
         root.Width = width;
-        spacer.Height = card.ActualHeight;
-
-        // Пустая подложка — это пустая рамка на экране, а не «ничего».
-        aboveHost.Visibility = above.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-
-        // Высота верхней части нужна до показа: на неё поднимается весь слой.
-        // Меряется подложка целиком вместе с рамкой и отступами — иначе слой
-        // встанет выше на их толщину, и место выбранной карточки не совпадёт
-        // с прорехой в списке.
-        aboveHost.Measure(new Size(width, double.PositiveInfinity));
-
-        double lift = aboveHost.Visibility == Visibility.Visible
-            ? aboveHost.DesiredSize.Height + PopupItemSpacing
-            : 0;
 
         var offset = card.TransformToVisual(origin).TransformPoint(new Point(0, 0));
         popup.HorizontalOffset = offset.X;
-        popup.VerticalOffset = offset.Y - lift;
+        popup.VerticalOffset = offset.Y + card.ActualHeight + 4;
         popup.IsOpen = true;
     }
 

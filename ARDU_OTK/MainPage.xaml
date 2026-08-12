@@ -144,9 +144,16 @@
                     увиденному.
                 -->
                 <Grid Grid.Column="1" ColumnSpacing="10">
+                    <!--
+                        🔴 Имя параметра — колонка постоянной ширины, значение
+                        забирает остаток. Пока значение стояло в колонке «по
+                        содержимому», длинная сводная строка канала съедала всю
+                        ширину, и имя схлопывалось в ноль: на экране оставались
+                        поля без канала, к которому они относятся.
+                    -->
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="120" MaxWidth="240" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" MinWidth="150" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -505,41 +512,23 @@
                         вниз — прозрачная прокладка занимает место карточки.
                     -->
                     <primitives:Popup x:Name="PortPopup" IsLightDismissEnabled="True">
-                        <StackPanel x:Name="PortPopupRoot" Spacing="6">
-                            <!--
-                                🔴 Непрозрачная подложка обязательна. Плашки
-                                написаны карточными кистями WinUI, а те
-                                полупрозрачны: они рассчитаны на сплошной фон
-                                страницы под собой. В Popup под ними не
-                                страница, а соседние панели, и список читался
-                                сквозь текст компасов и журнала. Подложка стоит
-                                на самих списках, а не на корне: место
-                                выбранной карточки обязано остаться видимым.
-                            -->
-                            <Border
-                                x:Name="PortsAboveHost"
-                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="6">
+                        <Border
+                            x:Name="PortPopupRoot"
+                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="6">
+                            <StackPanel Spacing="6">
                                 <StackPanel x:Name="PortsAbove" Spacing="6" />
-                            </Border>
-                            <Border x:Name="PortSpacer" Background="Transparent" />
-                            <Border
-                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="6">
                                 <ScrollViewer
                                     x:Name="PortsBelowScroll"
-                                    MaxHeight="260"
+                                    MaxHeight="320"
                                     VerticalScrollBarVisibility="Auto">
                                     <StackPanel x:Name="PortsBelow" Spacing="6" />
                                 </ScrollViewer>
-                            </Border>
-                        </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </primitives:Popup>
 
                     <ProgressRing
@@ -615,41 +604,23 @@
 
                     <!--  Вверх раскрывается действие «Добавить эталон», а не выбор из списка.  -->
                     <primitives:Popup x:Name="ReferencePopup" IsLightDismissEnabled="True">
-                        <StackPanel x:Name="ReferencePopupRoot" Spacing="6">
-                            <!--
-                                🔴 Непрозрачная подложка обязательна. Плашки
-                                написаны карточными кистями WinUI, а те
-                                полупрозрачны: они рассчитаны на сплошной фон
-                                страницы под собой. В Popup под ними не
-                                страница, а соседние панели, и список читался
-                                сквозь текст компасов и журнала. Подложка стоит
-                                на самих списках, а не на корне: место
-                                выбранной карточки обязано остаться видимым.
-                            -->
-                            <Border
-                                x:Name="ReferencesAboveHost"
-                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="6">
+                        <Border
+                            x:Name="ReferencePopupRoot"
+                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="6">
+                            <StackPanel Spacing="6">
                                 <StackPanel x:Name="ReferencesAbove" Spacing="6" />
-                            </Border>
-                            <Border x:Name="ReferenceSpacer" Background="Transparent" />
-                            <Border
-                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="6">
                                 <ScrollViewer
                                     x:Name="ReferencesBelowScroll"
-                                    MaxHeight="260"
+                                    MaxHeight="320"
                                     VerticalScrollBarVisibility="Auto">
                                     <StackPanel x:Name="ReferencesBelow" Spacing="6" />
                                 </ScrollViewer>
-                            </Border>
-                        </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </primitives:Popup>
                 </StackPanel>
                 </StackPanel>
