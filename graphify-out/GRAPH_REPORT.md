@@ -1,16 +1,16 @@
 # Graph Report - ARDU_OTK  (2026-08-12)
 
 ## Corpus Check
-- 85 files · ~169,351 words
+- 88 files · ~171,796 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1999 nodes · 3989 edges · 251 communities (107 shown, 144 thin omitted)
-- Extraction: 93% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 247 edges (avg confidence: 0.82)
+- 2065 nodes · 4084 edges · 255 communities (108 shown, 147 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 247 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c4066523`
+- Built from commit: `f9f2db29`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -266,10 +266,14 @@
 - TextChangedEventArgs
 - VehicleClass
 - Window
+- .DisposeAsync
+- ReferenceList
+- bool
+- SelectionChangedEventArgs
 
 ## God Nodes (most connected - your core abstractions)
 1. `MainPage` - 105 edges
-2. `Page` - 93 edges
+2. `Page` - 94 edges
 3. `SerialVehicleLink` - 85 edges
 4. `CompassCalibrationPage` - 54 edges
 5. `ReferenceEditorPage` - 53 edges
@@ -277,7 +281,7 @@
 7. `Page` - 50 edges
 8. `Page` - 50 edges
 9. `SerialCompassCalibrationJob` - 50 edges
-10. `TextBlock` - 36 edges
+10. `TextBlock` - 35 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `GRAPH HEALTH WARNING Check In GRAPH_REPORT.md` --semantically_similar_to--> `Version From Tag (SemVer Validation Step)`  [INFERRED] [semantically similar]
@@ -318,23 +322,19 @@
 - **Badged-icon composition: base motif + status badge + size constraint yield the app's Store identity** — ardu_otk_assets_storelogo_network_motif, ardu_otk_assets_storelogo_green_check_badge, ardu_otk_assets_storelogo_small_size_legibility, ardu_otk_assets_storelogo_brand_identity [INFERRED 0.75]
 - **App brand identity composition: drone glyph + QC checkmark badge on navy rounded-square, packaged as an MSIX wide tile** — ardu_otk_assets_wide310x150logo_scale_200_wide_tile_logo, ardu_otk_assets_wide310x150logo_scale_200_quadcopter_mark, ardu_otk_assets_wide310x150logo_scale_200_qc_checkmark_badge, ardu_otk_assets_wide310x150logo_scale_200_brand_palette, ardu_otk_assets_wide310x150logo_scale_200_msix_tile_asset [INFERRED 0.85]
 
-## Communities (251 total, 144 thin omitted)
-
-### Community 0 - "SerialVehicleLink"
-Cohesion: 0.09
-Nodes (18): AirData, MavlinkFrame, SerialVehicleLink, Action, bool, byte, CancellationTokenSource, IReadOnlyList (+10 more)
+## Communities (255 total, 147 thin omitted)
 
 ### Community 1 - "SerialCompassCalibrationJob"
-Cohesion: 0.14
-Nodes (13): MavParamType, PendingWrite, SerialCompassCalibrationJob, SlotNames, CancellationToken, double, IEnumerable, int (+5 more)
+Cohesion: 0.15
+Nodes (11): StatusTextEvent, SerialCompassCalibrationJob, SlotNames, CancellationToken, double, int, IReadOnlyList, string (+3 more)
 
 ### Community 2 - "AcceptanceChecks"
 Cohesion: 0.12
 Nodes (18): MagSample, PrearmReport, TelemetrySnapshot, AcceptanceChecks, CheckIds, CompassComplaint, CompassComplaintKind, ComplaintRule (+10 more)
 
 ### Community 3 - "MainPage"
-Cohesion: 0.23
-Nodes (5): CancellationToken, Task, CalibrationReference, CheckOutcome, MavSeverity
+Cohesion: 0.16
+Nodes (6): CancellationToken, ParameterTransferPlan, Task, CalibrationReference, CheckOutcome, MavSeverity
 
 ### Community 4 - "CompassIdentity"
 Cohesion: 0.06
@@ -362,7 +362,7 @@ Nodes (17): AzimuthBar, ChecksSummaryText, ErrorBar, GateBar, HistoryHintText, P
 
 ### Community 10 - "ReferenceEditorPage"
 Cohesion: 0.12
-Nodes (16): ReferenceEditorPage, AppServices, bool, CalibrationReference, ObservableCollection, Task, CalibrationTolerances, ExpectedCompassSlotRow (+8 more)
+Nodes (15): ReferenceEditorPage, AppServices, bool, CalibrationReference, ObservableCollection, Task, CalibrationTolerances, ExpectedCompassSlotRow (+7 more)
 
 ### Community 11 - "Page"
 Cohesion: 0.08
@@ -381,8 +381,8 @@ Cohesion: 0.20
 Nodes (9): MavFtpDirectory, MavFtpEntry, MavFtpError, MavFtpOpcode, MavFtpPayload, int, ReadOnlySpan, ARDU_OTK.Services.Fc.Mavlink (+1 more)
 
 ### Community 15 - "UpdateService"
-Cohesion: 0.16
-Nodes (10): NewCalibrationReference, ReferenceParameters, WorkstationSettings, CompassSnapshot, FullParameterSet, IEnumerable, IReadOnlyList, string (+2 more)
+Cohesion: 0.09
+Nodes (23): AbortedCountText, CountText, FailedCountText, Page, PageBar, PassedCountText, RunList, UnitFilterBox (+15 more)
 
 ### Community 16 - "Connect Handshake (HEARTBEAT, autopilot==3 gate, AUTOPILOT_VERSION)"
 Cohesion: 0.15
@@ -405,12 +405,12 @@ Cohesion: 0.18
 Nodes (11): DEV_ID Validity Rule (read-back equality is not proof), Compass::force_save_calibration() path (UNVERIFIED), Soft-iron destruction conflict (fixed-yaw forces DIA=1,1,1 / ODI=0,0,0), Workflow (a): Compass Calibration Transfer, ICompassService, Stale or unknown values must render distinctly from real ones, WinUI 3 UI patterns and stock-first rule, Compatibility checks between profile and board under test (+3 more)
 
 ### Community 21 - "CalibrationStageRow"
-Cohesion: 0.06
-Nodes (28): UiScale, double, string, UpdateService, UpdateState, CancellationToken, Func, string (+20 more)
+Cohesion: 0.10
+Nodes (17): WorkstationFix, WorkstationLocator, CancellationToken, Task, TimeSpan, SettingsPage, AppServices, bool (+9 more)
 
 ### Community 22 - "AppServices"
-Cohesion: 0.20
-Nodes (9): CalibrationRequest, CalibrationTolerances, ICalibrationStore, ParamWriteRecord, RunSummary, WriteOutcome, CancellationToken, Task (+1 more)
+Cohesion: 0.22
+Nodes (8): CalibrationTolerances, ICalibrationStore, ParamWriteRecord, RunSummary, WriteOutcome, CancellationToken, Task, TimeSpan
 
 ### Community 23 - "Transfer State Machine (states 0-14)"
 Cohesion: 0.24
@@ -453,8 +453,8 @@ Cohesion: 0.22
 Nodes (11): MAG_CAL_REPORT.fitness judged against COMPASS_CAL_FIT (x2 rule), Instance Mapping by decoded device id, Boot-time per-instance block swap (_reorder_compass_params), BusType enum (0-7, no EXTERNALAHRS), Classify (external/internal decision procedure), CompassDevId (DEV_ID bitfield decode), CompassRow (compass panel per-instance view model), Compass devtype table (AP_Compass_Backend.h authoritative) (+3 more)
 
 ### Community 34 - "AcceptanceSession"
-Cohesion: 0.14
-Nodes (19): AcceptanceSession, ArmReadiness, StepResult, bool, CancellationToken, FullParameterSet, IReadOnlyList, List (+11 more)
+Cohesion: 0.16
+Nodes (17): AcceptanceSession, ArmReadiness, StepResult, bool, CancellationToken, FullParameterSet, IReadOnlyList, List (+9 more)
 
 ### Community 35 - "WinUI Reference Sections Index"
 Cohesion: 0.27
@@ -469,8 +469,8 @@ Cohesion: 0.36
 Nodes (11): ARDU OTK Splash Screen Image (scale-200), App Launch Branding Surface (splash shown during startup), Badge-Overlay Icon Pattern (base subject + status badge on corner), Dark Blue Rounded-Square App Tile with Gradient, Green Checkmark Badge Overlay (bottom-right quadrant), Navy + Green Brand Palette (shared app color identity), Pass/Fail Verdict Visual Language (green = accepted result), Quadcopter Rotor Glyph (four white rotor rings on rounded dark-blue square) (+3 more)
 
 ### Community 38 - "Task"
-Cohesion: 0.15
-Nodes (14): CancellationToken, FullParameterSet, GpsFix, ParameterProgress, Task, TimeSpan, MavFtpEntry, MavFtpOpcode (+6 more)
+Cohesion: 0.09
+Nodes (29): AirData, SerialVehicleLink, Action, bool, byte, CancellationToken, CancellationTokenSource, FullParameterSet (+21 more)
 
 ### Community 39 - "WinUI WinGet DSC Bootstrap Configuration"
 Cohesion: 0.24
@@ -505,11 +505,11 @@ Cohesion: 0.29
 Nodes (7): Baud is a no-op over USB CDC, Connect Handshake (HEARTBEAT, autopilot==3 gate, AUTOPILOT_VERSION), Flight Mode Tables (COPTER_MODE/PLANE_MODE/ROVER_MODE by MAV_TYPE), Device discovery via Win32_PnPEntity / SetupAPI, Match on VID set plus the ArduPilot manufacturer string, never VID alone, apm.pdef metadata source, versioned URLs and caching, @RebootRequired / @ReadOnly / @Volatile metadata flags
 
 ### Community 47 - ".OnFormFieldChanged"
-Cohesion: 0.10
-Nodes (23): AirData, AttitudeSample, FullParameterSet, GpsFix, IVehicleFileTransfer, IVehicleLink, MavCommand, MavResult (+15 more)
+Cohesion: 0.21
+Nodes (10): IVehicleFileTransfer, IVehicleLink, CancellationToken, IProgress, IReadOnlyList, MavFtpEntry, ReadOnlyMemory, Task (+2 more)
 
 ### Community 48 - "TelemetrySession"
-Cohesion: 0.17
+Cohesion: 0.14
 Nodes (9): MagAccumulator, TelemetrySession, Dictionary, double, int, MagSample, object, SensorHealth (+1 more)
 
 ### Community 49 - "MAV_CMD_FIXED_MAG_CAL_YAW (42006)"
@@ -518,7 +518,7 @@ Nodes (8): Azimuth input must be TRUE north, not magnetic, MAG_CAL_STATUS enum (
 
 ### Community 51 - "Window"
 Cohesion: 0.10
-Nodes (11): Application, App, Exception, Window, Program, ReferenceEditorArgs, ReferenceRow, App (+3 more)
+Nodes (11): Application, App, Exception, Window, Program, ReferenceEditorArgs, App, ARDU_OTK (+3 more)
 
 ### Community 52 - "ARDU OTK Square 44x44 App Tile Icon (scale-200)"
 Cohesion: 0.50
@@ -568,6 +568,10 @@ Nodes (7): WinUI App Skill Interface Metadata (openai.yaml), Apache License 2.0 
 Cohesion: 0.33
 Nodes (6): Entry Sequence (Preloading & Initialization), Fluid & Contextual Navigation, Hero Architecture, Immersive Digital Environments, premium-frontend-ui Skill, SplitType Typography Chunking
 
+### Community 65 - ".OnPortSelectionChanged"
+Cohesion: 0.21
+Nodes (10): ParameterDifference, ParameterDiffKind, ParameterTransfer, ParameterTransferPlan, CancellationToken, IProgress, IReadOnlyList, ParamWriteRecord (+2 more)
+
 ### Community 67 - ".OnNewRunClick"
 Cohesion: 0.25
 Nodes (3): AppPaths, DateTimeOffset, string
@@ -585,48 +589,52 @@ Cohesion: 0.40
 Nodes (6): Framer Motion, GSAP / ScrollTrigger, Implementation Ecosystem (framework-tailored libraries), Lenis Smooth Scrolling, React Three Fiber, Scroll-Driven Narratives
 
 ### Community 74 - ".ReadAllAsync"
-Cohesion: 0.13
-Nodes (15): CalibrationStatus, CalibrationVerdict, double, string, ParameterDifference, ParameterDiffKind, ParameterTransfer, ParameterTransferPlan (+7 more)
+Cohesion: 0.32
+Nodes (5): CalibrationStatus, CalibrationVerdict, double, string, IReadOnlyDictionary
 
 ### Community 78 - "Accessibility, Input, and Localization"
-Cohesion: 0.18
-Nodes (8): AddScriptButton, BrowseButton, CancelButton, ReadScriptsButton, SnapshotButton, RoutedEventArgs, Button, ReferenceScript
+Cohesion: 0.15
+Nodes (9): AddScriptButton, BrowseButton, CancelButton, MotorCompToggle, ReadScriptsButton, SnapshotButton, RoutedEventArgs, Button (+1 more)
 
 ### Community 79 - "Performance, Diagnostics, and Responsiveness"
-Cohesion: 0.19
-Nodes (10): ReferenceScript, ScriptComparison, ScriptTransfer, CancellationToken, int, IProgress, List, string (+2 more)
+Cohesion: 0.21
+Nodes (8): UpdateService, UpdateState, CancellationToken, Func, string, Task, UpdateInfo, UpdateManager
 
 ### Community 80 - "Page"
 Cohesion: 0.12
 Nodes (21): FontScaleBox, FontScaleText, OperatorBox, Page, StandLatBox, StandLonBox, StoreBar, StorePathText (+13 more)
 
 ### Community 81 - "AppPaths"
-Cohesion: 0.22
-Nodes (8): IProgress, IReadOnlyList, List, RunSummary, ScriptDifference, IReadOnlyList, Failure, Path
+Cohesion: 0.43
+Nodes (3): UiScale, double, string
 
 ### Community 85 - "Border"
 Cohesion: 0.33
 Nodes (6): HudCard, ImuCalCard, MagCalCard, PortGlow, ReferenceGlow, Border
 
 ### Community 89 - "ArduPilotModes"
-Cohesion: 0.18
-Nodes (6): VehicleLinkException, ArduPilotModes, Dictionary, CalibrationStoreException, ARDU_OTK.Services.Fc, Exception
+Cohesion: 0.20
+Nodes (5): VehicleLinkException, CalibrationStoreException, ARDU_OTK.Services.Fc, ARDU_OTK.Services.Store, Exception
 
 ### Community 91 - "FixedHost"
 Cohesion: 0.67
 Nodes (3): FixedHost, LadderHost, Canvas
 
 ### Community 92 - "TextChangedEventArgs"
-Cohesion: 0.13
-Nodes (13): AcceptanceStepRow, AcceptanceStepState, ChannelField, ParameterDifferenceRow, ScriptDifferenceRow, bool, Func, IEnumerable (+5 more)
+Cohesion: 0.14
+Nodes (11): AcceptanceStepRow, AcceptanceStepState, ChannelField, ParameterDifferenceRow, ScriptDifferenceRow, bool, IEnumerable, INotifyPropertyChanged (+3 more)
 
 ### Community 93 - "Grid"
-Cohesion: 0.25
-Nodes (7): CompareActionsPanel, CompareCountsPanel, CompareTickPanel, HudViewport, PanelsRow, SizeChangedEventArgs, Grid
+Cohesion: 0.29
+Nodes (6): CompareActionsPanel, CompareCountsPanel, CompareTickPanel, HudViewport, PanelsRow, Grid
 
 ### Community 95 - "PortsBelowScroll"
 Cohesion: 0.67
 Nodes (3): PortsBelowScroll, ReferencesBelowScroll, ScrollViewer
+
+### Community 100 - "AutoConnectCheck"
+Cohesion: 0.33
+Nodes (4): CountText, PageBar, InfoBar, TextBlock
 
 ### Community 106 - "Path"
 Cohesion: 0.67
@@ -649,28 +657,28 @@ Cohesion: 0.40
 Nodes (5): RewriteProgressPanel, RunStatusPanel, SetupForm, SidePanel, StackPanel
 
 ### Community 126 - "double"
-Cohesion: 0.33
-Nodes (6): CompassIdentityRow, CompassRow, WatchedParameterRow, double, MagSample, Visibility
+Cohesion: 0.24
+Nodes (7): CompassIdentityRow, CompassRow, WatchedParameterRow, ReferenceRow, double, MagSample, Visibility
 
 ### Community 128 - "ReferenceParameters"
 Cohesion: 0.18
 Nodes (3): List, EventArgs, SerialPortDescription
 
 ### Community 138 - "ushort"
-Cohesion: 0.40
-Nodes (5): LinkBar, ReadyBar, ReferenceBar, PageBar, InfoBar
+Cohesion: 0.50
+Nodes (4): LinkBar, ReadyBar, ReferenceBar, InfoBar
 
 ### Community 143 - "CalibrationLogRow"
-Cohesion: 0.15
-Nodes (7): Action, IReadOnlyList, Button, Flyout, FrameworkElement, StackPanel, UIElement
+Cohesion: 0.14
+Nodes (8): Action, IReadOnlyList, Button, Flyout, FrameworkElement, Func, StackPanel, UIElement
 
 ### Community 146 - "CancellationTokenSource"
 Cohesion: 0.10
-Nodes (16): AppServices, MainPage, bool, Dictionary, FullParameterSet, IEnumerable, ParameterProgress, string (+8 more)
+Nodes (15): AppServices, MainPage, bool, Dictionary, FullParameterSet, IEnumerable, ParameterProgress, string (+7 more)
 
 ### Community 147 - "CompassSnapshot"
-Cohesion: 0.13
-Nodes (19): AppServices, AcceptanceSession, AppPaths, bool, CalibrationRequest, CalibrationRunResult, CancellationToken, CompassSnapshot (+11 more)
+Cohesion: 0.05
+Nodes (47): AppServices, AcceptanceSession, AppPaths, bool, CalibrationRequest, CalibrationRunResult, CancellationToken, CompassSnapshot (+39 more)
 
 ### Community 156 - "SemaphoreSlim"
 Cohesion: 0.50
@@ -693,36 +701,36 @@ Cohesion: 0.67
 Nodes (3): RewriteRing, RunRing, ProgressRing
 
 ### Community 164 - "Dictionary"
-Cohesion: 0.50
-Nodes (4): DiffList, ScriptList, ReferenceList, ListView
+Cohesion: 0.67
+Nodes (3): DiffList, ScriptList, ListView
 
 ### Community 165 - "MagSample"
-Cohesion: 0.20
-Nodes (8): StatusTextEvent, RunContext, DateTimeOffset, Dictionary, IReadOnlyList, List, ConcurrentQueue, PendingWrite
+Cohesion: 0.09
+Nodes (21): AirData, AttitudeSample, FullParameterSet, GpsFix, MavCommand, MavParamType, MavResult, ParameterProgress (+13 more)
 
 ### Community 167 - "MavSeverity"
 Cohesion: 0.12
-Nodes (13): AppTitleBar, ReferencesItem, RootFrame, RootNav, StandItem, Window, MainWindow, NavigationView (+5 more)
+Nodes (14): AppTitleBar, ReferencesItem, RootFrame, RootNav, RunsItem, StandItem, Window, MainWindow (+6 more)
+
+### Community 177 - "Path"
+Cohesion: 0.12
+Nodes (11): ReferencePackage, ReferencePackageScript, CalibrationReference, int, string, DateTimeOffset, IReadOnlyList, JsonSerializerOptions (+3 more)
 
 ### Community 183 - "byte"
 Cohesion: 0.30
 Nodes (3): MavlinkCrc, MavlinkParser, bool
 
 ### Community 191 - "ParameterProgress"
-Cohesion: 0.17
+Cohesion: 0.19
 Nodes (5): VehicleLiveState, Border, CalibrationVerdict, GpsFix, TextBlock
 
 ### Community 200 - "InfoBarSeverity"
-Cohesion: 0.17
-Nodes (12): AcceptDiffButton, ApplyAllScriptsButton, CompassCalButton, EditReferenceButton, FinishButton, LevelButton, LinkToggleButton, PortCard (+4 more)
+Cohesion: 0.08
+Nodes (17): AcceptDiffButton, ApplyAllScriptsButton, AutoConnectCheck, CompassCalButton, EditReferenceButton, FinishButton, LevelButton, LinkToggleButton (+9 more)
 
 ### Community 201 - "IReadOnlyList"
 Cohesion: 0.47
 Nodes (6): Remove Redundant Outer Section Borders, Simpler Visual Trees and Lighter Templates, Measurement Before Optimization, Performance, Diagnostics, and Responsiveness, WPR/WPA with XAML Frame Analysis, Card-Around-Cards Border Anti-Pattern
-
-### Community 202 - "List"
-Cohesion: 0.29
-Nodes (3): SaveButton, NumberBox, NumberBoxValueChangedEventArgs
 
 ### Community 207 - "Common Routes Reference Table"
 Cohesion: 0.40
@@ -733,7 +741,7 @@ Cohesion: 0.31
 Nodes (7): AuthorBox, DescriptionBox, NameBox, ReferencePathBox, RoleFilterBox, TextBox, TextChangedEventArgs
 
 ### Community 222 - "byte"
-Cohesion: 0.27
+Cohesion: 0.31
 Nodes (5): VehicleClass, ParameterEnums, VehicleClass, byte, FrozenDictionary
 
 ### Community 231 - "Accessibility, Input, and Localization"
@@ -741,12 +749,12 @@ Cohesion: 0.50
 Nodes (3): StatusTextAssembly, DateTimeOffset, StringBuilder
 
 ### Community 232 - "ParameterDifferenceRow"
-Cohesion: 0.15
+Cohesion: 0.18
 Nodes (3): ParameterDifferenceRow, RoutedEventArgs, ScriptDifferenceRow
 
 ### Community 242 - "string"
-Cohesion: 0.17
-Nodes (13): CountText, Page, ScopeBox, ReferencesPage, AppServices, bool, CalibrationReference, ObservableCollection (+5 more)
+Cohesion: 0.19
+Nodes (11): Page, ScopeBox, ReferencesPage, AppServices, CalibrationReference, ObservableCollection, RoutedEventArgs, string (+3 more)
 
 ## Ambiguous Edges - Review These
 - `premium-frontend-ui Skill` → `winui-app Skill`  [AMBIGUOUS]
@@ -781,9 +789,9 @@ Nodes (13): CountText, Page, ScopeBox, ReferencesPage, AppServices, bool, Calibr
   ARDU_OTK/Assets/Wide310x150Logo.scale-200.png · relation: shares_data_with
 
 ## Knowledge Gaps
-- **97 isolated node(s):** `TitleBar`, `NavigationView`, `Frame`, `ReferenceEditorArgs`, `ComboBox` (+92 more)
+- **103 isolated node(s):** `CheckBox`, `RectangleGeometry`, `TranslateTransform`, `RotateTransform`, `ProgressBar` (+98 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **144 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **147 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

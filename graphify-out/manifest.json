@@ -175,8 +175,8 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786520321.8471818,
-    "ast_hash": "4650748ec3e2c26128bf532c91f26c86",
+    "mtime": 1786530258.7561984,
+    "ast_hash": "773e17c37746726e9cee12e410a050e5",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
@@ -185,13 +185,13 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
-    "mtime": 1786529672.7951262,
-    "ast_hash": "96caba56780a81cf7abea1abfebdff0a",
+    "mtime": 1786530416.8837647,
+    "ast_hash": "c36bcb1d9fbb8b065d9c8c14d2131619",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
-    "mtime": 1786529672.7956312,
-    "ast_hash": "2e5a01d4e1577fdcdc52f2a17ca7bf3e",
+    "mtime": 1786530416.8844779,
+    "ast_hash": "443b1ab45efe7586e4cedbc912468bb6",
     "semantic_hash": ""
   },
   "ARDU_OTK/Program.cs": {
@@ -485,13 +485,28 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferencesPage.xaml": {
-    "mtime": 1786529616.7605722,
-    "ast_hash": "69fd9aae1db3e057ae6fc73c73d7b37f",
+    "mtime": 1786530513.8341188,
+    "ast_hash": "4ecaf1a37c648747aa2c75edbba4ca1f",
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferencesPage.xaml.cs": {
-    "mtime": 1786529656.1691751,
-    "ast_hash": "87070aadd9506d3752a17871d159ee0c",
+    "mtime": 1786530546.6732183,
+    "ast_hash": "efafc5fbb9f8e0418f5d4209287b2816",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/RunsPage.xaml": {
+    "mtime": 1786530365.304884,
+    "ast_hash": "0532b47749d2981dd850114f1fc43b1b",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/RunsPage.xaml.cs": {
+    "mtime": 1786530398.667115,
+    "ast_hash": "a0aba54b969f5070cf2deae7fee3f489",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Store/ReferencePackage.cs": {
+    "mtime": 1786530491.1502974,
+    "ast_hash": "bfb1451f64b180cb45b521013ee5f793",
     "semantic_hash": ""
   }
 }

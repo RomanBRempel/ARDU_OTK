@@ -249,5 +249,9 @@
   "247": "List",
   "248": "TextChangedEventArgs",
   "249": "VehicleClass",
-  "250": "Window"
+  "250": "Window",
+  "251": ".DisposeAsync",
+  "252": "ReferenceList",
+  "253": "bool",
+  "254": "SelectionChangedEventArgs"
 }
