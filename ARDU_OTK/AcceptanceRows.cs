@@ -473,11 +473,33 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
                 continue;
             }
 
-            parts.Add(ChannelOrder.IsUnlabelled(field.Label) ? value : $"{field.Label} {value}");
+            if (ChannelOrder.IsUnlabelled(field.Label))
+            {
+                // 🔴 «Do Nothing» — это сообщение об отсутствии назначения, и в
+                // строке канала оно занимает место, ничего не сообщая: пустое
+                // место говорит то же самое короче. Скрывается только там, где
+                // поле сошлось с эталоном; на расхождении оно остаётся —
+                // «эталон требует назначение, а на борту его нет» это уже факт,
+                // а не пустота.
+                if (field.Source is null && IsNothing(value))
+                {
+                    continue;
+                }
+
+                parts.Add(value);
+                continue;
+            }
+
+            parts.Add($"{field.Label} {value}");
         }
 
         return string.Join("   ", parts);
     }
+
+    /// <summary>Значение означает «назначения нет».</summary>
+    private static bool IsNothing(string value) =>
+        string.Equals(value, "Do Nothing", StringComparison.Ordinal)
+        || string.Equals(value, "0", StringComparison.Ordinal);
 
     /// <summary>Значение читается как ноль, то есть «выключено».</summary>
     private static bool IsZero(string value) =>

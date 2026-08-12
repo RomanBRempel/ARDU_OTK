@@ -185,13 +185,13 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
-    "mtime": 1786390515.0538812,
-    "ast_hash": "c6c99e63c9962c6aaa1668a46a4f8654",
-    "semantic_hash": "c6c99e63c9962c6aaa1668a46a4f8654"
+    "mtime": 1786529672.7951262,
+    "ast_hash": "96caba56780a81cf7abea1abfebdff0a",
+    "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
-    "mtime": 1786479288.8445597,
-    "ast_hash": "bc4698d44065628ac6e582efd9b5453d",
+    "mtime": 1786529672.7956312,
+    "ast_hash": "2e5a01d4e1577fdcdc52f2a17ca7bf3e",
     "semantic_hash": ""
   },
   "ARDU_OTK/Program.cs": {
@@ -405,8 +405,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
-    "mtime": 1786512224.4348686,
-    "ast_hash": "9861f73fa0ee5b267174b829b8d4ff2f",
+    "mtime": 1786529579.9490056,
+    "ast_hash": "77c791fa6077a988aa4bcf4b26b1fc5d",
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceRows.cs": {
@@ -482,6 +482,16 @@
   "ARDU_OTK/Services/WorkstationLocator.cs": {
     "mtime": 1786519851.6630213,
     "ast_hash": "4a4ec86c206db0d94ab703b850c06a82",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/ReferencesPage.xaml": {
+    "mtime": 1786529616.7605722,
+    "ast_hash": "69fd9aae1db3e057ae6fc73c73d7b37f",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/ReferencesPage.xaml.cs": {
+    "mtime": 1786529656.1691751,
+    "ast_hash": "87070aadd9506d3752a17871d159ee0c",
     "semantic_hash": ""
   }
 }
