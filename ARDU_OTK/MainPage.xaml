@@ -337,7 +337,7 @@
                             <TextBlock
                                 Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                                 Style="{StaticResource AppCaptionTextStyle}"
-                                Text="внешний" />
+                                Text="{x:Bind KindText, Mode=OneWay}" />
                         </Border>
                         <Border
                             Padding="6,0"
@@ -347,7 +347,7 @@
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource AppCaptionTextStyle}"
-                                Text="внутренний" />
+                                Text="{x:Bind KindText, Mode=OneWay}" />
                         </Border>
                         <Border
                             Padding="6,0"
@@ -506,14 +506,39 @@
                     -->
                     <primitives:Popup x:Name="PortPopup" IsLightDismissEnabled="True">
                         <StackPanel x:Name="PortPopupRoot" Spacing="6">
-                            <StackPanel x:Name="PortsAbove" Spacing="6" />
+                            <!--
+                                🔴 Непрозрачная подложка обязательна. Плашки
+                                написаны карточными кистями WinUI, а те
+                                полупрозрачны: они рассчитаны на сплошной фон
+                                страницы под собой. В Popup под ними не
+                                страница, а соседние панели, и список читался
+                                сквозь текст компасов и журнала. Подложка стоит
+                                на самих списках, а не на корне: место
+                                выбранной карточки обязано остаться видимым.
+                            -->
+                            <Border
+                                x:Name="PortsAboveHost"
+                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="6">
+                                <StackPanel x:Name="PortsAbove" Spacing="6" />
+                            </Border>
                             <Border x:Name="PortSpacer" Background="Transparent" />
-                            <ScrollViewer
-                                x:Name="PortsBelowScroll"
-                                MaxHeight="200"
-                                VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="PortsBelow" Spacing="6" />
-                            </ScrollViewer>
+                            <Border
+                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="6">
+                                <ScrollViewer
+                                    x:Name="PortsBelowScroll"
+                                    MaxHeight="260"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="PortsBelow" Spacing="6" />
+                                </ScrollViewer>
+                            </Border>
                         </StackPanel>
                     </primitives:Popup>
 
@@ -591,14 +616,39 @@
                     <!--  Вверх раскрывается действие «Добавить эталон», а не выбор из списка.  -->
                     <primitives:Popup x:Name="ReferencePopup" IsLightDismissEnabled="True">
                         <StackPanel x:Name="ReferencePopupRoot" Spacing="6">
-                            <StackPanel x:Name="ReferencesAbove" Spacing="6" />
+                            <!--
+                                🔴 Непрозрачная подложка обязательна. Плашки
+                                написаны карточными кистями WinUI, а те
+                                полупрозрачны: они рассчитаны на сплошной фон
+                                страницы под собой. В Popup под ними не
+                                страница, а соседние панели, и список читался
+                                сквозь текст компасов и журнала. Подложка стоит
+                                на самих списках, а не на корне: место
+                                выбранной карточки обязано остаться видимым.
+                            -->
+                            <Border
+                                x:Name="ReferencesAboveHost"
+                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="6">
+                                <StackPanel x:Name="ReferencesAbove" Spacing="6" />
+                            </Border>
                             <Border x:Name="ReferenceSpacer" Background="Transparent" />
-                            <ScrollViewer
-                                x:Name="ReferencesBelowScroll"
-                                MaxHeight="200"
-                                VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="ReferencesBelow" Spacing="6" />
-                            </ScrollViewer>
+                            <Border
+                                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="6">
+                                <ScrollViewer
+                                    x:Name="ReferencesBelowScroll"
+                                    MaxHeight="260"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="ReferencesBelow" Spacing="6" />
+                                </ScrollViewer>
+                            </Border>
                         </StackPanel>
                     </primitives:Popup>
                 </StackPanel>

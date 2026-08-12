@@ -1749,8 +1749,13 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void RenderExpansion()
     {
-        PlacePopup(_portsExpanded, PortPopup, PortPopupRoot, PortCard, FcSelector, PortsAbove, PortSpacer);
-        PlacePopup(_referencesExpanded, ReferencePopup, ReferencePopupRoot, ReferenceCard, ReferenceSelector, ReferencesAbove, ReferenceSpacer);
+        PlacePopup(
+            _portsExpanded, PortPopup, PortPopupRoot, PortCard, FcSelector,
+            PortsAbove, PortsAboveHost, PortSpacer);
+
+        PlacePopup(
+            _referencesExpanded, ReferencePopup, ReferencePopupRoot, ReferenceCard, ReferenceSelector,
+            ReferencesAbove, ReferencesAboveHost, ReferenceSpacer);
     }
 
     /// <summary>
@@ -1758,13 +1763,17 @@ public sealed partial class MainPage : Page
     /// плашки «выше» уходят над ней, «ниже» — под неё, а прозрачная прокладка
     /// занимает ровно место самой карточки.
     /// </summary>
+    /// <summary>Промежуток между блоками раскрытия — тот же, что в разметке.</summary>
+    private const double PopupItemSpacing = 6;
+
     private static void PlacePopup(
         bool open,
         Popup popup,
         FrameworkElement root,
         FrameworkElement card,
         UIElement origin,
-        FrameworkElement above,
+        Panel above,
+        FrameworkElement aboveHost,
         FrameworkElement spacer)
     {
         if (!open)
@@ -1784,12 +1793,22 @@ public sealed partial class MainPage : Page
         root.Width = width;
         spacer.Height = card.ActualHeight;
 
+        // Пустая подложка — это пустая рамка на экране, а не «ничего».
+        aboveHost.Visibility = above.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
         // Высота верхней части нужна до показа: на неё поднимается весь слой.
-        above.Measure(new Size(width, double.PositiveInfinity));
+        // Меряется подложка целиком вместе с рамкой и отступами — иначе слой
+        // встанет выше на их толщину, и место выбранной карточки не совпадёт
+        // с прорехой в списке.
+        aboveHost.Measure(new Size(width, double.PositiveInfinity));
+
+        double lift = aboveHost.Visibility == Visibility.Visible
+            ? aboveHost.DesiredSize.Height + PopupItemSpacing
+            : 0;
 
         var offset = card.TransformToVisual(origin).TransformPoint(new Point(0, 0));
         popup.HorizontalOffset = offset.X;
-        popup.VerticalOffset = offset.Y - above.DesiredSize.Height;
+        popup.VerticalOffset = offset.Y - lift;
         popup.IsOpen = true;
     }
 
@@ -2671,11 +2690,31 @@ public sealed partial class MainPage : Page
                     ? ExternalKind.Ambiguous
                     : CompassIdentity.Classify(id, (int)Math.Round(externalFlag));
 
+                // 🔴 Флаг со значением 2 запрещает прошивке переопределить
+                // вывод своим обнаружением. На шине, которая сама по себе не
+                // делает компас внешним, такой флаг мог попасть на плату только
+                // извне — и тогда он держит на датчике чужую метку, которую
+                // борт исправить не вправе. Об этом говорится прямо: подпись
+                // «внешний» на внутреннем компасе иначе выглядит как факт.
+                var forced = !double.IsNaN(externalFlag) && (int)Math.Round(externalFlag) == 2;
+                var busDecides = id.BusType is MavBusType.DroneCan or MavBusType.Msp or MavBusType.Serial;
+
+                var device = CompassIdentity.Describe(id);
+                if (forced && !busDecides)
+                {
+                    device += " · метка задана вручную (флаг 2), автоопределение выключено";
+                    AppendLog(
+                        MavSeverity.Warning,
+                        $"{CompassIdentity.ExternalName(slot)} = 2: вид компаса в слоте {slot} задан жёстко, "
+                      + "и прошивка не вправе его исправить. Если метка неверна, обнулите этот параметр "
+                      + "и перезагрузите борт — при обнаружении датчика прошивка проставит вид сама.");
+                }
+
                 found[slot] = new CompassIdentityRow(
                     slot,
                     CompassIdentity.IsExternal(kind),
                     CompassIdentity.ExternalKindText(kind),
-                    CompassIdentity.Describe(id));
+                    device);
             }
 
             _compassIdentity.Clear();
