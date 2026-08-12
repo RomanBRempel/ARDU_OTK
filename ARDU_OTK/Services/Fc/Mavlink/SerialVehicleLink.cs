@@ -71,6 +71,8 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         (MavMessageId.ScaledImu3, 200_000, "SCALED_IMU3"),
         (MavMessageId.SysStatus, 500_000, "SYS_STATUS"),
         (MavMessageId.GpsRawInt, 1_000_000, "GPS_RAW_INT"),
+        (MavMessageId.Gps2Raw, 1_000_000, "GPS2_RAW"),
+        (MavMessageId.VfrHud, 500_000, "VFR_HUD"),
     };
 
     private readonly MavlinkEncoder _encoder = new();
@@ -96,6 +98,8 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
     private volatile string? _firmwareBanner;
 
     private GpsFix? _lastGpsFix;
+    private GpsFix? _lastGps2Fix;
+    private AirData? _lastAir;
     private SensorHealth? _lastHealth;
 
     // Последнее состояние для индикатора. Хранится отдельно от сессий
@@ -179,6 +183,8 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                     _lastStateUpdateUtc)
                 {
                     Gps = _lastGpsFix,
+                    Gps2 = _lastGps2Fix,
+                    Air = _lastAir,
                 };
             }
         }
@@ -743,6 +749,8 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         {
             _port = port;
             _lastGpsFix = null;
+            _lastGps2Fix = null;
+            _lastAir = null;
             _lastHealth = null;
         }
 
@@ -888,6 +896,14 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                     HandleGps(frame);
                     break;
 
+                case MavMessageId.Gps2Raw:
+                    HandleGps2(frame);
+                    break;
+
+                case MavMessageId.VfrHud:
+                    HandleVfrHud(frame);
+                    break;
+
                 case MavMessageId.StatusText:
                     HandleStatusText(StatusTextMessage.Decode(frame.Payload.Span));
                     break;
@@ -1002,6 +1018,43 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                 gps.Eph,
                 gps.Epv,
                 gps.Alt);
+
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void HandleGps2(MavlinkFrame frame)
+    {
+        Gps2RawMessage gps = Gps2RawMessage.Decode(frame.Payload.Span);
+        lock (_stateLock)
+        {
+            _lastGps2Fix = new GpsFix(
+                gps.FixType,
+                gps.Lat,
+                gps.Lon,
+                gps.SatellitesVisible,
+                gps.Eph,
+                gps.Epv,
+                gps.Alt);
+
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void HandleVfrHud(MavlinkFrame frame)
+    {
+        VfrHudMessage hud = VfrHudMessage.Decode(frame.Payload.Span);
+        lock (_stateLock)
+        {
+            _lastAir = new AirData(
+                hud.Airspeed,
+                hud.Groundspeed,
+                hud.Alt,
+                hud.Climb,
+                hud.Heading,
+                hud.Throttle);
+
+            _lastStateUpdateUtc = DateTimeOffset.UtcNow;
         }
     }
 

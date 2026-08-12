@@ -84,6 +84,11 @@ public partial class App : Application
     {
         try
         {
+            // Масштаб применяется до создания окна: размеры подставляются в
+            // разметку при её загрузке, и страница, построенная раньше вызова,
+            // осталась бы с исходными шрифтами.
+            Services.UiScale.Apply(Services.UiScale.Load());
+
             _window = new MainWindow();
             _window.Activate();
         }

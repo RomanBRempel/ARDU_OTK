@@ -29,7 +29,7 @@
                     Height="20"
                     VerticalAlignment="Center">
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         Glyph="&#xE712;"
                         Visibility="{x:Bind PendingVisibility, Mode=OneWay}" />
@@ -39,17 +39,17 @@
                         IsActive="True"
                         Visibility="{x:Bind RunningVisibility, Mode=OneWay}" />
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                         Glyph="&#xE73E;"
                         Visibility="{x:Bind PassVisibility, Mode=OneWay}" />
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                         Glyph="&#xE711;"
                         Visibility="{x:Bind FailVisibility, Mode=OneWay}" />
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
                         Glyph="&#xE7BA;"
                         Visibility="{x:Bind InconclusiveVisibility, Mode=OneWay}" />
@@ -145,17 +145,17 @@
                     Height="20"
                     VerticalAlignment="Top">
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                         Glyph="&#xE73E;"
                         Visibility="{x:Bind PassVisibility}" />
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                         Glyph="&#xE711;"
                         Visibility="{x:Bind FailVisibility}" />
                     <FontIcon
-                        FontSize="14"
+                        FontSize="{ThemeResource AppBodyFontSize}"
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
                         Glyph="&#xE7BA;"
                         Visibility="{x:Bind InconclusiveVisibility}" />
@@ -208,17 +208,17 @@
                     Height="16"
                     VerticalAlignment="Top">
                     <FontIcon
-                        FontSize="12"
+                        FontSize="{ThemeResource AppCaptionFontSize}"
                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                         Glyph="&#xE711;"
                         Visibility="{x:Bind CriticalVisibility}" />
                     <FontIcon
-                        FontSize="12"
+                        FontSize="{ThemeResource AppCaptionFontSize}"
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
                         Glyph="&#xE7BA;"
                         Visibility="{x:Bind WarningVisibility}" />
                     <FontIcon
-                        FontSize="12"
+                        FontSize="{ThemeResource AppCaptionFontSize}"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         Glyph="&#xE946;"
                         Visibility="{x:Bind InfoVisibility}" />
@@ -245,17 +245,17 @@
                     Height="18"
                     VerticalAlignment="Center">
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                         Glyph="&#xE73E;"
                         Visibility="{x:Bind PassVisibility}" />
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                         Glyph="&#xE711;"
                         Visibility="{x:Bind FailVisibility}" />
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
                         Glyph="&#xE7BA;"
                         Visibility="{x:Bind UnknownVisibility}" />
@@ -461,7 +461,7 @@
                                         Grid.Column="1"
                                         Click="OnRefreshPortsClick"
                                         ToolTipService.ToolTip="Обновить список портов">
-                                        <FontIcon FontSize="16" Glyph="&#xE72C;" />
+                                        <FontIcon FontSize="{ThemeResource AppMediumFontSize}" Glyph="&#xE72C;" />
                                     </Button>
                                 </Grid>
                                 <TextBlock
@@ -735,7 +735,7 @@
                                 Grid.Column="1"
                                 Click="OnRefreshHistoryClick"
                                 ToolTipService.ToolTip="Обновить историю">
-                                <FontIcon FontSize="16" Glyph="&#xE72C;" />
+                                <FontIcon FontSize="{ThemeResource AppMediumFontSize}" Glyph="&#xE72C;" />
                             </Button>
                         </Grid>
                         <TextBlock

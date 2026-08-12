@@ -24,6 +24,9 @@ public static class MavMessageId
     /// <summary>Все каналы приёмника разом. Отдельная вкладка показывает их живьём.</summary>
     public const uint RcChannels = 65;
 
+    /// <summary>Воздушная скорость, путевая скорость, высота, вариометр, газ.</summary>
+    public const uint VfrHud = 74;
+
     public const uint CommandLong = 76;
     public const uint CommandAck = 77;
 
@@ -31,6 +34,10 @@ public static class MavMessageId
     public const uint FileTransferProtocol = 110;
 
     public const uint ScaledImu2 = 116;
+
+    /// <summary>Второй приёмник GPS. Отдельное сообщение, а не второй экземпляр GPS_RAW_INT.</summary>
+    public const uint Gps2Raw = 124;
+
     public const uint ScaledImu3 = 129;
     public const uint StatusText = 253;
 }
@@ -152,6 +159,8 @@ public static class MavlinkCrc
 
             MavMessageId.RawImu => 144,
             MavMessageId.Attitude => 39,
+            MavMessageId.VfrHud => 20,
+            MavMessageId.Gps2Raw => 87,
             MavMessageId.CommandLong => 152,
             MavMessageId.CommandAck => 143,
             MavMessageId.FileTransferProtocol => 84,
@@ -422,6 +431,71 @@ public readonly record struct GpsRawIntMessage(
         // Расширения alt_ellipsoid, h_acc, v_acc, vel_acc, hdg_acc, yaw приёмке
         // не нужны и не разбираются.
         return new GpsRawIntMessage(timeUsec, lat, lon, alt, eph, epv, vel, cog, fixType, satellites);
+    }
+}
+
+/// <summary>Сообщение <c>GPS2_RAW</c> (id 124) — второй приёмник.</summary>
+/// <remarks>
+/// 🔴 Раскладка не совпадает с <see cref="GpsRawIntMessage"/>: сразу за
+/// <c>alt</c> идёт <c>dgps_age</c> (uint32), которого нет в GPS_RAW_INT. Разбор
+/// вторым приёмником через декодер первого даёт сдвиг всех полей после высоты —
+/// правдоподобные, но неверные HDOP, скорость и число спутников.
+/// </remarks>
+public readonly record struct Gps2RawMessage(
+    ulong TimeUsec,
+    int Lat,
+    int Lon,
+    int Alt,
+    uint DgpsAge,
+    ushort Eph,
+    ushort Epv,
+    ushort Vel,
+    ushort Cog,
+    byte FixType,
+    byte SatellitesVisible,
+    byte DgpsNumCh)
+{
+    public static Gps2RawMessage Decode(ReadOnlySpan<byte> payload)
+    {
+        var reader = new PayloadReader(payload);
+        ulong timeUsec = reader.ReadUInt64();
+        int lat = reader.ReadInt32();
+        int lon = reader.ReadInt32();
+        int alt = reader.ReadInt32();
+        uint dgpsAge = reader.ReadUInt32();
+        ushort eph = reader.ReadUInt16();
+        ushort epv = reader.ReadUInt16();
+        ushort vel = reader.ReadUInt16();
+        ushort cog = reader.ReadUInt16();
+        byte fixType = reader.ReadUInt8();
+        byte satellites = reader.ReadUInt8();
+        byte dgpsNumCh = reader.ReadUInt8();
+
+        // Расширения yaw, alt_ellipsoid и точности приёмке не нужны.
+        return new Gps2RawMessage(
+            timeUsec, lat, lon, alt, dgpsAge, eph, epv, vel, cog, fixType, satellites, dgpsNumCh);
+    }
+}
+
+/// <summary>Сообщение <c>VFR_HUD</c> (id 74).</summary>
+public readonly record struct VfrHudMessage(
+    float Airspeed,
+    float Groundspeed,
+    float Alt,
+    float Climb,
+    short Heading,
+    ushort Throttle)
+{
+    public static VfrHudMessage Decode(ReadOnlySpan<byte> payload)
+    {
+        var reader = new PayloadReader(payload);
+        float airspeed = reader.ReadSingle();
+        float groundspeed = reader.ReadSingle();
+        float alt = reader.ReadSingle();
+        float climb = reader.ReadSingle();
+        short heading = reader.ReadInt16();
+        ushort throttle = reader.ReadUInt16();
+        return new VfrHudMessage(airspeed, groundspeed, alt, climb, heading, throttle);
     }
 }
 

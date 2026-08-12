@@ -209,5 +209,10 @@
   "207": "Task",
   "208": "WorkstationSettings",
   "209": "ObservableCollection",
-  "210": "RoutedEventArgs"
+  "210": "RoutedEventArgs",
+  "211": "ReferenceScript",
+  "212": "StatusTextEvent",
+  "213": "double",
+  "214": "string",
+  "215": "WorkstationSettings"
 }

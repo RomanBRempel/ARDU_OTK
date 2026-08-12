@@ -109,6 +109,56 @@
                 </StackPanel>
             </Border>
 
+            <!--
+                Вид. Стенд может стоять у большого монитора, где вёрстка,
+                рассчитанная на ноутбук, даёт нечитаемо мелкий текст, — а
+                системный масштаб Windows задан под другое рабочее место и
+                трогать его нельзя.
+            -->
+            <Border
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="12">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Вид" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Размер шрифта" />
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <!--
+                                Готовые ступени, а не ползунок: смена масштаба
+                                перестраивает страницу целиком, и при перетаскивании
+                                ползунка она пересобиралась бы под курсором на
+                                каждом шаге.
+                            -->
+                            <ComboBox
+                                x:Name="FontScaleBox"
+                                HorizontalAlignment="Left"
+                                MinWidth="220"
+                                SelectionChanged="OnFontScaleChanged" />
+                            <TextBlock
+                                x:Name="FontScaleText"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="" />
+                        </Grid>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Масштабируется весь текст: подписи, кнопки, поля ввода и строки таблиц сверки. Изменение применяется сразу — страница перестраивается. Работающая приёмка при этом не прерывается: связь с бортом живёт вне страницы."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!--  Обновления  -->
             <Border
                 Padding="20"

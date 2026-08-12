@@ -25,6 +25,27 @@ public sealed partial class MainWindow : Window
         RootFrame.Navigate(typeof(MainPage));
     }
 
+    /// <summary>
+    /// Пересобирает текущую страницу после смены масштаба шрифтов.
+    /// </summary>
+    /// <remarks>
+    /// Ресурс размера подставляется в элемент при загрузке разметки и потом
+    /// не пересчитывается, поэтому одной записи в словарь ресурсов мало:
+    /// уже построенная страница осталась бы с прежними шрифтами. Страницы в
+    /// кадре не кэшируются, так что повторная навигация создаёт их заново.
+    /// </remarks>
+    public void RebuildCurrentPage()
+    {
+        Type? page = RootFrame.CurrentSourcePageType;
+        if (page is null)
+        {
+            return;
+        }
+
+        RootFrame.Navigate(page);
+        RootFrame.BackStack.Clear();
+    }
+
     private void OnNavSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.IsSettingsSelected)

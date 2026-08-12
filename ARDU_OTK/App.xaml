@@ -12,6 +12,20 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!--
+                Размеры шрифтов приложения. Значения здесь — базовые, на
+                масштабе 1.0; перед созданием окна их переписывает UiScale.
+                Объявлены они всё равно: разметка ссылается на эти ключи, и
+                отсутствие любого из них — это отказ разбора страницы, а не
+                просто мелкий шрифт.
+            -->
+            <x:Double x:Key="AppTinyFontSize">11</x:Double>
+            <x:Double x:Key="AppCaptionFontSize">12</x:Double>
+            <x:Double x:Key="AppSmallFontSize">13</x:Double>
+            <x:Double x:Key="AppBodyFontSize">14</x:Double>
+            <x:Double x:Key="AppMediumFontSize">16</x:Double>
+            <x:Double x:Key="AppNumericFontSize">17</x:Double>
+
+            <!--
                 Карточка. Только theme-ресурсы: цеховой ПК может стоять в светлой
                 теме, а стенд наладчика — в тёмной, и оба вида обязаны читаться.
                 Стиль живёт здесь, а не на страницах: две копии одного оформления

@@ -2135,7 +2135,11 @@ public sealed partial class MainPage : Page
         {
             Text = Math.Abs(deg).ToString(CultureInfo.InvariantCulture),
             FontFamily = new FontFamily("Consolas"),
-            FontSize = 13,
+
+            // Шкала тангажа рисуется кодом, поэтому размер берётся из того же
+            // масштаба, что и разметка: иначе на увеличенном интерфейсе цифры
+            // на приборе остались бы единственным мелким текстом на экране.
+            FontSize = 13 * Services.UiScale.Current,
             Foreground = InkDim,
         };
 
@@ -2234,8 +2238,33 @@ public sealed partial class MainPage : Page
             ? (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
             : InkDim;
 
+        RenderAir(state);
         RenderGps(state);
         RenderCompasses(state);
+    }
+
+    /// <summary>
+    /// Скорости и газ из <c>VFR_HUD</c>.
+    /// </summary>
+    /// <remarks>
+    /// Ноль воздушной скорости на стенде — норма и показывается как ноль:
+    /// прочерк означал бы «борт молчит», а он отвечает. Отличить «трубки нет»
+    /// от «трубка есть и показывает ноль» по одному этому числу нельзя, и
+    /// подменять его прочерком — значит скрыть от оператора сам факт ответа.
+    /// </remarks>
+    private void RenderAir(VehicleLiveState state)
+    {
+        if (state.Air is not { } air)
+        {
+            HudAirspeedText.Text = "—";
+            HudGroundspeedText.Text = "—";
+            HudThrottleText.Text = "—";
+            return;
+        }
+
+        HudAirspeedText.Text = string.Create(CultureInfo.InvariantCulture, $"{air.AirspeedMs:0.0} м/с");
+        HudGroundspeedText.Text = string.Create(CultureInfo.InvariantCulture, $"{air.GroundspeedMs:0.0} м/с");
+        HudThrottleText.Text = string.Create(CultureInfo.InvariantCulture, $"{air.ThrottlePercent} %");
     }
 
     /// <summary>
@@ -2249,37 +2278,68 @@ public sealed partial class MainPage : Page
     /// </remarks>
     private void RenderGps(VehicleLiveState state)
     {
-        if (state.Gps is not { } gps)
+        RenderGpsBlock(
+            state.Gps,
+            HudGpsFixText,
+            HudGpsSatsText,
+            HudGpsHdopText,
+            HudGpsAltText,
+            HudGpsPositionText,
+            "сообщений не было");
+
+        // Для второго приёмника молчание GPS2_RAW — это не «рано судить», а
+        // содержательный ответ: второго приёмника нет либо он не настроен.
+        RenderGpsBlock(
+            state.Gps2,
+            HudGps2FixText,
+            HudGps2SatsText,
+            HudGps2HdopText,
+            HudGps2AltText,
+            HudGps2PositionText,
+            "не подключён");
+    }
+
+    /// <summary>Заполняет одну панель приёмника.</summary>
+    private void RenderGpsBlock(
+        GpsFix? fix,
+        TextBlock fixText,
+        TextBlock satsText,
+        TextBlock hdopText,
+        TextBlock altText,
+        TextBlock positionText,
+        string silenceText)
+    {
+        if (fix is not { } gps)
         {
-            HudGpsFixText.Text = "сообщений не было";
-            HudGpsFixText.Foreground = InkDim;
-            HudGpsSatsText.Text = "—";
-            HudGpsHdopText.Text = "—";
-            HudGpsAltText.Text = "—";
-            HudGpsPositionText.Text = "координат нет";
+            fixText.Text = silenceText;
+            fixText.Foreground = InkDim;
+            satsText.Text = "—";
+            hdopText.Text = "—";
+            altText.Text = "—";
+            positionText.Text = "координат нет";
             return;
         }
 
-        HudGpsFixText.Text = gps.FixTypeText;
-        HudGpsFixText.Foreground = gps.Is3D
+        fixText.Text = gps.FixTypeText;
+        fixText.Foreground = gps.Is3D
             ? (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"]
             : (Brush)Application.Current.Resources["SystemFillColorCautionBrush"];
 
-        HudGpsSatsText.Text = gps.SatellitesVisible.ToString(CultureInfo.InvariantCulture);
+        satsText.Text = gps.SatellitesVisible.ToString(CultureInfo.InvariantCulture);
 
         // Неизвестная геометрия показывается словом. Приведённая к числу, она
         // выглядела бы либо идеальной, либо чудовищной — и то и другое ложь.
-        HudGpsHdopText.Text = gps.Hdop is { } hdop
+        hdopText.Text = gps.Hdop is { } hdop
             ? string.Create(CultureInfo.InvariantCulture, $"{hdop:0.00}")
             : "нет";
 
-        HudGpsAltText.Text = gps.Is3D
+        altText.Text = gps.Is3D
             ? string.Create(CultureInfo.InvariantCulture, $"{gps.AltitudeMeters:0} м")
             : "нет";
 
         // Координаты без решения — это последнее известное или ноль; выдавать
         // их за положение борта нельзя.
-        HudGpsPositionText.Text = gps.Is3D
+        positionText.Text = gps.Is3D
             ? string.Create(
                 CultureInfo.InvariantCulture,
                 $"{gps.LatitudeDeg:F7}, {gps.LongitudeDeg:F7}")

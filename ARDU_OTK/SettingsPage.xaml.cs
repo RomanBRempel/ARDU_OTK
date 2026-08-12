@@ -53,7 +53,84 @@ public sealed partial class SettingsPage : Page
         }
 
         RenderState();
+        LoadFontScale();
         await LoadWorkstationAsync().ConfigureAwait(true);
+    }
+
+    // --- Масштаб шрифтов --------------------------------------------------
+
+    /// <summary>Ступени масштаба. Множитель и подпись идут парой.</summary>
+    private static readonly (double Factor, string Label)[] FontScaleSteps =
+    {
+        (1.00, "100 % — как свёрстано"),
+        (1.15, "115 %"),
+        (1.30, "130 %"),
+        (1.50, "150 %"),
+        (1.75, "175 %"),
+        (2.00, "200 % — максимум"),
+    };
+
+    /// <summary>Заполнение списка не должно выглядеть как выбор оператора.</summary>
+    private bool _fontScaleLoading;
+
+    private void LoadFontScale()
+    {
+        _fontScaleLoading = true;
+        try
+        {
+            FontScaleBox.Items.Clear();
+            int selected = 0;
+            for (int i = 0; i < FontScaleSteps.Length; i++)
+            {
+                FontScaleBox.Items.Add(FontScaleSteps[i].Label);
+
+                // Ближайшая ступень, а не точное совпадение: в файле мог
+                // остаться масштаб от прежнего набора ступеней, и пустой
+                // список выбора сказал бы оператору, что масштаб не задан.
+                if (Math.Abs(FontScaleSteps[i].Factor - UiScale.Current)
+                    < Math.Abs(FontScaleSteps[selected].Factor - UiScale.Current))
+                {
+                    selected = i;
+                }
+            }
+
+            FontScaleBox.SelectedIndex = selected;
+
+            // Проценты сами по себе ни о чём не говорят: показываем, во что
+            // они превращаются на самом мелком тексте — в строке таблицы.
+            FontScaleText.Text = string.Create(
+                CultureInfo.InvariantCulture,
+                $"строка таблицы — {Math.Round(12 * UiScale.Current)} px");
+        }
+        finally
+        {
+            _fontScaleLoading = false;
+        }
+    }
+
+    private void OnFontScaleChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_fontScaleLoading || FontScaleBox.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        double factor = FontScaleSteps[FontScaleBox.SelectedIndex].Factor;
+        if (Math.Abs(factor - UiScale.Current) < 0.001)
+        {
+            return;
+        }
+
+        UiScale.Apply(factor);
+        UiScale.Save(factor);
+
+        // Страница пересобирается, чтобы новый размер подставился в разметку.
+        // Текущий экземпляр после этого выброшен, поэтому ничего дописывать
+        // после вызова нельзя.
+        if (App.MainWindow is MainWindow window)
+        {
+            window.RebuildCurrentPage();
+        }
     }
 
     // --- Рабочее место ----------------------------------------------------

@@ -150,6 +150,24 @@ public readonly record struct GpsFix(
     };
 }
 
+/// <summary>
+/// Данные воздушной обстановки из <c>VFR_HUD</c>: то, что борт сам считает
+/// своей скоростью, высотой и газом.
+/// </summary>
+/// <param name="AirspeedMs">Воздушная скорость, м/с. Ноль — трубка молчит либо её нет.</param>
+/// <param name="GroundspeedMs">Путевая скорость, м/с.</param>
+/// <param name="AltitudeMeters">Высота (MSL), метры.</param>
+/// <param name="ClimbMs">Вертикальная скорость, м/с.</param>
+/// <param name="HeadingDeg">Курс по компасу, градусы.</param>
+/// <param name="ThrottlePercent">Текущий газ, проценты.</param>
+public readonly record struct AirData(
+    double AirspeedMs,
+    double GroundspeedMs,
+    double AltitudeMeters,
+    double ClimbMs,
+    int HeadingDeg,
+    int ThrottlePercent);
+
 /// <summary>Биты здоровья датчиков из <c>SYS_STATUS</c>.</summary>
 public readonly record struct SensorHealth(uint Present, uint Enabled, uint Health)
 {
@@ -194,6 +212,18 @@ public sealed record VehicleLiveState(
     /// <see cref="GpsFix.FixType"/> равным нулю.
     /// </remarks>
     public GpsFix? Gps { get; init; }
+
+    /// <summary>
+    /// Состояние второго приёмника. <c>null</c> — <c>GPS2_RAW</c> не приходил,
+    /// то есть второго приёмника на борту нет либо он не настроен.
+    /// </summary>
+    public GpsFix? Gps2 { get; init; }
+
+    /// <summary>
+    /// Скорости, высота и газ из <c>VFR_HUD</c>. <c>null</c>, пока сообщение не
+    /// приходило.
+    /// </summary>
+    public AirData? Air { get; init; }
 }
 
 /// <summary>Срез телеметрии, усреднённый по окну наблюдения.</summary>

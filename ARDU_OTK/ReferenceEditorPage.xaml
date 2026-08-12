@@ -35,17 +35,17 @@
                     Height="18"
                     VerticalAlignment="Center">
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         Glyph="&#xE711;"
                         Visibility="{x:Bind EmptyVisibility}" />
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                         Glyph="&#xE73E;"
                         Visibility="{x:Bind PresentVisibility}" />
                     <FontIcon
-                        FontSize="13"
+                        FontSize="{ThemeResource AppSmallFontSize}"
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
                         Glyph="&#xE7BA;"
                         Visibility="{x:Bind AmbiguousVisibility}" />
