@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786479266.7868373,
-    "ast_hash": "e7147e8580fb3a2737384a54f8d38c6f",
+    "mtime": 1786510151.8353777,
+    "ast_hash": "3a1f756d70e6658cc87ac060893b25ed",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786479280.8744936,
-    "ast_hash": "2420f961f6727a591eb2adca773d9232",
+    "mtime": 1786510272.2503989,
+    "ast_hash": "b0aa12108ce39beb6c6e6939bb9f8f32",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -405,13 +405,13 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
-    "mtime": 1786468507.1530616,
-    "ast_hash": "05ab22b05f80f67e6d55d147006c3cfa",
+    "mtime": 1786510322.0050573,
+    "ast_hash": "e8c582cab5867f94efcba7d531708874",
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceRows.cs": {
-    "mtime": 1786449286.6892486,
-    "ast_hash": "ddb4b6fca7ffc6e1d046b36493397694",
+    "mtime": 1786510293.908422,
+    "ast_hash": "3defa3b88fc348eb7afbb276d3716947",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Store/CalibrationReference.cs": {
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
-    "mtime": 1786451610.0446675,
-    "ast_hash": "4b6a6fdb974e3b96d176ffd19e078467",
+    "mtime": 1786510056.5267594,
+    "ast_hash": "906452db6d403de6a6ad3021ffe26c59",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkFtp.cs": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/AcceptanceRows.cs": {
-    "mtime": 1786461796.6642728,
-    "ast_hash": "a7db7edddc460ca9158245b5c3c8988c",
+    "mtime": 1786510173.0227041,
+    "ast_hash": "4b5c7bc917c956662430da2f4d9dd97f",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
@@ -462,6 +462,11 @@
   "ARDU_OTK/Services/UiScale.cs": {
     "mtime": 1786478479.2162783,
     "ast_hash": "6c8db6b64c01629980198412b3bee9f6",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Fc/ParameterEnums.cs": {
+    "mtime": 1786510126.051906,
+    "ast_hash": "d13c8b39d3fe549e0d0d1f6e2864f666",
     "semantic_hash": ""
   }
 }
