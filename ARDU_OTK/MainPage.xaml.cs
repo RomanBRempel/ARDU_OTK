@@ -253,8 +253,8 @@ public sealed partial class MainPage : Page
 
         // Закрытие щелчком мимо — это тоже закрытие: без синхронизации флага
         // следующее нажатие на карточку «схлопнуло» бы уже закрытый список.
-        PortPopup.Closed += (_, _) => _portsExpanded = false;
-        ReferencePopup.Closed += (_, _) => _referencesExpanded = false;
+        PortFlyout.Closed += (_, _) => _portsExpanded = false;
+        ReferenceFlyout.Closed += (_, _) => _referencesExpanded = false;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -1749,8 +1749,8 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void RenderExpansion()
     {
-        PlacePopup(_portsExpanded, PortPopup, PortPopupRoot, PortCard, FcSelector);
-        PlacePopup(_referencesExpanded, ReferencePopup, ReferencePopupRoot, ReferenceCard, ReferenceSelector);
+        ShowSelector(_portsExpanded, PortFlyout, PortFlyoutRoot, PortCard);
+        ShowSelector(_referencesExpanded, ReferenceFlyout, ReferenceFlyoutRoot, ReferenceCard);
     }
 
     /// <summary>
@@ -1759,44 +1759,39 @@ public sealed partial class MainPage : Page
     /// занимает ровно место самой карточки.
     /// </summary>
     /// <summary>
-    /// Открывает список выбора прямо под плашкой.
+    /// Открывает список выбора под плашкой.
     /// </summary>
     /// <remarks>
-    /// 🔴 Раньше слой поднимался так, чтобы одна плашка встала над карточкой, а
-    /// остальные под ней, и место карточки занимала прозрачная прокладка.
-    /// Красиво, пока высоты совпадают: подъём считался по замеру одного блока,
-    /// и любое изменение оформления или размера шрифта разъезжалось со списком —
-    /// раскрытие наползало на саму карточку. Обычный выпадающий список под
-    /// карточкой ничего не считает и потому не разъезжается.
+    /// 🔴 Размещением занимается Flyout, а не приложение. Прежний Popup
+    /// отсчитывал смещение от собственного места в разметке, координаты
+    /// приходилось вычислять руками, и любое изменение состава панели или
+    /// размера шрифта сдвигало список — он открывался под чужой карточкой.
+    /// Здесь остаётся только ширина: список обязан совпасть с плашкой,
+    /// иначе он читается как отдельный элемент, а не как её раскрытие.
     /// </remarks>
-    private static void PlacePopup(
-        bool open,
-        Popup popup,
-        FrameworkElement root,
-        FrameworkElement card,
-        UIElement origin)
+    private static void ShowSelector(bool open, Flyout flyout, FrameworkElement root, FrameworkElement card)
     {
         if (!open)
         {
-            popup.IsOpen = false;
+            flyout.Hide();
             return;
         }
 
         var width = card.ActualWidth;
         if (width <= 0)
         {
-            // Карточка ещё не измерена — открывать нечего и не от чего считать.
-            popup.IsOpen = false;
+            // Карточка ещё не измерена — раскрывать нечего.
+            flyout.Hide();
             return;
         }
 
-        root.Width = width;
-
-        var offset = card.TransformToVisual(origin).TransformPoint(new Point(0, 0));
-        popup.HorizontalOffset = offset.X;
-        popup.VerticalOffset = offset.Y + card.ActualHeight + 4;
-        popup.IsOpen = true;
+        // Отступы презентера съедают часть ширины, поэтому вычитаются.
+        root.Width = Math.Max(0, width - FlyoutPresenterPadding);
+        flyout.ShowAt(card);
     }
+
+    /// <summary>Горизонтальные отступы штатного презентера Flyout.</summary>
+    private const double FlyoutPresenterPadding = 24;
 
     // --- Порты и связь -----------------------------------------------------
 
@@ -2501,7 +2496,62 @@ public sealed partial class MainPage : Page
 
         RenderAir(state);
         RenderGps(state);
+        RenderCalibrationState();
         RenderCompasses(state);
+    }
+
+    /// <summary>
+    /// Показывает, требуется ли калибровка акселерометров и компасов.
+    /// </summary>
+    /// <remarks>
+    /// Судим по уже прочитанной таблице параметров: она снимается сверкой на
+    /// каждом подключении, и второй проход по тысяче имён ради двух панелей —
+    /// это лишние секунды занятого канала. Пока таблицы нет, панели говорят
+    /// «нет данных», а не «всё в порядке»: непрочитанное и проверенное — разные
+    /// вещи, и зелёная панель без чтения была бы выдуманным результатом.
+    /// </remarks>
+    private void RenderCalibrationState()
+    {
+        var values = (_session?.LastBoard ?? _previewBoard)?.Values;
+        IReadOnlyDictionary<string, double>? plain = null;
+
+        if (values is not null)
+        {
+            var map = new Dictionary<string, double>(values.Count, StringComparer.Ordinal);
+            foreach (var pair in values)
+            {
+                map[pair.Key] = pair.Value.Value;
+            }
+
+            plain = map;
+        }
+
+        ApplyCalibrationCard(CalibrationStatus.Imu(plain), ImuCalCard, ImuCalText, ImuCalDetail);
+        ApplyCalibrationCard(CalibrationStatus.Mag(plain), MagCalCard, MagCalText, MagCalDetail);
+    }
+
+    private void ApplyCalibrationCard(
+        CalibrationVerdict verdict,
+        Border card,
+        TextBlock text,
+        TextBlock detail)
+    {
+        detail.Text = verdict.Detail;
+
+        if (!verdict.Known)
+        {
+            text.Text = "нет данных";
+            text.Foreground = InkDim;
+            card.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
+            return;
+        }
+
+        text.Text = verdict.Required ? "требуется" : "не требуется";
+        text.Foreground = (Brush)Application.Current.Resources[verdict.Required
+            ? "SystemFillColorCriticalBrush"
+            : "SystemFillColorSuccessBrush"];
+
+        card.BorderBrush = text.Foreground;
     }
 
     /// <summary>

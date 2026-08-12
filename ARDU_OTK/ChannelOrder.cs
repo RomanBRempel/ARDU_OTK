@@ -23,7 +23,39 @@ public static class ChannelOrder
 
     /// <summary>Поля в порядке показа. Незнакомое поле уходит в конец.</summary>
     private static readonly string[] FieldOrder =
-        ["FUNCTION", "OPTION", "MIN", "TRIM", "MAX", "DZ", "REVERSED"];
+        ["FUNCTION", "OPTION", "MIN", "TRIM", "MAX", "REVERSED"];
+
+    /// <summary>
+    /// Поля, которые в строку не выводятся, оставаясь под контролем.
+    /// </summary>
+    /// <remarks>
+    /// Мёртвая зона — настройка чувствительности стика, а не признак изделия:
+    /// в строке, по которой опознают сборку, она занимает место и ничего не
+    /// сообщает. Из-под контроля при этом не выходит — расхождение по ней
+    /// покажет обычная строка расхождения.
+    /// </remarks>
+    private static readonly string[] HiddenFields = ["DZ"];
+
+    /// <summary>
+    /// Поля, у которых подпись не нужна: значение само себя называет.
+    /// </summary>
+    /// <remarks>
+    /// «OPTION Do Nothing» и «FUNCTION Aileron» — это слово, повторённое
+    /// шестнадцать раз подряд в столбце, где и так стоит только назначение.
+    /// </remarks>
+    private static readonly string[] UnlabelledFields = ["FUNCTION", "OPTION"];
+
+    /// <summary>Поле показывается в сводной строке канала.</summary>
+    public static bool IsShown(string label) =>
+        Array.IndexOf(HiddenFields, label) < 0;
+
+    /// <summary>Поле выводится без подписи.</summary>
+    public static bool IsUnlabelled(string label) =>
+        Array.IndexOf(UnlabelledFields, label) >= 0;
+
+    /// <summary>Поле показывается флажком, а не парой «подпись — значение».</summary>
+    public static bool IsFlag(string label) =>
+        string.Equals(label, "REVERSED", StringComparison.Ordinal);
 
     /// <summary>
     /// Разбирает имя на заголовок канала и подпись поля.

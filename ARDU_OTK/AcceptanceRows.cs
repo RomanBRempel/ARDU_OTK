@@ -378,21 +378,13 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         Sources = mismatched.Select(static f => f.Source!).ToArray();
         _canWrite = Sources.Any(static s => s.Writable);
 
-        ValueText = string.Join(
-            "   ",
-            fields.Select(static f => $"{f.Label} {f.Actual ?? f.Expected}"));
-
-        ExpectedText = string.Join(
-            "   ",
-            fields.Select(static f => $"{f.Label} {f.Expected}"));
-
+        ValueText = Compose(fields, static f => f.Actual ?? f.Expected);
+        ExpectedText = Compose(fields, static f => f.Expected);
         ActualText = ValueText;
 
         ReferenceLineText = mismatched.Length == 0
             ? string.Empty
-            : "эталон: " + string.Join(
-                "   ",
-                mismatched.Select(static f => $"{f.Label} {f.Expected}"));
+            : "эталон: " + Compose(mismatched, static f => f.Expected);
 
         ReferenceLineVisibility = mismatched.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
 
@@ -448,6 +440,50 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
     /// документацией оператор будет по числу.
     /// </remarks>
     public string Tip { get; } = string.Empty;
+
+    /// <summary>
+    /// Складывает поля канала в одну строку.
+    /// </summary>
+    /// <remarks>
+    /// Назначение идёт без подписи — значение само себя называет, а слово
+    /// «OPTION», повторённое в каждой строке, только занимает место. Реверс
+    /// показывается флажком и только когда он включён: «REVERSED 0» — это
+    /// сообщение об отсутствии события.
+    /// </remarks>
+    private static string Compose(IEnumerable<ChannelField> fields, Func<ChannelField, string> pick)
+    {
+        var parts = new List<string>();
+
+        foreach (var field in fields)
+        {
+            if (!ChannelOrder.IsShown(field.Label))
+            {
+                continue;
+            }
+
+            var value = pick(field);
+
+            if (ChannelOrder.IsFlag(field.Label))
+            {
+                if (!IsZero(value))
+                {
+                    parts.Add("реверс");
+                }
+
+                continue;
+            }
+
+            parts.Add(ChannelOrder.IsUnlabelled(field.Label) ? value : $"{field.Label} {value}");
+        }
+
+        return string.Join("   ", parts);
+    }
+
+    /// <summary>Значение читается как ноль, то есть «выключено».</summary>
+    private static bool IsZero(string value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            ? number == 0
+            : string.Equals(value, "Normal", StringComparison.Ordinal);
 
     private static string BuildTip(string name, double? expected, double? actual)
     {

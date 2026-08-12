@@ -37,6 +37,9 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
     /// </summary>
     private const ushort SetMessageInterval = 511;
 
+    /// <summary><c>MAV_CMD_REQUEST_MESSAGE</c>: попросить борт прислать сообщение по номеру.</summary>
+    private const ushort RequestMessage = 512;
+
     private const int ParamReadRetries = 2;
     private static readonly TimeSpan ParamReadTimeout = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan StreamRequestAckTimeout = TimeSpan.FromSeconds(2);
@@ -222,6 +225,7 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         }
 
         await RequestRequiredStreamsAsync(ct).ConfigureAwait(false);
+        await RequestAutopilotVersionAsync(ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -904,6 +908,10 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
                     HandleVfrHud(frame);
                     break;
 
+                case MavMessageId.AutopilotVersion:
+                    HandleAutopilotVersion(frame);
+                    break;
+
                 case MavMessageId.StatusText:
                     HandleStatusText(StatusTextMessage.Decode(frame.Payload.Span));
                     break;
@@ -1039,6 +1047,52 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
 
             _lastStateUpdateUtc = DateTimeOffset.UtcNow;
         }
+    }
+
+    /// <summary>
+    /// Складывает версию прошивки в человекочитаемую строку.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Баннер, напечатанный при загрузке, достаётся только той станции,
+    /// которая подключилась сразу после включения борта. Станция, пришедшая к
+    /// уже работающей плате, не получала его никогда и честно сообщала «версия
+    /// не получена» — о борте, чью версию можно было спросить одной командой.
+    /// Ответ на запрос ценнее баннера ещё и тем, что приходит в любой момент,
+    /// в том числе после перезагрузки, поэтому он баннер перекрывает.
+    /// </remarks>
+    private void HandleAutopilotVersion(MavlinkFrame frame)
+    {
+        AutopilotVersionMessage version = AutopilotVersionMessage.Decode(frame.Payload.Span);
+        if (!version.HasVersion)
+        {
+            return;
+        }
+
+        byte type;
+        lock (_stateLock)
+        {
+            type = _lastHeartbeat?.Type ?? 0;
+        }
+
+        var product = type switch
+        {
+            1 or 19 or 20 or 21 or 22 or 23 or 24 or 25 or 28 => "ArduPlane",
+            2 or 3 or 4 or 13 or 14 or 15 or 29 => "ArduCopter",
+            10 or 11 => "ArduRover",
+            12 => "ArduSub",
+            _ => "ArduPilot",
+        };
+
+        var banner = string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{product} V{version.Major}.{version.Minor}.{version.Patch}");
+
+        if (version.FlightCustomVersion.Length > 0)
+        {
+            banner += $" ({version.FlightCustomVersion})";
+        }
+
+        _firmwareBanner = banner;
     }
 
     private void HandleVfrHud(MavlinkFrame frame)
@@ -1746,6 +1800,37 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
     /// этом пойдут. Оборвать здесь подключение значило бы потерять работоспособный
     /// борт из-за необязательного потока.
     /// </remarks>
+    /// <summary>
+    /// Просит борт прислать <c>AUTOPILOT_VERSION</c>.
+    /// </summary>
+    /// <remarks>
+    /// Отказ не является отказом подключения: версия — сведение о борте, а не
+    /// условие работы. Но и молчать о неудаче нельзя, иначе пустая версия
+    /// выглядит как свойство прошивки.
+    /// </remarks>
+    private async Task RequestAutopilotVersionAsync(CancellationToken ct)
+    {
+        try
+        {
+            MavResult result = await SendCommandAsync(
+                RequestMessage,
+                MavMessageId.AutopilotVersion,
+                0, 0, 0, 0, 0,
+                p7: 0,
+                StreamRequestAckTimeout,
+                ct).ConfigureAwait(false);
+
+            if (result != MavResult.Accepted)
+            {
+                Log(MavSeverity.Warning, $"Версия прошивки не запрошена: борт ответил {result}.");
+            }
+        }
+        catch (VehicleLinkException ex)
+        {
+            Log(MavSeverity.Warning, $"Версия прошивки не запрошена: {ex.Message}");
+        }
+    }
+
     private async Task RequestRequiredStreamsAsync(CancellationToken ct)
     {
         foreach ((uint messageId, int intervalMicroseconds, string name) in RequiredStreams)

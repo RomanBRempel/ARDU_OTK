@@ -161,6 +161,54 @@ public sealed partial class SettingsPage : Page
         }
 
         RenderWorkstation();
+
+        if (!_settings.HasStandPosition)
+        {
+            await DetectStandPositionAsync().ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>
+    /// Определяет координаты рабочего места службой Windows.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Спрашивать оператора первым делом — значит требовать от него данные,
+    /// которые машина знает сама. Ручной ввод остаётся, но как запасной путь:
+    /// он нужен, когда определение местоположения выключено политикой цеха.
+    /// Определённые координаты сразу сохраняются — иначе при следующем запуске
+    /// приложение спросит снова о том, что уже выяснило.
+    /// </remarks>
+    private async Task DetectStandPositionAsync()
+    {
+        WorkstationBar.Severity = InfoBarSeverity.Informational;
+        WorkstationBar.Title = "Определяю координаты";
+        WorkstationBar.Message = "Спрашиваю службу определения местоположения Windows…";
+        WorkstationBar.IsOpen = true;
+
+        var fix = await WorkstationLocator.TryDetectAsync().ConfigureAwait(true);
+
+        if (!fix.Found)
+        {
+            ShowWorkstationProblem(
+                "Координаты рабочего места определить не удалось: " + fix.Detail
+              + ". Введите их вручную — без них калибровка компаса ответит отказом.",
+                InfoBarSeverity.Warning);
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            StandLatBox.Value = fix.LatitudeDeg;
+            StandLonBox.Value = fix.LongitudeDeg;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        await SaveWorkstationAsync().ConfigureAwait(true);
+        RenderWorkstation();
     }
 
     private void OnWorkstationChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) =>

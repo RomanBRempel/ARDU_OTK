@@ -454,6 +454,28 @@
                         x:Name="PortCard"
                         Click="OnPortCardClick"
                         Style="{StaticResource TileStyle}">
+                        <FlyoutBase.AttachedFlyout>
+                        <!--
+                            🔴 Flyout, а не Popup. Popup считает смещение от
+                            собственного места в разметке, а не от карточки, и
+                            координаты приходилось вычислять руками: любое
+                            изменение состава панели сдвигало список — он
+                            открывался под чужой карточкой. Flyout привязан к
+                            элементу и размещается сам.
+                        -->
+                        <Flyout x:Name="PortFlyout" Placement="Bottom">
+                            <StackPanel x:Name="PortFlyoutRoot" Spacing="6">
+                                <StackPanel x:Name="PortsAbove" Spacing="6" />
+                                <ScrollViewer
+                                    x:Name="PortsBelowScroll"
+                                    MaxHeight="320"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="PortsBelow" Spacing="6" />
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Flyout>
+                        </FlyoutBase.AttachedFlyout>
+
                         <StackPanel>
                             <TextBlock
                                 x:Name="PortCardTitle"
@@ -511,25 +533,6 @@
                         остальные панели. Одна плашка уходит вверх, остальные
                         вниз — прозрачная прокладка занимает место карточки.
                     -->
-                    <primitives:Popup x:Name="PortPopup" IsLightDismissEnabled="True">
-                        <Border
-                            x:Name="PortPopupRoot"
-                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="6">
-                            <StackPanel Spacing="6">
-                                <StackPanel x:Name="PortsAbove" Spacing="6" />
-                                <ScrollViewer
-                                    x:Name="PortsBelowScroll"
-                                    MaxHeight="320"
-                                    VerticalScrollBarVisibility="Auto">
-                                    <StackPanel x:Name="PortsBelow" Spacing="6" />
-                                </ScrollViewer>
-                            </StackPanel>
-                        </Border>
-                    </primitives:Popup>
 
                     <ProgressRing
                         x:Name="LinkRing"
@@ -554,6 +557,28 @@
                         x:Name="ReferenceCard"
                         Click="OnReferenceCardClick"
                         Style="{StaticResource TileStyle}">
+                        <FlyoutBase.AttachedFlyout>
+                        <!--
+                            🔴 Flyout, а не Popup. Popup считает смещение от
+                            собственного места в разметке, а не от карточки, и
+                            координаты приходилось вычислять руками: любое
+                            изменение состава панели сдвигало список — он
+                            открывался под чужой карточкой. Flyout привязан к
+                            элементу и размещается сам.
+                        -->
+                        <Flyout x:Name="ReferenceFlyout" Placement="Bottom">
+                            <StackPanel x:Name="ReferenceFlyoutRoot" Spacing="6">
+                                <StackPanel x:Name="ReferencesAbove" Spacing="6" />
+                                <ScrollViewer
+                                    x:Name="ReferencesBelowScroll"
+                                    MaxHeight="320"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="ReferencesBelow" Spacing="6" />
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Flyout>
+                        </FlyoutBase.AttachedFlyout>
+
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -603,25 +628,6 @@
                         Visibility="Collapsed" />
 
                     <!--  Вверх раскрывается действие «Добавить эталон», а не выбор из списка.  -->
-                    <primitives:Popup x:Name="ReferencePopup" IsLightDismissEnabled="True">
-                        <Border
-                            x:Name="ReferencePopupRoot"
-                            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="6">
-                            <StackPanel Spacing="6">
-                                <StackPanel x:Name="ReferencesAbove" Spacing="6" />
-                                <ScrollViewer
-                                    x:Name="ReferencesBelowScroll"
-                                    MaxHeight="320"
-                                    VerticalScrollBarVisibility="Auto">
-                                    <StackPanel x:Name="ReferencesBelow" Spacing="6" />
-                                </ScrollViewer>
-                            </StackPanel>
-                        </Border>
-                    </primitives:Popup>
                 </StackPanel>
                 </StackPanel>
 
@@ -998,6 +1004,73 @@
                                         IsTextSelectionEnabled="True"
                                         Style="{StaticResource AppCaptionTextStyle}"
                                         Text="координат нет"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!--
+                            🔴 Состояние калибровок вынесено на приборы, а не
+                            спрятано в предполётные сообщения. Некалиброванный
+                            акселерометр или компас — это отказ взвода, о
+                            котором оператор узнавал в самом конце приёмки, уже
+                            собрав изделие. Красное здесь означает «работа не
+                            сделана», зелёное — «сделана», и видно это до
+                            запуска.
+                        -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border
+                                x:Name="ImuCalCard"
+                                Padding="10,6"
+                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderThickness="0,0,0,3"
+                                CornerRadius="4">
+                                <StackPanel Spacing="2">
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="Калибровка IMU" />
+                                    <TextBlock
+                                        x:Name="ImuCalText"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource AppBodyTextStyle}"
+                                        Text="нет данных" />
+                                    <TextBlock
+                                        x:Name="ImuCalDetail"
+                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text=""
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border
+                                x:Name="MagCalCard"
+                                Grid.Column="1"
+                                Padding="10,6"
+                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderThickness="0,0,0,3"
+                                CornerRadius="4">
+                                <StackPanel Spacing="2">
+                                    <TextBlock
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="Калибровка компасов" />
+                                    <TextBlock
+                                        x:Name="MagCalText"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource AppBodyTextStyle}"
+                                        Text="нет данных" />
+                                    <TextBlock
+                                        x:Name="MagCalDetail"
+                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text=""
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>

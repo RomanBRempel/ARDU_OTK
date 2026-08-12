@@ -35,6 +35,9 @@ public static class MavMessageId
 
     public const uint ScaledImu2 = 116;
 
+    /// <summary>Версия прошивки. Запрашивается явно: сама она приходит только баннером при загрузке.</summary>
+    public const uint AutopilotVersion = 148;
+
     /// <summary>Второй приёмник GPS. Отдельное сообщение, а не второй экземпляр GPS_RAW_INT.</summary>
     public const uint Gps2Raw = 124;
 
@@ -160,6 +163,7 @@ public static class MavlinkCrc
             MavMessageId.RawImu => 144,
             MavMessageId.Attitude => 39,
             MavMessageId.VfrHud => 20,
+            MavMessageId.AutopilotVersion => 178,
             MavMessageId.Gps2Raw => 87,
             MavMessageId.CommandLong => 152,
             MavMessageId.CommandAck => 143,
@@ -474,6 +478,66 @@ public readonly record struct Gps2RawMessage(
         // Расширения yaw, alt_ellipsoid и точности приёмке не нужны.
         return new Gps2RawMessage(
             timeUsec, lat, lon, alt, dgpsAge, eph, epv, vel, cog, fixType, satellites, dgpsNumCh);
+    }
+}
+
+/// <summary>
+/// Сообщение <c>AUTOPILOT_VERSION</c> (id 148) — версия прошивки числом.
+/// </summary>
+/// <remarks>
+/// 🔴 Единственный надёжный источник версии. Человекочитаемый баннер прошивка
+/// печатает один раз, при загрузке, и станции, подключившейся к уже
+/// работающему борту, он не достаётся никогда. Здесь версия приходит по
+/// запросу и в любой момент.
+/// </remarks>
+public readonly record struct AutopilotVersionMessage(
+    uint FlightSwVersion,
+    uint BoardVersion,
+    string FlightCustomVersion)
+{
+    /// <summary>Старший номер версии.</summary>
+    public int Major => (int)((FlightSwVersion >> 24) & 0xFF);
+
+    public int Minor => (int)((FlightSwVersion >> 16) & 0xFF);
+
+    public int Patch => (int)((FlightSwVersion >> 8) & 0xFF);
+
+    /// <summary>Версия числом получена (нули означают, что борт её не заполнил).</summary>
+    public bool HasVersion => FlightSwVersion != 0;
+
+    public static AutopilotVersionMessage Decode(ReadOnlySpan<byte> payload)
+    {
+        var reader = new PayloadReader(payload);
+
+        // Порядок полей в кадре — по убыванию размера типа, а не по порядку
+        // объявления: capabilities и uid идут раньше номеров версий.
+        _ = reader.ReadUInt64();
+        _ = reader.ReadUInt64();
+        uint flight = reader.ReadUInt32();
+        _ = reader.ReadUInt32();
+        _ = reader.ReadUInt32();
+        uint board = reader.ReadUInt32();
+        _ = reader.ReadUInt16();
+        _ = reader.ReadUInt16();
+
+        // Восемь байт хеша коммита в ASCII. Ноль внутри означает конец строки.
+        Span<byte> custom = stackalloc byte[8];
+        for (int i = 0; i < custom.Length; i++)
+        {
+            custom[i] = reader.ReadUInt8();
+        }
+
+        int length = custom.IndexOf((byte)0);
+        if (length < 0)
+        {
+            length = custom.Length;
+        }
+
+        var hash = length == 0
+            ? string.Empty
+            : System.Text.Encoding.ASCII.GetString(custom[..length]).Trim();
+
+        return new AutopilotVersionMessage(flight, board, hash);
     }
 }
 
