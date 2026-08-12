@@ -661,11 +661,65 @@
 
                         <Grid ColumnSpacing="14">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
+                        <!--
+                            🔴 Состояние калибровок стоит у самого прибора, а не
+                            прячется в предполётных сообщениях. Некалиброванный
+                            акселерометр или компас — это отказ взвода, о котором
+                            оператор узнавал в конце приёмки, уже собрав изделие.
+                            Здесь два значка: красный — работа не сделана,
+                            зелёный — сделана.
+                        -->
+                        <StackPanel VerticalAlignment="Center" Spacing="8">
+                            <Border
+                                x:Name="ImuCalCard"
+                                Padding="8,5"
+                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderThickness="0,0,0,3"
+                                CornerRadius="4">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="IMU calib" />
+                                    <TextBlock
+                                        x:Name="ImuCalText"
+                                        HorizontalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="—" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border
+                                x:Name="MagCalCard"
+                                Padding="8,5"
+                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderThickness="0,0,0,3"
+                                CornerRadius="4">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="MAG calib" />
+                                    <TextBlock
+                                        x:Name="MagCalText"
+                                        HorizontalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="—" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
                         <Border
+                            Grid.Column="1"
                             Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
@@ -690,7 +744,7 @@
 
                         <!--  Цифры крупно и в одном месте, а не по углам прибора  -->
                         <Grid
-                            Grid.Column="1"
+                            Grid.Column="2"
                             MinWidth="330"
                             VerticalAlignment="Center"
                             ColumnSpacing="14"
@@ -1004,73 +1058,6 @@
                                         IsTextSelectionEnabled="True"
                                         Style="{StaticResource AppCaptionTextStyle}"
                                         Text="координат нет"
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <!--
-                            🔴 Состояние калибровок вынесено на приборы, а не
-                            спрятано в предполётные сообщения. Некалиброванный
-                            акселерометр или компас — это отказ взвода, о
-                            котором оператор узнавал в самом конце приёмки, уже
-                            собрав изделие. Красное здесь означает «работа не
-                            сделана», зелёное — «сделана», и видно это до
-                            запуска.
-                        -->
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <Border
-                                x:Name="ImuCalCard"
-                                Padding="10,6"
-                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                BorderThickness="0,0,0,3"
-                                CornerRadius="4">
-                                <StackPanel Spacing="2">
-                                    <TextBlock
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource AppCaptionTextStyle}"
-                                        Text="Калибровка IMU" />
-                                    <TextBlock
-                                        x:Name="ImuCalText"
-                                        FontWeight="SemiBold"
-                                        Style="{StaticResource AppBodyTextStyle}"
-                                        Text="нет данных" />
-                                    <TextBlock
-                                        x:Name="ImuCalDetail"
-                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                        Style="{StaticResource AppCaptionTextStyle}"
-                                        Text=""
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border
-                                x:Name="MagCalCard"
-                                Grid.Column="1"
-                                Padding="10,6"
-                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                BorderThickness="0,0,0,3"
-                                CornerRadius="4">
-                                <StackPanel Spacing="2">
-                                    <TextBlock
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource AppCaptionTextStyle}"
-                                        Text="Калибровка компасов" />
-                                    <TextBlock
-                                        x:Name="MagCalText"
-                                        FontWeight="SemiBold"
-                                        Style="{StaticResource AppBodyTextStyle}"
-                                        Text="нет данных" />
-                                    <TextBlock
-                                        x:Name="MagCalDetail"
-                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                        Style="{StaticResource AppCaptionTextStyle}"
-                                        Text=""
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>

@@ -2526,17 +2526,17 @@ public sealed partial class MainPage : Page
             plain = map;
         }
 
-        ApplyCalibrationCard(CalibrationStatus.Imu(plain), ImuCalCard, ImuCalText, ImuCalDetail);
-        ApplyCalibrationCard(CalibrationStatus.Mag(plain), MagCalCard, MagCalText, MagCalDetail);
+        ApplyCalibrationCard(CalibrationStatus.Imu(plain), ImuCalCard, ImuCalText);
+        ApplyCalibrationCard(CalibrationStatus.Mag(plain), MagCalCard, MagCalText);
     }
 
-    private void ApplyCalibrationCard(
-        CalibrationVerdict verdict,
-        Border card,
-        TextBlock text,
-        TextBlock detail)
+    /// <summary>
+    /// Красит значок калибровки. Подробности уходят в подсказку: на приборах
+    /// нужен ответ «надо или нет», а не рассуждение.
+    /// </summary>
+    private void ApplyCalibrationCard(CalibrationVerdict verdict, Border card, TextBlock text)
     {
-        detail.Text = verdict.Detail;
+        ToolTipService.SetToolTip(card, verdict.Detail);
 
         if (!verdict.Known)
         {

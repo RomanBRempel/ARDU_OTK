@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786518972.7167194,
-    "ast_hash": "0ffef92805dcdd13358148b868b5e912",
+    "mtime": 1786519791.100784,
+    "ast_hash": "901b77f159e7baee2c07654aca3874d8",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786518932.2187448,
-    "ast_hash": "0456986002f1f30838f1e394774e6f13",
+    "mtime": 1786519811.8611395,
+    "ast_hash": "fe0afd650d5dcb76e9675f44709a0b4f",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -235,13 +235,13 @@
     "semantic_hash": "40ae6bad27d47cfa1eb8412095d07b8a"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkProtocol.cs": {
-    "mtime": 1786478079.536506,
-    "ast_hash": "037b2db3f68942518361beabf7c5a3ef",
+    "mtime": 1786519614.8025274,
+    "ast_hash": "caa8a853156b972d6fc322c1a4c25043",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1786478163.44505,
-    "ast_hash": "a0c071536905924d7bc5cdd068a1da7a",
+    "mtime": 1786519758.8314724,
+    "ast_hash": "bb9ccf080303e5cef7861408dc6cfb5c",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
@@ -280,8 +280,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/SettingsPage.xaml.cs": {
-    "mtime": 1786479490.0697384,
-    "ast_hash": "0d612b75266fdf4e7614bbd03d467f14",
+    "mtime": 1786519871.7184563,
+    "ast_hash": "994018e3fa283f8d3e5917863eef976f",
     "semantic_hash": ""
   },
   ".github/skills/ardupilot-firmware/SKILL.md": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/AcceptanceRows.cs": {
-    "mtime": 1786512915.5125358,
-    "ast_hash": "9d2fb914da087391626311c3b32e09bb",
+    "mtime": 1786519457.1357903,
+    "ast_hash": "0f39bcf4b80ffe2452c83d6952437dc6",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
@@ -470,8 +470,18 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/ChannelOrder.cs": {
-    "mtime": 1786512956.3645108,
-    "ast_hash": "95a0444af0fb0aac5e70df6d261abd09",
+    "mtime": 1786519424.8079908,
+    "ast_hash": "39ff11bd70a91cdd8f7d7d902e02bcc9",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Fc/CalibrationStatus.cs": {
+    "mtime": 1786519532.8150623,
+    "ast_hash": "b1d38b96e2599df570e686ba990ff04b",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/WorkstationLocator.cs": {
+    "mtime": 1786519851.6630213,
+    "ast_hash": "4a4ec86c206db0d94ab703b850c06a82",
     "semantic_hash": ""
   }
 }
