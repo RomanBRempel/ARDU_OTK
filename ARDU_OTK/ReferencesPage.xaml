@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ARDU_OTK.ReferencesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:ARDU_OTK"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <!--
+            Строка эталона. Всё, по чему его опознают и по чему решают, годен ли
+            он: имя, происхождение, объём набора, хеш, автор и число прогонов.
+            Хеш и число прогонов здесь не для красоты — по ним видно, тот ли это
+            набор и можно ли ещё что-то менять.
+        -->
+        <DataTemplate x:Key="ReferenceRowTemplate" x:DataType="local:ReferenceRow">
+            <Grid Padding="0,6" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock
+                            Style="{StaticResource AppBodyStrongTextStyle}"
+                            Text="{x:Bind Name}"
+                            TextTrimming="CharacterEllipsis" />
+
+                        <Border
+                            Padding="6,0"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            CornerRadius="3"
+                            Visibility="{x:Bind StateBadgeVisibility}">
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource AppCaptionTextStyle}"
+                                Text="{x:Bind StateText}" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        Text="{x:Bind OriginText}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        Text="{x:Bind UsageText}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="6">
+                    <Button
+                        Click="OnEditClick"
+                        Content="Изменить"
+                        IsEnabled="{x:Bind CanEdit}"
+                        Tag="{x:Bind Id}" />
+                    <Button
+                        Click="OnCloneClick"
+                        Content="Клонировать"
+                        Tag="{x:Bind Id}"
+                        ToolTipService.ToolTip="Завести новый эталон по этому образцу: параметры и скрипты те же, допуски и раскладку можно менять" />
+                    <Button
+                        Click="OnRetireClick"
+                        Content="{x:Bind RetireActionText}"
+                        Tag="{x:Bind Id}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="24" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Эталоны" />
+
+            <Button
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Click="OnNewClick"
+                Content="Завести эталон"
+                Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
+
+        <InfoBar
+            x:Name="PageBar"
+            Grid.Row="1"
+            IsClosable="False"
+            IsOpen="False" />
+
+        <!--
+            🔴 Архив показывается по требованию, а не всегда. Выведенный из
+            обращения эталон нельзя выбрать для прогона, но он обязан
+            оставаться доступным: по нему сданы платы, и разбор рекламации
+            начинается с него. Смешать архив с рабочим списком — значит
+            предложить оператору выбирать из того, чем сдавать нельзя.
+        -->
+        <StackPanel
+            Grid.Row="2"
+            Orientation="Horizontal"
+            Spacing="12">
+            <ComboBox
+                x:Name="ScopeBox"
+                MinWidth="220"
+                SelectionChanged="OnScopeChanged" />
+            <TextBlock
+                x:Name="CountText"
+                VerticalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                Style="{StaticResource AppCaptionTextStyle}"
+                Text="" />
+        </StackPanel>
+
+        <ListView
+            x:Name="ReferenceList"
+            Grid.Row="3"
+            IsItemClickEnabled="False"
+            ItemContainerStyle="{StaticResource RowContainerStyle}"
+            ItemTemplate="{StaticResource ReferenceRowTemplate}"
+            ItemsSource="{x:Bind Rows}"
+            SelectionMode="None" />
+    </Grid>
+</Page>

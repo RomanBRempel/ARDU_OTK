@@ -54,6 +54,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        RootFrame.Navigate(typeof(MainPage));
+        var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string;
+        RootFrame.Navigate(tag == "references" ? typeof(ReferencesPage) : typeof(MainPage));
     }
 }

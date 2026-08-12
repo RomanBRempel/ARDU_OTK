@@ -19,7 +19,15 @@ namespace ARDU_OTK;
 /// </summary>
 /// <param name="Services">Корень композиции.</param>
 /// <param name="Reference">Правимый эталон; <c>null</c> — заведение нового.</param>
-public sealed record ReferenceEditorArgs(AppServices Services, CalibrationReference? Reference);
+/// <param name="AsClone">
+/// Открыть как заготовку нового эталона: поля заполняются из указанного, но
+/// сохранение создаёт новую запись. Так меняют раскладку эталона, по которому
+/// уже сдавали, — сам он заморожен, и переписывать его нельзя.
+/// </param>
+public sealed record ReferenceEditorArgs(
+    AppServices Services,
+    CalibrationReference? Reference,
+    bool AsClone = false);
 
 /// <summary>
 /// Заведение и правка эталона изделия.
@@ -131,10 +139,13 @@ public sealed partial class ReferenceEditorPage : Page
     {
         base.OnNavigatedTo(e);
 
+        var clone = false;
         if (e.Parameter is ReferenceEditorArgs args)
         {
             _services = args.Services;
-            _editing = args.Reference;
+            _editing = args.AsClone ? null : args.Reference;
+            clone = args.AsClone && args.Reference is not null;
+            _cloneSource = args.AsClone ? args.Reference : null;
         }
         else if (e.Parameter is AppServices services)
         {
@@ -143,7 +154,11 @@ public sealed partial class ReferenceEditorPage : Page
 
         WiringBar.IsOpen = _services is null;
 
-        if (_editing is not null)
+        if (clone && _cloneSource is { } source)
+        {
+            EnterCloneMode(source);
+        }
+        else if (_editing is not null)
         {
             EnterEditMode(_editing);
         }
@@ -217,6 +232,70 @@ public sealed partial class ReferenceEditorPage : Page
             ShowError("Настройки рабочего места не прочитаны", ex);
         }
     }
+
+    /// <summary>Эталон-образец для клона; <c>null</c> — обычное заведение или правка.</summary>
+    private CalibrationReference? _cloneSource;
+
+    /// <summary>
+    /// Открывает заготовку нового эталона по образцу существующего.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Единственный способ изменить раскладку эталона, по которому уже
+    /// сдавали. Сам он заморожен намеренно: прогоны в реестре выполнялись по
+    /// прежним значениям, и правка сделала бы реестр ложным. Но требование
+    /// «заведите новый» на деле означало «снимите эталон заново с образцового
+    /// изделия» — а образца может уже не быть на столе. Клон снимает это
+    /// противоречие: параметры и скрипты переносятся как есть, менять можно
+    /// допуски и раскладку контроля, а прогоны остаются за прежним эталоном.
+    /// </remarks>
+    private void EnterCloneMode(CalibrationReference source)
+    {
+        PageTitle.Text = "Новый эталон по образцу";
+
+        NameBox.Text = MakeCloneName(source.Name);
+        DescriptionBox.Text = source.Description;
+        HeadingToleranceBox.Value = source.HeadingVsJigDeg;
+        SpreadToleranceBox.Value = source.InterCompassSpreadDeg;
+        MotorCompToggle.IsOn = source.TransferMotorComp;
+
+        // Раскладка приходит из образца, но не заморожена: ради неё клон и
+        // заводят.
+        _roles = source.ToRoleMap(out var discardedOverrides);
+        _rolesFrozen = false;
+        _discardedOverrides = discardedOverrides;
+
+        try
+        {
+            ApplyParameters(ReferenceParameters.FromStored(source), source.SourceName);
+        }
+        catch (Exception ex)
+        {
+            ShowError("Параметры образца не разбираются", ex);
+        }
+
+        _ = LoadStoredScriptsAsync(source);
+        _ = PrefillAuthorAsync();
+
+        FrozenBar.Severity = InfoBarSeverity.Informational;
+        FrozenBar.Message =
+            $"Заготовка по эталону «{source.Name}»: параметры и скрипты перенесены как есть, "
+          + "допуски и раскладку контроля можно менять. Прогоны остаются за прежним эталоном — "
+          + "сохранение создаёт новую запись, а не переписывает его.";
+        FrozenBar.IsOpen = true;
+    }
+
+    /// <summary>
+    /// Имя клона: к исходному добавляется порядковый номер копии.
+    /// </summary>
+    /// <remarks>
+    /// Имя эталона уникально в реестре, и сохранение с занятым именем упрётся в
+    /// отказ. Подставлять исходное имя, зная это заранее, — значит заставлять
+    /// оператора угадывать, что от него хотят.
+    /// </remarks>
+    private static string MakeCloneName(string name) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"{name} — копия {DateTimeOffset.Now:dd.MM.yyyy HH:mm}");
 
     private void EnterEditMode(CalibrationReference reference)
     {

@@ -47,6 +47,21 @@
                         <FontIcon Glyph="&#xE9D9;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+
+                <!--
+                    Эталоны — отдельный раздел, а не подпункт рабочего экрана:
+                    ими занимается технолог, а не оператор у стенда, и архив
+                    выведенных из обращения нужен при разборе рекламаций, когда
+                    стенд не работает вовсе.
+                -->
+                <NavigationViewItem
+                    x:Name="ReferencesItem"
+                    Content="Эталоны"
+                    Tag="references">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8F1;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <Frame x:Name="RootFrame" />

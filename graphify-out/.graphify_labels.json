@@ -243,7 +243,5 @@
   "241": "ushort",
   "242": "string",
   "243": "Dictionary",
-  "244": "IReadOnlyList",
-  "245": "CalibrationVerdict",
-  "246": "double"
+  "244": "IReadOnlyList"
 }
