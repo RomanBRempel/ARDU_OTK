@@ -55,6 +55,11 @@ public sealed partial class MainWindow : Window
         }
 
         var tag = (args.SelectedItem as NavigationViewItem)?.Tag as string;
-        RootFrame.Navigate(tag == "references" ? typeof(ReferencesPage) : typeof(MainPage));
+        RootFrame.Navigate(tag switch
+        {
+            "references" => typeof(ReferencesPage),
+            "runs" => typeof(RunsPage),
+            _ => typeof(MainPage),
+        });
     }
 }

@@ -1084,103 +1084,23 @@
                     под своим источником — иначе оператор ищет компасы под
                     приборами, а находит журнал.
                 -->
+                <!--
+                    🔴 Правая полоса продолжается сверху вниз одним столбцом:
+                    полётник, эталон, компасы, журнал. Панель обязана стоять под
+                    своим источником — иначе оператор ищет компасы под приборами
+                    и находит журнал. Скрипты вынесены в свою панель рядом со
+                    сверкой: это другая сущность — файл на карте, а не число.
+                -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="10*" />
-                    <ColumnDefinition Width="5*" />
-                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="6*" />
                 </Grid.ColumnDefinitions>
 
-                <Border
-                    Grid.Column="2"
-                    Padding="14"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8">
-                    <StackPanel Spacing="6">
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                VerticalAlignment="Center"
-                                Style="{StaticResource AppBodyStrongTextStyle}"
-                                Text="Компасы" />
-
-                            <!--
-                                Работа с компасами идёт секундами и с
-                                перезагрузками борта. Без движения на панели
-                                оператор не отличает «идёт» от «зависло» и
-                                дёргает кабель посреди записи приоритетов.
-                            -->
-                            <StackPanel
-                                x:Name="CompassBusyPanel"
-                                Grid.Column="1"
-                                Orientation="Horizontal"
-                                Spacing="6"
-                                Visibility="Collapsed">
-                                <ProgressRing
-                                    x:Name="CompassBusyRing"
-                                    Width="14"
-                                    Height="14"
-                                    IsActive="False" />
-                                <TextBlock
-                                    x:Name="CompassBusyText"
-                                    VerticalAlignment="Center"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource AppCaptionTextStyle}"
-                                    Text="" />
-                            </StackPanel>
-                        </Grid>
-
-                        <TextBlock
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource AppCaptionTextStyle}"
-                            Text="Модуль поля, мГс. Норма 530, допуск 185…875."
-                            TextWrapping="Wrap" />
-                        <!--
-                            Прокрутка внутри панели, а не разрастание панели:
-                            три компаса с подписями выше, чем строка окна на
-                            цеховом мониторе с крупным масштабом.
-                        -->
-                        <!--
-                            🔴 Высота ограничена. Без потолка список компасов
-                            занимает всю колонку, строка под ним сжимается в
-                            ноль, и панель отображаемых параметров пропадает с
-                            экрана — не скрытая, а выдавленная за его край.
-                        -->
-                        <ScrollViewer
-                            MaxHeight="200"
-                            VerticalScrollBarVisibility="Auto"
-                            VerticalScrollMode="Auto">
-                            <!--
-                                Перестановка очереди компасов показывается
-                                движением строк. Список, молча перерисованный в
-                                другом порядке, читается как «ничего не
-                                изменилось»: оператор не заметит, что первым
-                                стал другой датчик, а это и есть главный итог
-                                шага.
-                            -->
-                            <ItemsControl
-                                x:Name="CompassList"
-                                ItemTemplate="{StaticResource MagTemplate}"
-                                ItemsSource="{x:Bind Compasses}">
-                                <ItemsControl.ItemContainerTransitions>
-                                    <TransitionCollection>
-                                        <AddDeleteThemeTransition />
-                                        <ReorderThemeTransition />
-                                    </TransitionCollection>
-                                </ItemsControl.ItemContainerTransitions>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <TextBlock
-                            x:Name="CompassHintText"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource AppCaptionTextStyle}"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" MinWidth="300" />
+                    </Grid.ColumnDefinitions>
 
                 <Border
                     Padding="14"
@@ -1358,19 +1278,17 @@
                             оператор смотрит на расхождения, потом ищет
                             глазами, что там с наблюдаемыми, и обратно.
                         -->
-                        <Grid Grid.Row="6" ColumnSpacing="14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
 
-                            <!--
-                                Заголовка колонок больше нет: колонка значения
-                                одна, и подписывать её «борт» незачем — на
-                                разошедшейся строке эталон назван прямо во
-                                второй строке, а на совпавшей значение общее.
-                            -->
-
+            <!--
+                            Скрипты — своей панелью справа от сравнения
+                            параметров. Отдельной, потому что это другая
+                            сущность: файл на карте, а не число, и действие
+                            над ней другое — залить или удалить. Рядом, а
+                            не под: прошивка исполняет всё, что лежит в
+                            каталоге скриптов, и лишний файл делает изделие
+                            непохожим на эталонное при полностью совпавших
+                            параметрах.
+                        -->
                             <ListView
                                 x:Name="DiffList"
                                 IsItemClickEnabled="False"
@@ -1385,17 +1303,9 @@
                                     </TransitionCollection>
                                 </ListView.ItemContainerTransitions>
                             </ListView>
+                    </Grid>
+                </Border>
 
-            <!--
-                                Скрипты — своей панелью справа от сравнения
-                                параметров. Отдельной, потому что это другая
-                                сущность: файл на карте, а не число, и действие
-                                над ней другое — залить или удалить. Рядом, а
-                                не под: прошивка исполняет всё, что лежит в
-                                каталоге скриптов, и лишний файл делает изделие
-                                непохожим на эталонное при полностью совпавших
-                                параметрах.
-                            -->
                             <Border
                                 Grid.Column="1"
                                 Padding="12"
@@ -1452,12 +1362,108 @@
                                 </ListView>
                             </Grid>
                             </Border>
+
+                </Grid>
+
+                <Grid Grid.Column="1" RowSpacing="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" MinHeight="120" />
+                    </Grid.RowDefinitions>
+
+                <Border
+                    Padding="14"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                Style="{StaticResource AppBodyStrongTextStyle}"
+                                Text="Компасы" />
+
+                            <!--
+                                Работа с компасами идёт секундами и с
+                                перезагрузками борта. Без движения на панели
+                                оператор не отличает «идёт» от «зависло» и
+                                дёргает кабель посреди записи приоритетов.
+                            -->
+                            <StackPanel
+                                x:Name="CompassBusyPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                Visibility="Collapsed">
+                                <ProgressRing
+                                    x:Name="CompassBusyRing"
+                                    Width="14"
+                                    Height="14"
+                                    IsActive="False" />
+                                <TextBlock
+                                    x:Name="CompassBusyText"
+                                    VerticalAlignment="Center"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
+                                    Text="" />
+                            </StackPanel>
                         </Grid>
-                    </Grid>
+
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="Модуль поля, мГс. Норма 530, допуск 185…875."
+                            TextWrapping="Wrap" />
+                        <!--
+                            Прокрутка внутри панели, а не разрастание панели:
+                            три компаса с подписями выше, чем строка окна на
+                            цеховом мониторе с крупным масштабом.
+                        -->
+                        <!--
+                            🔴 Высота ограничена. Без потолка список компасов
+                            занимает всю колонку, строка под ним сжимается в
+                            ноль, и панель отображаемых параметров пропадает с
+                            экрана — не скрытая, а выдавленная за его край.
+                        -->
+                        <ScrollViewer
+                            MaxHeight="200"
+                            VerticalScrollBarVisibility="Auto"
+                            VerticalScrollMode="Auto">
+                            <!--
+                                Перестановка очереди компасов показывается
+                                движением строк. Список, молча перерисованный в
+                                другом порядке, читается как «ничего не
+                                изменилось»: оператор не заметит, что первым
+                                стал другой датчик, а это и есть главный итог
+                                шага.
+                            -->
+                            <ItemsControl
+                                x:Name="CompassList"
+                                ItemTemplate="{StaticResource MagTemplate}"
+                                ItemsSource="{x:Bind Compasses}">
+                                <ItemsControl.ItemContainerTransitions>
+                                    <TransitionCollection>
+                                        <AddDeleteThemeTransition />
+                                        <ReorderThemeTransition />
+                                    </TransitionCollection>
+                                </ItemsControl.ItemContainerTransitions>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <TextBlock
+                            x:Name="CompassHintText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
                 </Border>
 
                 <Border
-                    Grid.Column="1"
+                    Grid.Row="1"
                     Padding="14"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -1477,6 +1483,8 @@
                         </ScrollViewer>
                     </StackPanel>
                 </Border>
+
+                </Grid>
             </Grid>
 
             <!--  Статусы — в самом низу экрана  -->

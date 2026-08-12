@@ -234,6 +234,128 @@ public sealed partial class ReferencesPage : Page
         await ReloadAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Сохраняет эталон одним файлом.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Файл несёт эталон целиком, а не только значения параметров. Выгрузка
+    /// в <c>.param</c> молчит о допусках, о раскладке контроля, о скриптах и о
+    /// прошивке образца: приняв её, второй стенд сдавал бы платы по другим
+    /// правилам, считая, что по тем же самым.
+    /// </remarks>
+    private async void OnExportClick(object sender, RoutedEventArgs e)
+    {
+        if (await FindAsync(sender).ConfigureAwait(true) is not { } reference)
+        {
+            return;
+        }
+
+        try
+        {
+            var scripts = await _services.Store
+                .GetReferenceScriptsAsync(reference.Id)
+                .ConfigureAwait(true);
+
+            var settings = await _services.LoadSettingsAsync().ConfigureAwait(true);
+            var package = ReferencePackage.FromReference(reference, scripts, settings.DefaultOperator);
+
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+
+            // Приложение unpackaged: пикеру обязательно нужно окно-владелец,
+            // иначе вызов падает в рантайме.
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+
+            picker.SuggestedFileName = MakeFileName(reference.Name);
+            picker.FileTypeChoices.Add("Эталон ARDU_OTK", new List<string> { ReferencePackage.FileExtension });
+
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            await Windows.Storage.FileIO.WriteTextAsync(file, package.ToJson());
+
+            Show(
+                $"Эталон «{reference.Name}» выгружен в {file.Path}. В файле: параметров {reference.ParamCount}, "
+              + $"скриптов {scripts.Count}, допуски и раскладка контроля.",
+                InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            Show("Выгрузка не выполнена: " + ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    /// <summary>
+    /// Принимает эталон из файла выгрузки.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Принятый эталон — это новая запись реестра, а не подмена
+    /// существующей. Имя в реестре уникально, и совпадение имён разрешается
+    /// добавлением метки времени, а не перезаписью: перезапись сделала бы
+    /// ложными прогоны, уже сданные по эталону с таким именем.
+    /// </remarks>
+    private async void OnImportClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+
+            picker.FileTypeFilter.Add(ReferencePackage.FileExtension);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var json = await Windows.Storage.FileIO.ReadTextAsync(file);
+            var package = ReferencePackage.FromJson(json);
+
+            var existing = await _services.Store.ListReferencesAsync(includeRetired: true).ConfigureAwait(true);
+            var taken = existing.Any(r => string.Equals(r.Name, package.Name, StringComparison.OrdinalIgnoreCase));
+
+            var name = taken
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{package.Name} — принят {DateTimeOffset.Now:dd.MM.yyyy HH:mm}")
+                : package.Name;
+
+            await _services.Store.CreateReferenceAsync(package.ToDraft(name)).ConfigureAwait(true);
+
+            Show(
+                $"Принят эталон {package.Describe()}."
+              + (taken
+                  ? $" Имя «{package.Name}» уже занято, запись заведена под именем «{name}»: перезапись сделала бы "
+                    + "ложными прогоны, сданные по прежнему эталону."
+                  : string.Empty),
+                InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            Show("Эталон не принят: " + ex.Message, InfoBarSeverity.Error);
+        }
+
+        await ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Имя файла из имени эталона: без знаков, запрещённых в путях.</summary>
+    private static string MakeFileName(string name)
+    {
+        var cleaned = new string(name
+            .Select(static c => System.IO.Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)
+            .ToArray())
+            .Trim();
+
+        return cleaned.Length == 0 ? "reference" : cleaned;
+    }
+
     /// <summary>Достаёт эталон по идентификатору из <c>Tag</c> нажатой кнопки.</summary>
     /// <remarks>
     /// Перечитывается из реестра, а не берётся из строки списка: список мог

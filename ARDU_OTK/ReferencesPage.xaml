@@ -71,6 +71,11 @@
                         Tag="{x:Bind Id}"
                         ToolTipService.ToolTip="Завести новый эталон по этому образцу: параметры и скрипты те же, допуски и раскладку можно менять" />
                     <Button
+                        Click="OnExportClick"
+                        Content="Выгрузить"
+                        Tag="{x:Bind Id}"
+                        ToolTipService.ToolTip="Сохранить эталон файлом целиком: параметры, скрипты, допуски и раскладка контроля" />
+                    <Button
                         Click="OnRetireClick"
                         Content="{x:Bind RetireActionText}"
                         Tag="{x:Bind Id}" />
@@ -95,12 +100,20 @@
 
             <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Эталоны" />
 
-            <Button
+            <StackPanel
                 Grid.Column="1"
-                VerticalAlignment="Center"
-                Click="OnNewClick"
-                Content="Завести эталон"
-                Style="{StaticResource AccentButtonStyle}" />
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    VerticalAlignment="Center"
+                    Click="OnImportClick"
+                    Content="Принять из файла" />
+                <Button
+                    VerticalAlignment="Center"
+                    Click="OnNewClick"
+                    Content="Завести эталон"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
         </Grid>
 
         <InfoBar
