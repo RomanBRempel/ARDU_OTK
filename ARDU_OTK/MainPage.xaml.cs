@@ -664,7 +664,8 @@ public sealed partial class MainPage : Page
             AppendLog(MavSeverity.Info, "Приёмка: открываю канал связи…");
             _session = await _services.BeginAcceptanceAsync(port, ct).ConfigureAwait(true);
 
-            var expected = reference.ParseParameters().Values;
+            var referenceSet = reference.ParseParameters();
+            var expected = referenceSet.Values;
             var roles = reference.ToRoleMap();
 
             CompareStateText.Text = "Вычитываю прошивку борта…";
@@ -708,6 +709,36 @@ public sealed partial class MainPage : Page
             else
             {
                 AppendLog(MavSeverity.Info, "Переносить нечего: расхождений по записываемым именам нет.");
+            }
+
+            // 🔴 Калибровка компасов переносится отдельным шагом, по опознанию
+            // датчика, а не по совпадению имён параметров. Слот — это номер, под
+            // которым прошивка нашла датчик при загрузке, и у двух плат он
+            // законно разный: перенос по именам кладёт калибровку внешнего
+            // компаса на внутренний, после чего плата «совпадает с эталоном» и
+            // уверенно показывает неверный курс.
+            SetCompassBusy(true);
+            var calibration = await _session
+                .TransferCompassCalibrationAsync(referenceSet, roles.TransferMotorComp, progress, ct)
+                .ConfigureAwait(true);
+            SetCompassBusy(false);
+
+            AppendLog(
+                calibration.IsWarning ? MavSeverity.Warning
+                    : calibration.Ok ? MavSeverity.Info : MavSeverity.Error,
+                calibration.Message);
+
+            if (!calibration.Ok)
+            {
+                ShowCompare(plan, "Приёмка остановлена: " + calibration.Message);
+                return;
+            }
+
+            // Записанная калибровка — тоже запись, и перезагрузка после неё
+            // нужна на тех же основаниях, что и после переноса параметров.
+            if (calibration.Message.Contains("Записано и подтверждено", StringComparison.Ordinal))
+            {
+                written++;
             }
 
             if (written > 0)

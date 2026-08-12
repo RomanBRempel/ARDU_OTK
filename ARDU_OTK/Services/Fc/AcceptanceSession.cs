@@ -281,6 +281,177 @@ public sealed class AcceptanceSession : IAsyncDisposable
     /// после неё принадлежит другому датчику.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Переносит калибровку компасов с эталона на текущий борт по опознанию
+    /// датчика, а не по номеру слота.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Слот — это номер, под которым прошивка нашла датчик при загрузке, а
+    /// не сам датчик. Порядок обнаружения у двух плат законно разный: внешний
+    /// компас на образце может быть первым, а на целевой плате вторым. Перенос
+    /// по совпадению имён — <c>COMPASS_OFS2</c> в <c>COMPASS_OFS2</c> — в этом
+    /// случае кладёт калибровку внешнего компаса на внутренний и наоборот.
+    /// Плата после такого «совпадает с эталоном» по всем именам и уверенно
+    /// показывает неверный курс. Поэтому слоты сопоставляются по решающим
+    /// подполям <c>DEV_ID</c>: тип шины, адрес и тип датчика.
+    /// </para>
+    /// <para>
+    /// Что именно делает прошивку убеждённой в калиброванности: ненулевые
+    /// смещения при том, что <c>COMPASS_DEV_ID</c> слота совпадает с реально
+    /// найденным датчиком. Идентификаторы мы не трогаем — их прошивка
+    /// проставляет сама, — а смещения приходят из эталона, и этого достаточно:
+    /// <c>Compass::configured()</c> проверяет ровно эти два условия.
+    /// </para>
+    /// </remarks>
+    public async Task<StepResult> TransferCompassCalibrationAsync(
+        ReferenceParamSet reference,
+        bool transferMotorComp,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        EnsureConnected();
+
+        progress?.Report("Сопоставление компасов с эталоном…");
+
+        var boardSlots = new List<CompassSlot>(CompassIdentity.MaxSlot);
+        for (var slot = CompassIdentity.MinSlot; slot <= CompassIdentity.MaxSlot; slot++)
+        {
+            boardSlots.Add(await ReadSlotAsync(slot, ct).ConfigureAwait(false));
+        }
+
+        var present = boardSlots.Where(static s => s.IsPresent).ToArray();
+        if (present.Length == 0)
+        {
+            return StepResult.Warn(
+                "Борт не видит ни одного компаса — переносить калибровку некуда. Шаг пропущен.");
+        }
+
+        var expected = CompassIdentity.ReadExpectedSlots(reference)
+            .Where(static s => !s.DeviceId.IsEmpty)
+            .ToArray();
+
+        if (expected.Length == 0)
+        {
+            return StepResult.Warn(
+                "В эталоне нет ни одного компаса: переносить нечего. Эталон снят с борта без компасов "
+              + "либо без их идентификаторов.");
+        }
+
+        var differences = new List<ParameterDifference>();
+        var mapped = new List<string>();
+        var unmatched = new List<string>();
+        var missing = new List<string>();
+
+        foreach (var target in present)
+        {
+            var source = expected.FirstOrDefault(
+                e => CompassIdentity.IsSameSensor(e.DeviceId, target.DeviceId));
+
+            if (source is null)
+            {
+                unmatched.Add(
+                    $"слот {target.Slot}: {CompassIdentity.Describe(target.DeviceId)} — такого датчика в эталоне нет");
+                continue;
+            }
+
+            var sourceNames = transferMotorComp
+                ? CompassIdentity.TransferableCalibrationNames(source.Slot)
+                : CompassIdentity.CoreCalibrationNames(source.Slot);
+
+            var targetNames = transferMotorComp
+                ? CompassIdentity.TransferableCalibrationNames(target.Slot)
+                : CompassIdentity.CoreCalibrationNames(target.Slot);
+
+            var copied = 0;
+            for (var i = 0; i < sourceNames.Count; i++)
+            {
+                if (!reference.Values.TryGetValue(sourceNames[i], out var value))
+                {
+                    // Эталон молчит об этом имени — записывать нечего. Молчание
+                    // не заменяется нулём: ноль здесь означал бы «калибровки
+                    // нет», а не «сведений нет».
+                    missing.Add(sourceNames[i]);
+                    continue;
+                }
+
+                differences.Add(new ParameterDifference(
+                    targetNames[i],
+                    ParameterDiffKind.Differs,
+                    value,
+                    null,
+                    MavParamType.Real32,
+                    Visible: false,
+                    Writable: true,
+                    $"перенос калибровки компаса: {sourceNames[i]} эталона в слот {target.Slot} борта"));
+
+                copied++;
+            }
+
+            mapped.Add(
+                $"эталон слот {source.Slot} → борт слот {target.Slot} "
+              + $"({CompassIdentity.Describe(target.DeviceId)}), значений {copied}");
+        }
+
+        if (differences.Count == 0)
+        {
+            return StepResult.Warn(
+                "Ни один компас борта не опознан в эталоне: " + string.Join("; ", unmatched)
+              + ". Калибровка не перенесена — сверьте состав датчиков с образцом.");
+        }
+
+        progress?.Report($"Перенос калибровки компасов: значений {differences.Count}…");
+
+        var records = await ApplyAsync(differences, progress, ct).ConfigureAwait(false);
+        var written = records.Count(static r => r.Outcome == WriteOutcome.Verified);
+        var rejected = records.Count - written;
+
+        var report = "Перенос калибровки компасов: " + string.Join("; ", mapped)
+          + $". Записано и подтверждено: {written}";
+
+        if (rejected > 0)
+        {
+            report += $", отклонено бортом: {rejected}";
+        }
+
+        if (unmatched.Count > 0)
+        {
+            report += ". Без пары остались: " + string.Join("; ", unmatched);
+        }
+
+        if (missing.Count > 0)
+        {
+            report += $". В эталоне не оказалось значений: {missing.Count}";
+        }
+
+        // 🔴 Убеждённость прошивки проверяется по её же признаку: ненулевые
+        // смещения в слоте. Сообщить «перенесено», не убедившись в этом,
+        // значит выдать за результат сам факт записи.
+        var convinced = new List<string>();
+        foreach (var target in present)
+        {
+            var x = await ReadOrZeroAsync(CompassIdentity.OffsetName(target.Slot, MagAxis.X), ct).ConfigureAwait(false);
+            var y = await ReadOrZeroAsync(CompassIdentity.OffsetName(target.Slot, MagAxis.Y), ct).ConfigureAwait(false);
+            var z = await ReadOrZeroAsync(CompassIdentity.OffsetName(target.Slot, MagAxis.Z), ct).ConfigureAwait(false);
+
+            if (x == 0 && y == 0 && z == 0)
+            {
+                convinced.Add($"слот {target.Slot}: смещения остались нулевыми");
+            }
+        }
+
+        if (convinced.Count > 0)
+        {
+            return StepResult.Fail(
+                report + ". Прошивка такой компас калиброванным не считает — " + string.Join("; ", convinced));
+        }
+
+        return rejected > 0 || unmatched.Count > 0
+            ? StepResult.Warn(report)
+            : StepResult.Pass(report + ". Прошивка считает компасы откалиброванными.");
+    }
+
     public async Task<StepResult> MakeExternalCompassPrimaryAsync(
         IProgress<string>? progress,
         CancellationToken ct)

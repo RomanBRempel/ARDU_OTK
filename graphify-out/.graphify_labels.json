@@ -230,12 +230,20 @@
   "228": "MagSample",
   "229": "HeartbeatMessage",
   "230": "ImuMessage",
+  "231": "Accessibility, Input, and Localization",
   "232": "ParameterDifferenceRow",
+  "233": "StatusTextAssembly",
   "234": "MavlinkEncoder",
   "235": "Popup",
+  "236": ".PostCalibrationNames",
+  "237": ".OnLinkChanged",
   "238": "StatusTextMessage",
   "239": "SysStatusMessage",
   "240": "uint",
   "241": "ushort",
-  "242": "string"
+  "242": "string",
+  "243": "Dictionary",
+  "244": "IReadOnlyList",
+  "245": "CalibrationVerdict",
+  "246": "double"
 }

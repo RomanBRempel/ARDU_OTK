@@ -283,27 +283,40 @@ public sealed class ParameterRoleMap
         new ParameterRoleRule("FORMAT_VERSION", ParameterControl.Uncontrolled, VolatileReason, CannotMatch: true),
 
         // --- Компасный блок процедуры: то, ради чего эталон и заводится -----
+        // 🔴 Калибровочный блок компаса не переносится по совпадению имён.
+        // Слот — это номер, под которым прошивка нашла датчик при загрузке, а
+        // порядок обнаружения у двух плат законно разный: на образце внешний
+        // компас может быть первым, а на целевой плате вторым. Перенос
+        // COMPASS_OFS2 в COMPASS_OFS2 в таком случае кладёт калибровку внешнего
+        // компаса на внутренний, плата после этого совпадает с эталоном по всем
+        // именам и уверенно показывает неверный курс. Перенос делает отдельный
+        // шаг приёмки, сопоставляющий слоты по типу шины, адресу и типу датчика.
         new ParameterRoleRule(
             "COMPASS_OFS*",
-            ParameterControl.ControlledHidden,
-            "Жёсткое железо: смещения магнитометра. Переносятся из эталона и подтверждаются обратным чтением."),
+            ParameterControl.Uncontrolled,
+            "Смещения магнитометра. Переносятся отдельным шагом по опознанию датчика, а не по номеру слота: "
+          + "номера слотов у двух плат законно разные.",
+            CannotMatch: true),
         new ParameterRoleRule(
             "COMPASS_DIA*",
-            ParameterControl.ControlledHidden,
-            "Мягкое железо, диагональ. Переносится из эталона; калибровка по фиксированному курсу её затем сбрасывает в (1,1,1) — "
-          + "это записывается в протокол как факт."),
+            ParameterControl.Uncontrolled,
+            "Мягкое железо, диагональ. Переносится тем же шагом по опознанию датчика.",
+            CannotMatch: true),
         new ParameterRoleRule(
             "COMPASS_ODI*",
-            ParameterControl.ControlledHidden,
-            "Мягкое железо, внедиагональ. Переносится из эталона; калибровка по фиксированному курсу её затем обнуляет."),
+            ParameterControl.Uncontrolled,
+            "Мягкое железо, внедиагональ. Переносится тем же шагом по опознанию датчика.",
+            CannotMatch: true),
         new ParameterRoleRule(
             "COMPASS_SCALE*",
-            ParameterControl.ControlledHidden,
-            "Масштабный коэффициент. Калибровка по фиксированному курсу его не трогает."),
+            ParameterControl.Uncontrolled,
+            "Масштабный коэффициент. Переносится тем же шагом по опознанию датчика.",
+            CannotMatch: true),
         new ParameterRoleRule(
             "COMPASS_MOT*",
-            ParameterControl.ControlledHidden,
-            "Результат CompassMot: зависит от силовой проводки изделия. Переносится только при включённом переключателе."),
+            ParameterControl.Uncontrolled,
+            "Результат CompassMot. Переносится тем же шагом по опознанию датчика и только при включённом переключателе.",
+            CannotMatch: true),
         new ParameterRoleRule(
             "COMPASS_ORIENT*",
             ParameterControl.ControlledHidden,
