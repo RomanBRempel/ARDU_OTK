@@ -36,8 +36,50 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
     /// <summary>Каталог, из которого прошивка исполняет скрипты Lua.</summary>
     public const string ScriptsDirectory = "APM/scripts";
 
+    /// <summary>Корень настроечных файлов прошивки на карте.</summary>
+    public const string FilesRoot = "APM";
+
     /// <summary>Расширение исполняемого скрипта. Прошивка берёт только такие файлы.</summary>
     public const string ScriptExtension = ".lua";
+
+    /// <summary>
+    /// Расширения файлов, входящих в эталон.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Не только <c>.lua</c>. Прошивка и сами скрипты читают с карты
+    /// текстовые настройки — позывной в <c>APM/callsign.txt</c>, таблицы и
+    /// пороги рядом со скриптами, — и изделие с другим содержимым такого файла
+    /// ведёт себя не как эталонное при полностью совпавших параметрах и
+    /// одинаковых скриптах. Сверка только исполняемых файлов объявляла такое
+    /// изделие сошедшимся.
+    /// </remarks>
+    public static readonly string[] FileExtensions =
+        [".lua", ".txt", ".param", ".json", ".cfg", ".ini", ".csv"];
+
+    /// <summary>
+    /// Каталоги на карте, в которые снимок не заходит.
+    /// </summary>
+    /// <remarks>
+    /// Журналы, карта местности и резервная копия хранилища параметров — это
+    /// не конфигурация изделия, а его следы: они меняются на каждом включении,
+    /// весят десятки мегабайт и по MAVFTP читались бы часами. Их совпадения от
+    /// изделия никто не требует.
+    /// </remarks>
+    public static readonly string[] SkippedDirectories = ["LOGS", "TERRAIN", "STRG_BAK", "logs"];
+
+    /// <summary>
+    /// Наибольший размер файла, попадающего в эталон.
+    /// </summary>
+    /// <remarks>
+    /// Настроечный файл столько не весит. Всё, что больше, — это данные, и
+    /// протаскивать их через MAVFTP по 200 байт за пакет бессмысленно; такой
+    /// файл отмечается непрочитанным, а не пропускается молча.
+    /// </remarks>
+    public const int MaxFileBytes = 256 * 1024;
+
+    /// <summary>Файл относится к настройкам изделия и входит в эталон.</summary>
+    public static bool IsConfigFile(string name) =>
+        FileExtensions.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Имя файла без каталога — для показа оператору.</summary>
     public string FileName => Path[(Path.LastIndexOf('/') + 1)..];
@@ -184,39 +226,78 @@ public static class ScriptTransfer
         ArgumentNullException.ThrowIfNull(transfer);
         ArgumentNullException.ThrowIfNull(unreadable);
 
-        progress?.Report($"Чтение каталога {ReferenceScript.ScriptsDirectory}…");
+        var scripts = new List<ReferenceScript>();
+        await ReadDirectoryAsync(
+            transfer,
+            ReferenceScript.FilesRoot,
+            depth: 0,
+            scripts,
+            progress,
+            unreadable,
+            ct).ConfigureAwait(false);
+
+        return scripts;
+    }
+
+    /// <summary>
+    /// Глубина обхода каталогов от <c>APM</c>.
+    /// </summary>
+    /// <remarks>
+    /// Настроечные файлы лежат либо в самом <c>APM</c>, либо в <c>APM/scripts</c>
+    /// и его подкаталогах модулей. Дальше на карте начинаются данные, а не
+    /// настройки; предел обхода не даёт снимку уйти в чужое дерево, если карту
+    /// использовали ещё для чего-нибудь.
+    /// </remarks>
+    private const int MaxDepth = 3;
+
+    private static async Task ReadDirectoryAsync(
+        IVehicleFileTransfer transfer,
+        string directory,
+        int depth,
+        List<ReferenceScript> scripts,
+        IProgress<string>? progress,
+        List<string> unreadable,
+        CancellationToken ct)
+    {
+        progress?.Report($"Чтение каталога {directory}…");
 
         IReadOnlyList<MavFtpEntry> entries;
         try
         {
-            entries = await transfer
-                .ListDirectoryAsync(ReferenceScript.ScriptsDirectory, ct)
-                .ConfigureAwait(false);
+            entries = await transfer.ListDirectoryAsync(directory, ct).ConfigureAwait(false);
         }
         catch (VehicleLinkException ex)
         {
             // Каталога может не быть вовсе — на борту без скриптов это норма,
-            // а не отказ.
-            unreadable.Add($"{ReferenceScript.ScriptsDirectory}: {ex.Message}");
-            return Array.Empty<ReferenceScript>();
+            // а не отказ. Но умолчать о нём нельзя: пустой снимок и снимок
+            // непрочитанного каталога — разные вещи.
+            unreadable.Add($"{directory}: {ex.Message}");
+            return;
         }
-
-        var scripts = new List<ReferenceScript>();
 
         foreach (var entry in entries.Where(static e => !e.IsDirectory)
                      .OrderBy(static e => e.Name, StringComparer.Ordinal))
         {
             ct.ThrowIfCancellationRequested();
 
-            if (!entry.Name.EndsWith(ReferenceScript.ScriptExtension, StringComparison.OrdinalIgnoreCase))
+            if (!ReferenceScript.IsConfigFile(entry.Name))
             {
-                // Прошивка исполняет только .lua. Прочее в каталоге —
-                // заготовки и отключённые копии; в эталон они не входят.
+                // Двоичное и служебное содержимое карты настройкой изделия не
+                // является: журналы, дампы, файлы прошивки.
                 continue;
             }
 
-            var path = $"{ReferenceScript.ScriptsDirectory}/{entry.Name}";
-            progress?.Report($"Чтение {entry.Name}…");
+            var path = $"{directory}/{entry.Name}";
+
+            if (entry.Size > ReferenceScript.MaxFileBytes)
+            {
+                unreadable.Add(
+                    $"{path}: {entry.Size} байт — больше предела {ReferenceScript.MaxFileBytes}; "
+                  + "настроечный файл столько не весит.");
+                continue;
+            }
+
+            progress?.Report($"Чтение {path}…");
 
             try
             {
@@ -225,11 +306,35 @@ public static class ScriptTransfer
             }
             catch (Exception ex) when (ex is VehicleLinkException or InvalidDataException)
             {
-                unreadable.Add($"{entry.Name}: {ex.Message}");
+                unreadable.Add($"{path}: {ex.Message}");
             }
         }
 
-        return scripts;
+        if (depth >= MaxDepth)
+        {
+            return;
+        }
+
+        foreach (var entry in entries.Where(static e => e.IsDirectory)
+                     .OrderBy(static e => e.Name, StringComparer.Ordinal))
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (entry.Name is "." or ".."
+                || ReferenceScript.SkippedDirectories.Contains(entry.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            await ReadDirectoryAsync(
+                transfer,
+                $"{directory}/{entry.Name}",
+                depth + 1,
+                scripts,
+                progress,
+                unreadable,
+                ct).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

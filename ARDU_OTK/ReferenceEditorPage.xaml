@@ -26,7 +26,7 @@
                 <TextBlock
                     MinWidth="56"
                     VerticalAlignment="Center"
-                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Style="{StaticResource AppBodyStrongTextStyle}"
                     Text="{x:Bind SlotText}" />
 
                 <Grid
@@ -53,12 +53,12 @@
 
                 <StackPanel Grid.Column="2" Spacing="1">
                     <TextBlock
-                        Style="{StaticResource BodyTextBlockStyle}"
+                        Style="{StaticResource AppBodyTextStyle}"
                         Text="{x:Bind DeviceText}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind KindText}"
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -82,32 +82,32 @@
                         <TextBlock
                             FontFamily="Consolas"
                             IsTextSelectionEnabled="True"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Style="{StaticResource AppBodyStrongTextStyle}"
                             Text="{x:Bind Name}" />
                         <TextBlock
                             FontFamily="Consolas"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             IsTextSelectionEnabled="True"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="{x:Bind ValueText}" />
                     </StackPanel>
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind ReasonText}"
                         TextWrapping="Wrap" />
 
                     <TextBlock
                         Foreground="{ThemeResource SystemFillColorAttentionBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind OverrideText}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind OverrideVisibility}" />
 
                     <TextBlock
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind HazardText}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind HazardVisibility}" />
@@ -140,7 +140,7 @@
                     <TextBlock
                         HorizontalAlignment="Center"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind ModeText}"
                         TextAlignment="Center"
                         TextWrapping="Wrap" />
@@ -160,17 +160,17 @@
                     <TextBlock
                         FontFamily="Consolas"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Style="{StaticResource AppBodyStrongTextStyle}"
                         Text="{x:Bind FileName}" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind DetailText}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind PreviewText}"
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -201,11 +201,11 @@
                 <StackPanel Spacing="2">
                     <TextBlock
                         x:Name="PageTitle"
-                        Style="{StaticResource TitleTextBlockStyle}"
+                        Style="{StaticResource AppTitleTextStyle}"
                         Text="Новый эталон изделия" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Эталон хранит постоянную часть технологической карты: параметры образцового изделия, ожидаемый состав компасов и допуски приёмки. Азимут стапеля в эталон не входит — это свойство рабочего места."
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -235,12 +235,12 @@
                 <!--  1. Название  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="1. Название" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="1. Название" />
 
                         <StackPanel Spacing="4">
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Имя эталона" />
                             <TextBox
                                 x:Name="NameBox"
@@ -248,7 +248,7 @@
                                 TextChanged="OnFormFieldChanged" />
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Имена сравниваются без учёта регистра и лишних пробелов: два эталона-двойника развели бы историю сдачи по разным записям."
                                 TextWrapping="Wrap" />
                         </StackPanel>
@@ -256,7 +256,7 @@
                         <StackPanel Spacing="4">
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Описание (необязательно)" />
                             <TextBox
                                 x:Name="DescriptionBox"
@@ -270,7 +270,7 @@
                         <StackPanel x:Name="AuthorPanel" Spacing="4">
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Кто заводит эталон" />
                             <TextBox
                                 x:Name="AuthorBox"
@@ -283,7 +283,7 @@
                 <!--  2. Эталон  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="2. Эталон" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="2. Эталон" />
 
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -321,13 +321,13 @@
                                 x:Name="SnapshotProgressText"
                                 VerticalAlignment="Center"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="" />
                         </StackPanel>
 
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Параметры копируются в эталон целиком — из файла или снимком с откалиброванного образца. Дальше эталон от источника не зависит: файл можно удалить, образец убрать со стенда."
                             TextWrapping="Wrap" />
 
@@ -344,7 +344,7 @@
                             Visibility="Collapsed">
                             <TextBlock
                                 x:Name="ReferenceSummaryText"
-                                Style="{StaticResource BodyTextBlockStyle}"
+                                Style="{StaticResource AppBodyTextStyle}"
                                 Text=""
                                 TextWrapping="Wrap" />
                             <TextBlock
@@ -352,7 +352,7 @@
                                 FontFamily="Consolas"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 IsTextSelectionEnabled="True"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text=""
                                 TextWrapping="Wrap" />
                         </StackPanel>
@@ -381,17 +381,17 @@
                 <!--  3. Состав компасов  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="3. Ожидаемый состав компасов" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="3. Ожидаемый состав компасов" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Выводится из эталона и не хранится отдельно. Перед прогоном с этим составом сверяется борт: расхождение по типу шины, адресу или типу датчика останавливает процедуру."
                             TextWrapping="Wrap" />
 
                         <TextBlock
                             x:Name="SlotsEmptyText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="Выберите эталонный файл — состав компасов появится здесь."
                             TextWrapping="Wrap" />
 
@@ -416,7 +416,7 @@
                 <!--  4. Допуски  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="4. Допуски приёмки" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="4. Допуски приёмки" />
 
                         <Grid ColumnSpacing="16" RowSpacing="4">
                             <Grid.ColumnDefinitions>
@@ -431,7 +431,7 @@
 
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Курс борта против азимута стапеля, ±°" />
                             <NumberBox
                                 x:Name="HeadingToleranceBox"
@@ -448,7 +448,7 @@
                             <TextBlock
                                 Grid.Column="1"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Расхождение курсов между компасами, менее °" />
                             <NumberBox
                                 x:Name="SpreadToleranceBox"
@@ -467,7 +467,7 @@
                                 Grid.Row="2"
                                 Grid.ColumnSpan="2"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Значения по умолчанию — из технологической карты: ±3° по курсу и менее 5° между компасами."
                                 TextWrapping="Wrap" />
                         </Grid>
@@ -482,7 +482,7 @@
                                 Toggled="OnFormToggled" />
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="COMPASS_MOT* — результат CompassMot, он зависит от силовой проводки изделия. Переносить его допустимо только между полностью одинаковыми сборками."
                                 TextWrapping="Wrap" />
                         </StackPanel>
@@ -492,17 +492,17 @@
                 <!--  5. Контроль параметров  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="5. Контроль параметров" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="5. Контроль параметров" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Часть параметров прошивки не может совпасть с эталоном ни на одной исправной плате: они называют конкретный экземпляр железа либо ведутся самой прошивкой. Такие имена выведены из сверки и переноса — иначе они останавливали бы каждый прогон. Раскладка ниже задаётся технологической картой; отступить от неё можно, но с обоснованием, и после первого сданного прогона она замораживается."
                             TextWrapping="Wrap" />
 
                         <TextBlock
                             x:Name="RolesEmptyText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="Выберите эталон — раскладка контроля появится здесь."
                             TextWrapping="Wrap" />
 
@@ -531,11 +531,11 @@
                                 <StackPanel Spacing="1">
                                     <TextBlock
                                         x:Name="RoleCountVisibleText"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="контроль и показ"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -544,11 +544,11 @@
                                 <StackPanel Spacing="1">
                                     <TextBlock
                                         x:Name="RoleCountHiddenText"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="только контроль"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -557,11 +557,11 @@
                                 <StackPanel Spacing="1">
                                     <TextBlock
                                         x:Name="RoleCountOffText"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="не контролируем"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -604,10 +604,10 @@
                 <!--  6. Скрипты  -->
                 <Border Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="12">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="6. Скрипты изделия" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="6. Скрипты изделия" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Прошивка исполняет всё, что лежит в каталоге APM/scripts. Эталон хранит скрипты содержимым, а не ссылкой на файл, и сверяет их с бортом по SHA-256: тот же текст под другим именем — это другой скрипт, а лишний файл на карте исполняется наравне с остальными."
                             TextWrapping="Wrap" />
 
@@ -621,7 +621,7 @@
                                 x:Name="ScriptsSummaryText"
                                 VerticalAlignment="Center"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource BodyTextBlockStyle}"
+                                Style="{StaticResource AppBodyTextStyle}"
                                 Text="Скриптов нет."
                                 TextWrapping="Wrap" />
                             <Button
@@ -650,7 +650,7 @@
                                 x:Name="ScriptsProgressText"
                                 VerticalAlignment="Center"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="" />
                         </StackPanel>
 

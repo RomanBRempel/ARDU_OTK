@@ -297,8 +297,25 @@ public sealed class ParameterRoleMap
         // 🔴 Маски перечислены поимённо, а не как RC?_* и SERVO?_*. Знак «?» —
         // это любой знак, и такая маска взяла бы SERVO_RNG_ENABLE и подобные
         // имена, где на месте цифры стоит буква.
-        .. ChannelRules("RC", RcChannelCount, RcChannelReason),
-        .. ChannelRules("SERVO", ServoOutputCount, ServoOutputReason),
+        .. ChannelRules("RC", RcChannelCount, ShownChannelCount, RcChannelReason),
+        .. ChannelRules("SERVO", ServoOutputCount, ShownChannelCount, ServoOutputReason),
+
+        // 🔴 Пределы отклонения — это границы, за которые автопилот изделие не
+        // пустит. Расхождение с эталоном здесь не сбивает настройку, а меняет
+        // поведение в воздухе, и заметить это на стенде можно только глазами:
+        // борт с чужими пределами взлетает, проходит все проверки и ведёт себя
+        // не так. Имена перечислены и в нынешнем, и в прежнем написании:
+        // прошивки на изделиях разных лет называют одно и то же по-разному, и
+        // молчание о переименованном параметре читалось бы как его отсутствие.
+        new ParameterRoleRule("ROLL_LIMIT_DEG", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("PTCH_LIM_MAX_DEG", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("PTCH_LIM_MIN_DEG", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("LIM_ROLL_CD", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("LIM_PITCH_MAX", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("LIM_PITCH_MIN", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("ANGLE_MAX", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("ATC_ANGLE_MAX", ParameterControl.ControlledVisible, AngleLimitReason),
+        new ParameterRoleRule("Q_ANGLE_MAX", ParameterControl.ControlledVisible, AngleLimitReason),
 
         new ParameterRoleRule(
             "FLTMODE*",
@@ -321,21 +338,33 @@ public sealed class ParameterRoleMap
     ];
 
     /// <summary>
-    /// Сколько каналов приёмника и выходов держать перед глазами оператора.
+    /// Сколько каналов приёмника и выходов названы поимённо. Это ровно то, что
+    /// показывает Mission Planner на экранах Servo Output и Radio Calibration.
     /// </summary>
     /// <remarks>
-    /// 🔴 Шестнадцать, а не «первые пять», как было сначала. Пятёрка была
-    /// догадкой о том, сколько каналов используется на изделии, и догадка
-    /// оказалась неверной: настроенные выходы с шестого по шестнадцатый
-    /// проверялись молча и в глаза оператору не попадали. Граница взята не с
-    /// потолка — это ровно то, что показывает Mission Planner на своих экранах
-    /// Servo Output и Radio Calibration, то есть тот самый набор, по которому
-    /// сборку сверяют глазами. Незанятые выходы стоят в «Disabled» и совпадают
-    /// с эталоном, поэтому лишними строками список не забивают.
+    /// Под контролем они были и раньше — их забирало общее правило в конце
+    /// списка. Названы поимённо они затем, чтобы в карточке эталона у каждого
+    /// стояло осмысленное обоснование, а не «у стенда читать её не о чем»:
+    /// технолог решает роль параметра по обоснованию, и отговорка вместо
+    /// причины — это решение вслепую.
     /// </remarks>
     private const int ServoOutputCount = 16;
 
     private const int RcChannelCount = 16;
+
+    /// <summary>
+    /// Сколько каналов и выходов показывать оператору по умолчанию.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пять, а не все шестнадцать. Контроль и показ — разные вещи: под
+    /// контролем всё, а на экране только та короткая выборка, по которой
+    /// перепутанную сборку опознают с одного взгляда. Шестнадцать каналов
+    /// вместе с шестнадцатью выходами дают под две сотни строк, и список
+    /// перестаёт быть выборкой — в нём уже нельзя ничего заметить. Что поднять
+    /// в показ сверх этого, решает технолог ползунком в карточке эталона: это
+    /// его решение, а не умолчание кода.
+    /// </remarks>
+    private const int ShownChannelCount = 5;
 
     /// <summary>
     /// Строит правила вида <c>RC1_*</c>…<c>RC16_*</c> — по одному на канал.
@@ -345,13 +374,17 @@ public sealed class ParameterRoleMap
     /// строки расходятся при первой же правке одной из них, и расхождение
     /// проявится как «на одном канале роль другая» без всякой причины.
     /// </remarks>
-    private static IEnumerable<ParameterRoleRule> ChannelRules(string prefix, int count, string reason)
+    private static IEnumerable<ParameterRoleRule> ChannelRules(
+        string prefix,
+        int count,
+        int shown,
+        string reason)
     {
         for (int i = 1; i <= count; i++)
         {
             yield return new ParameterRoleRule(
                 string.Create(CultureInfo.InvariantCulture, $"{prefix}{i}_*"),
-                ParameterControl.ControlledVisible,
+                i <= shown ? ParameterControl.ControlledVisible : ParameterControl.ControlledHidden,
                 reason);
         }
     }
@@ -363,6 +396,11 @@ public sealed class ParameterRoleMap
     private const string ServoOutputReason =
         "Выход на исполнительный механизм. Назначение и границы задают, что именно к нему "
       + "подключено: расхождение — это другая сборка, а не другая настройка.";
+
+    private const string AngleLimitReason =
+        "Предел отклонения, за который автопилот изделие не пустит. Это не настройка отзывчивости, "
+      + "а граница поведения в воздухе: чужое значение проходит все наземные проверки и проявляется "
+      + "только в полёте.";
 
     private const string VolatileReason =
         "Прошивка ведёт это значение сама: счётчик, наземная опора или служебная запись. "

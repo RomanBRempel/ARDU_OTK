@@ -517,17 +517,17 @@ public static class ParameterEnums
     }
 
     /// <summary>
-    /// Готовая подпись «имя · число» либо одно число, если расшифровки нет.
+    /// Готовая подпись: имя значения, а если его нет — само число.
     /// </summary>
     /// <remarks>
-    /// Число остаётся на виду всегда: по нему параметр сверяют с чужой
-    /// документацией и вводят руками, и прятать его за именем нельзя.
+    /// 🔴 Имя показывается <b>вместо</b> числа, а не рядом с ним. Пара «имя ·
+    /// число» вдвое длиннее и в столбце значений тонет: список читают по
+    /// вертикали, скользя взглядом, и лишний разряд в каждой строке сбивает
+    /// это скольжение. Число никуда не девается — оно в подсказке строки и в
+    /// протоколе.
     /// </remarks>
-    public static string Format(string name, double value, VehicleClass vehicle, string numeric)
-    {
-        string? label = Describe(name, value, vehicle);
-        return label is null ? numeric : $"{label} · {numeric}";
-    }
+    public static string Format(string name, double value, VehicleClass vehicle, string numeric) =>
+        Describe(name, value, vehicle) ?? numeric;
 
     private static string? Lookup(FrozenDictionary<int, string> table, int code) =>
         table.TryGetValue(code, out string? label) ? label : null;

@@ -296,7 +296,16 @@ public sealed class AppServices
     }
 
     /// <summary>Строка версии прошивки подключённого борта, если борт её прислал.</summary>
-    public string? ConnectedFirmware { get; private set; }
+    /// <remarks>
+    /// 🔴 Спрашивается у канала каждый раз, а не запоминается при подключении.
+    /// Баннер прошивки приходит отдельным сообщением STATUSTEXT и почти всегда
+    /// позже, чем завершается подключение: снимок, снятый в момент связи, был
+    /// пуст навсегда, и плашка полётника уверенно сообщала «версия не
+    /// получена» о борте, чью версию журнал в ту же секунду печатал строкой
+    /// ниже.
+    /// </remarks>
+    public string? ConnectedFirmware =>
+        _session is { IsConnected: true } ? _session.FirmwareBanner : _link?.FirmwareBanner;
 
     /// <summary>
     /// Есть связь с бортом — по любому из двух каналов.
@@ -345,7 +354,6 @@ public sealed class AppServices
 
             _link = link;
             ConnectedPort = portName;
-            ConnectedFirmware = link.FirmwareBanner;
             LinkChanged?.Invoke(this, EventArgs.Empty);
         },
         ct);
@@ -803,7 +811,6 @@ public sealed class AppServices
         var link = _link;
         _link = null;
         ConnectedPort = null;
-        ConnectedFirmware = null;
 
         if (link is not null)
         {

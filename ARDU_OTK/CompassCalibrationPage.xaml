@@ -58,7 +58,7 @@
                 <TextBlock
                     Grid.Column="1"
                     VerticalAlignment="Center"
-                    Style="{StaticResource BodyTextBlockStyle}"
+                    Style="{StaticResource AppBodyTextStyle}"
                     Text="{x:Bind Title}"
                     TextWrapping="Wrap" />
 
@@ -66,7 +66,7 @@
                     Grid.Column="2"
                     VerticalAlignment="Center"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind StateText, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
@@ -93,31 +93,31 @@
                         <TextBlock
                             FontFamily="Consolas"
                             IsTextSelectionEnabled="True"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Style="{StaticResource AppBodyStrongTextStyle}"
                             Text="{x:Bind Name}" />
                         <TextBlock
                             FontFamily="Consolas"
                             Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                             IsTextSelectionEnabled="True"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="{x:Bind ExpectedText}" />
                         <TextBlock
                             FontFamily="Consolas"
                             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                             IsTextSelectionEnabled="True"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="{x:Bind ActualText}" />
                     </StackPanel>
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind Detail}"
                         TextWrapping="Wrap" />
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind OutcomeText, Mode=OneWay}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
@@ -163,23 +163,23 @@
 
                 <StackPanel Grid.Column="1" Spacing="2">
                     <TextBlock
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Style="{StaticResource AppBodyStrongTextStyle}"
                         Text="{x:Bind HeaderText}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind Detail}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind MeasuredText}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind MeasuredVisibility}" />
                     <TextBlock
                         Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Проверка не дала заключения. Это не «годен» — данных не хватило."
                         TextWrapping="Wrap"
                         Visibility="{x:Bind InconclusiveVisibility}" />
@@ -199,7 +199,7 @@
                     MinWidth="52"
                     VerticalAlignment="Top"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind TimeText}" />
 
                 <Grid
@@ -226,7 +226,7 @@
 
                 <TextBlock
                     Grid.Column="2"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind Text}"
                     TextWrapping="Wrap" />
             </Grid>
@@ -263,12 +263,12 @@
 
                 <StackPanel Grid.Column="1">
                     <TextBlock
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Style="{StaticResource AppBodyStrongTextStyle}"
                         Text="{x:Bind UnitId}"
                         TextTrimming="CharacterEllipsis" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind SubtitleText}"
                         TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -276,7 +276,7 @@
                 <TextBlock
                     Grid.Column="2"
                     VerticalAlignment="Center"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind VerdictText}" />
             </Grid>
         </DataTemplate>
@@ -359,11 +359,11 @@
                     Style="{StaticResource CardBorderStyle}">
                     <StackPanel Spacing="14">
 
-                        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Калибровка компаса на стапеле" />
+                        <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Калибровка компаса на стапеле" />
 
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Перенос эталонных параметров в борт, перезагрузка и калибровка курса по азимуту стапеля."
                             TextWrapping="Wrap" />
 
@@ -386,7 +386,7 @@
                         <StackPanel x:Name="SetupForm" Spacing="14">
 
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Эталонный файл параметров (.param)" />
+                                <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Эталонный файл параметров (.param)" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -410,14 +410,14 @@
                                 стоять в самой подписи, а не только в подсказке.
                             -->
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="ИСТИННЫЙ азимут стапеля, градусы (0–360)" />
+                                <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="ИСТИННЫЙ азимут стапеля, градусы (0–360)" />
                                 <TextBox
                                     x:Name="AzimuthBox"
                                     PlaceholderText="например 127,5"
                                     TextChanged="OnFormFieldChanged" />
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Азимут истинный — от географического севера, НЕ магнитный. Компас телефона показывает магнитный курс: к его показанию нужно прибавить местное магнитное склонение."
                                     TextWrapping="Wrap" />
                                 <InfoBar
@@ -429,7 +429,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Серийный номер платы" />
+                                <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Серийный номер платы" />
                                 <TextBox
                                     x:Name="UnitIdBox"
                                     PlaceholderText="как указано на плате"
@@ -437,7 +437,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Оператор" />
+                                <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Оператор" />
                                 <TextBox
                                     x:Name="OperatorBox"
                                     PlaceholderText="фамилия"
@@ -445,7 +445,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="4">
-                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="COM-порт борта" />
+                                <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="COM-порт борта" />
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -466,7 +466,7 @@
                                 </Grid>
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Система отдаёт только имена портов, без описания устройства; список бывает устаревшим, а после перезагрузки борта номер порта может смениться."
                                     TextWrapping="Wrap" />
                             </StackPanel>
@@ -509,13 +509,13 @@
                                 <StackPanel Grid.Column="1" Spacing="2">
                                     <TextBlock
                                         x:Name="StageText"
-                                        Style="{StaticResource SubtitleTextBlockStyle}"
+                                        Style="{StaticResource AppSubtitleTextStyle}"
                                         Text="—"
                                         TextWrapping="Wrap" />
                                     <TextBlock
                                         x:Name="StageDetailText"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text=""
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -524,7 +524,7 @@
                             <TextBlock
                                 x:Name="RunSubjectText"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource BodyTextBlockStyle}"
+                                Style="{StaticResource AppBodyTextStyle}"
                                 Text=""
                                 TextWrapping="Wrap" />
 
@@ -570,10 +570,10 @@
 
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel Spacing="8">
-                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Стадии процедуры" />
+                            <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Стадии процедуры" />
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Порядок соответствует технологической карте. Остановка видна по последней незавершённой стадии."
                                 TextWrapping="Wrap" />
                             <ListView
@@ -602,7 +602,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock
                                     VerticalAlignment="Center"
-                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Style="{StaticResource AppBodyStrongTextStyle}"
                                     Text="Не прошли проверку" />
                                 <Button
                                     x:Name="RewriteAllButton"
@@ -613,7 +613,7 @@
 
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Борт держит не то, что требует эталон. Перезапись возвращает эталонное значение и записывается в тот же прогон отдельной строкой аудита. Вердикт прогона она не меняет: изделие сдаётся повторным прогоном целиком, а не подкруткой отдельных параметров."
                                 TextWrapping="Wrap" />
 
@@ -631,7 +631,7 @@
                                     x:Name="RewriteProgressText"
                                     VerticalAlignment="Center"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="" />
                             </StackPanel>
 
@@ -655,11 +655,11 @@
 
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel Spacing="8">
-                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Проверки" />
+                            <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Проверки" />
                             <TextBlock
                                 x:Name="ChecksSummaryText"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Проверки появятся по ходу прогона."
                                 TextWrapping="Wrap" />
                             <ListView
@@ -689,7 +689,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock
                                 VerticalAlignment="Center"
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Style="{StaticResource AppBodyStrongTextStyle}"
                                 Text="Журнал: STATUSTEXT и ход выполнения"
                                 TextWrapping="Wrap" />
                             <Button
@@ -699,7 +699,7 @@
                         </Grid>
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Новые сообщения добавляются сверху."
                             TextWrapping="Wrap" />
                         <ListView
@@ -727,7 +727,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock
                                 VerticalAlignment="Center"
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Style="{StaticResource AppBodyStrongTextStyle}"
                                 Text="Последние прогоны"
                                 TextWrapping="Wrap" />
                             <Button
@@ -741,7 +741,7 @@
                         <TextBlock
                             x:Name="HistoryHintText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Реестр прогонов не подключен."
                             TextWrapping="Wrap"
                             Visibility="Collapsed" />

@@ -135,20 +135,21 @@
                     Visibility="{x:Bind DiffVisibility}" />
 
                 <!--
-                    🔴 Имя и оба значения — колонками, а не текстом подряд.
-                    Слова «эталон» и «борт», повторённые в каждой из полусотни
-                    строк, вытесняют собой сами числа, ради которых оператор в
-                    список и смотрит: их место в заголовке над списком, один
-                    раз. Колонки дают ещё и выравнивание — расхождение видно
-                    по столбику, не читая.
+                    🔴 Одна колонка значения, а не две. На совпавшей строке
+                    эталон и борт — это одно и то же число, и напечатанное
+                    дважды оно заставляет сличать глазами заведомо одинаковое;
+                    на этом теряется настоящее расхождение, когда оно
+                    появится. Разошедшаяся строка показывает то, что на борту
+                    сейчас, а эталон уходит второй строкой — поправкой к
+                    увиденному.
                 -->
                 <Grid Grid.Column="1" ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="150" />
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" MinWidth="150" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -157,37 +158,38 @@
                         VerticalAlignment="Center"
                         FontFamily="Consolas"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind Name}"
-                        TextTrimming="CharacterEllipsis" />
+                        TextTrimming="CharacterEllipsis"
+                        ToolTipService.ToolTip="{x:Bind Tip}" />
 
                     <TextBlock
                         Grid.Column="1"
                         VerticalAlignment="Center"
                         FontFamily="Consolas"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="{x:Bind ExpectedText}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        Text="{x:Bind ValueText}"
                         TextAlignment="Right"
                         TextTrimming="CharacterEllipsis"
-                        ToolTipService.ToolTip="{x:Bind ExpectedText}" />
-
-                    <TextBlock
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        FontFamily="Consolas"
-                        IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Text="{x:Bind ActualText}"
-                        TextAlignment="Right"
-                        TextTrimming="CharacterEllipsis"
-                        ToolTipService.ToolTip="{x:Bind ActualText}" />
+                        ToolTipService.ToolTip="{x:Bind Tip}" />
 
                     <TextBlock
                         Grid.Row="1"
-                        Grid.ColumnSpan="3"
+                        Grid.Column="1"
+                        FontFamily="Consolas"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        Text="{x:Bind ReferenceLineText}"
+                        TextAlignment="Right"
+                        TextTrimming="CharacterEllipsis"
+                        Visibility="{x:Bind ReferenceLineVisibility}" />
+
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.ColumnSpan="2"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind OutcomeText, Mode=OneWay}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
@@ -232,14 +234,14 @@
                 <TextBlock
                     Grid.Column="1"
                     FontFamily="Consolas"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind Name}"
                     TextTrimming="CharacterEllipsis" />
                 <TextBlock
                     Grid.Column="2"
                     FontFamily="Consolas"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind ActualText}" />
             </Grid>
         </DataTemplate>
@@ -275,16 +277,16 @@
                     <TextBlock
                         FontFamily="Consolas"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind FileName}"
                         TextTrimming="CharacterEllipsis" />
                     <TextBlock
                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind KindText}" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind OutcomeText, Mode=OneWay}"
                         TextWrapping="Wrap"
                         Visibility="{x:Bind OutcomeVisibility, Mode=OneWay}" />
@@ -320,7 +322,7 @@
                     Visibility="{x:Bind WarnVisibility, Mode=OneWay}" />
                 <StackPanel Grid.Column="1">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind Title}" />
+                        <TextBlock Style="{StaticResource AppCaptionTextStyle}" Text="{x:Bind Title}" />
 
                         <!--
                             Метка вида компаса. Внешний, внутренний и «судить
@@ -334,7 +336,7 @@
                             Visibility="{x:Bind ExternalVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="внешний" />
                         </Border>
                         <Border
@@ -344,7 +346,7 @@
                             Visibility="{x:Bind InternalVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="внутренний" />
                         </Border>
                         <Border
@@ -354,19 +356,19 @@
                             Visibility="{x:Bind UnknownKindVisibility, Mode=OneWay}">
                             <TextBlock
                                 Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="{x:Bind KindText, Mode=OneWay}" />
                         </Border>
                     </StackPanel>
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind DeviceText, Mode=OneWay}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="{x:Bind Detail, Mode=OneWay}"
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -374,7 +376,7 @@
                     Grid.Column="2"
                     VerticalAlignment="Center"
                     FontFamily="Consolas"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind FieldText, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
@@ -388,11 +390,11 @@
                 <TextBlock
                     FontFamily="Consolas"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind TimeText}" />
                 <TextBlock
                     Grid.Column="1"
-                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Style="{StaticResource AppCaptionTextStyle}"
                     Text="{x:Bind Text}"
                     TextWrapping="Wrap" />
             </Grid>
@@ -438,7 +440,7 @@
                     <TextBlock
                         Margin="2,0,0,6"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Полётный контроллер" />
 
                     <Button
@@ -448,13 +450,13 @@
                         <StackPanel>
                             <TextBlock
                                 x:Name="PortCardTitle"
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Style="{StaticResource AppBodyStrongTextStyle}"
                                 Text="Порт не выбран"
                                 TextTrimming="CharacterEllipsis" />
                             <TextBlock
                                 x:Name="PortCardDetail"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="Нажмите, чтобы выбрать"
                                 TextWrapping="Wrap" />
 
@@ -466,9 +468,24 @@
                             -->
                             <CheckBox
                                 x:Name="AutoConnectCheck"
-                                Margin="0,6,0,-6"
+                                Margin="0,6,0,0"
                                 Click="OnAutoConnectChanged"
                                 Content="Подключаться автоматически" />
+
+                            <!--
+                                🔴 Ручное подключение обязано быть кнопкой.
+                                Пока связь поднималась только автоматом, у
+                                оператора не было способа ни повторить попытку
+                                после отказа, ни отпустить порт, не снимая
+                                галку: единственным управлением связью была
+                                настройка, а настройка — это не команда.
+                            -->
+                            <Button
+                                x:Name="LinkToggleButton"
+                                Margin="0,8,0,-4"
+                                HorizontalAlignment="Stretch"
+                                Click="OnLinkToggleClick"
+                                Content="Подключить" />
                         </StackPanel>
                     </Button>
 
@@ -516,7 +533,7 @@
                     <TextBlock
                         Margin="2,0,0,6"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Эталон" />
 
                     <Button
@@ -532,13 +549,13 @@
                             <StackPanel>
                                 <TextBlock
                                     x:Name="ReferenceCardTitle"
-                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Style="{StaticResource AppBodyStrongTextStyle}"
                                     Text="Эталон не выбран"
                                     TextTrimming="CharacterEllipsis" />
                                 <TextBlock
                                     x:Name="ReferenceCardDetail"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Нажмите, чтобы выбрать"
                                     TextWrapping="Wrap" />
                             </StackPanel>
@@ -612,7 +629,7 @@
 
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Положение" />
 
                         <Grid ColumnSpacing="14">
@@ -665,7 +682,7 @@
                             <StackPanel>
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Крен" />
                                 <TextBlock
                                     x:Name="HudRollText"
@@ -678,7 +695,7 @@
                             <StackPanel Grid.Column="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Тангаж" />
                                 <TextBlock
                                     x:Name="HudPitchText"
@@ -691,7 +708,7 @@
                             <StackPanel Grid.Column="2">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Курс, истинный" />
                                 <TextBlock
                                     x:Name="HudYawText"
@@ -704,7 +721,7 @@
                             <StackPanel Grid.Row="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Напряжение" />
                                 <TextBlock
                                     x:Name="HudVoltageText"
@@ -717,7 +734,7 @@
                             <StackPanel Grid.Row="1" Grid.Column="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Ток" />
                                 <TextBlock
                                     x:Name="HudCurrentText"
@@ -730,7 +747,7 @@
                             <StackPanel Grid.Row="1" Grid.Column="2">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Режим" />
                                 <TextBlock
                                     x:Name="HudModeText"
@@ -749,7 +766,7 @@
                             <StackPanel Grid.Row="2">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Возд. скорость" />
                                 <TextBlock
                                     x:Name="HudAirspeedText"
@@ -762,7 +779,7 @@
                             <StackPanel Grid.Row="2" Grid.Column="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Путевая" />
                                 <TextBlock
                                     x:Name="HudGroundspeedText"
@@ -775,7 +792,7 @@
                             <StackPanel Grid.Row="2" Grid.Column="2">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Газ" />
                                 <TextBlock
                                     x:Name="HudThrottleText"
@@ -811,14 +828,14 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock
                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Style="{StaticResource AppCaptionTextStyle}"
                                             Text="GPS 1" />
                                         <TextBlock
                                             x:Name="HudGpsFixText"
                                             Grid.Column="1"
                                             HorizontalAlignment="Right"
                                             FontWeight="SemiBold"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Style="{StaticResource AppCaptionTextStyle}"
                                             Text="нет данных"
                                             TextTrimming="CharacterEllipsis" />
                                     </Grid>
@@ -832,7 +849,7 @@
                                         <StackPanel>
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="Спутники" />
                                             <TextBlock
                                                 x:Name="HudGpsSatsText"
@@ -844,7 +861,7 @@
                                         <StackPanel Grid.Column="1">
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="HDOP" />
                                             <TextBlock
                                                 x:Name="HudGpsHdopText"
@@ -856,7 +873,7 @@
                                         <StackPanel Grid.Column="2">
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="Высота" />
                                             <TextBlock
                                                 x:Name="HudGpsAltText"
@@ -872,7 +889,7 @@
                                         FontFamily="Consolas"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                         IsTextSelectionEnabled="True"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="координат нет"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -897,14 +914,14 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock
                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Style="{StaticResource AppCaptionTextStyle}"
                                             Text="GPS 2" />
                                         <TextBlock
                                             x:Name="HudGps2FixText"
                                             Grid.Column="1"
                                             HorizontalAlignment="Right"
                                             FontWeight="SemiBold"
-                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Style="{StaticResource AppCaptionTextStyle}"
                                             Text="не подключён"
                                             TextTrimming="CharacterEllipsis" />
                                     </Grid>
@@ -918,7 +935,7 @@
                                         <StackPanel>
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="Спутники" />
                                             <TextBlock
                                                 x:Name="HudGps2SatsText"
@@ -930,7 +947,7 @@
                                         <StackPanel Grid.Column="1">
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="HDOP" />
                                             <TextBlock
                                                 x:Name="HudGps2HdopText"
@@ -942,7 +959,7 @@
                                         <StackPanel Grid.Column="2">
                                             <TextBlock
                                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Style="{StaticResource AppCaptionTextStyle}"
                                                 Text="Высота" />
                                             <TextBlock
                                                 x:Name="HudGps2AltText"
@@ -958,7 +975,7 @@
                                         FontFamily="Consolas"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                         IsTextSelectionEnabled="True"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="координат нет"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -968,7 +985,7 @@
                         <TextBlock
                             x:Name="HudArmedText"
                             FontWeight="SemiBold"
-                            Style="{StaticResource BodyTextBlockStyle}"
+                            Style="{StaticResource AppBodyTextStyle}"
                             Text="Нет данных" />
                     </StackPanel>
                 </Border>
@@ -1007,7 +1024,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock
                                 VerticalAlignment="Center"
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Style="{StaticResource AppBodyStrongTextStyle}"
                                 Text="Компасы" />
 
                             <!--
@@ -1031,14 +1048,14 @@
                                     x:Name="CompassBusyText"
                                     VerticalAlignment="Center"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="" />
                             </StackPanel>
                         </Grid>
 
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Модуль поля, мГс. Норма 530, допуск 185…875."
                             TextWrapping="Wrap" />
                         <!--
@@ -1079,7 +1096,7 @@
                         <TextBlock
                             x:Name="CompassHintText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -1108,7 +1125,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Сверка с эталоном" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Сверка с эталоном" />
 
                         <!--
                             Ход сверки виден числом и полосой. Вычитывание
@@ -1120,7 +1137,7 @@
                             x:Name="CompareStateText"
                             Grid.Row="1"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Сверка не выполнялась."
                             TextWrapping="Wrap" />
 
@@ -1163,7 +1180,7 @@
                                 Grid.Column="1"
                                 FontFamily="Consolas"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text=""
                                 TextTrimming="CharacterEllipsis" />
                             <TextBlock
@@ -1171,7 +1188,7 @@
                                 Grid.Column="2"
                                 FontFamily="Consolas"
                                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="" />
                         </Grid>
 
@@ -1191,11 +1208,11 @@
                                     <TextBlock
                                         x:Name="CompareMatchedText"
                                         Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="совпало" />
                                 </StackPanel>
                             </Border>
@@ -1204,11 +1221,11 @@
                                     <TextBlock
                                         x:Name="CompareDiffText"
                                         Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="расходится" />
                                 </StackPanel>
                             </Border>
@@ -1217,11 +1234,11 @@
                                     <TextBlock
                                         x:Name="CompareSkippedText"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="0" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
                                         Text="вне контроля" />
                                 </StackPanel>
                             </Border>
@@ -1266,37 +1283,15 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <Grid
-                                Margin="24,0,0,0"
-                                VerticalAlignment="Top"
-                                ColumnSpacing="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="92" />
-                                    <ColumnDefinition Width="92" />
-                                    <ColumnDefinition Width="106" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="параметр" />
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="эталон"
-                                    TextAlignment="Right" />
-                                <TextBlock
-                                    Grid.Column="2"
-                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="борт"
-                                    TextAlignment="Right" />
-                            </Grid>
+                            <!--
+                                Заголовка колонок больше нет: колонка значения
+                                одна, и подписывать её «борт» незачем — на
+                                разошедшейся строке эталон назван прямо во
+                                второй строке, а на совпавшей значение общее.
+                            -->
 
                             <ListView
                                 x:Name="DiffList"
-                                Margin="0,22,0,0"
                                 IsItemClickEnabled="False"
                                 ItemContainerStyle="{StaticResource RowContainerStyle}"
                                 ItemTemplate="{StaticResource DifferenceTemplate}"
@@ -1334,28 +1329,29 @@
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <Grid ColumnSpacing="8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <!--
+                                    Заголовок над кнопкой, а не рядом с ней:
+                                    на увеличенном шрифте кнопка забирает всю
+                                    ширину узкой колонки, и слово «Скрипты»
+                                    ломается пополам.
+                                -->
+                                <StackPanel Spacing="6">
                                     <TextBlock
-                                        VerticalAlignment="Center"
-                                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                                        Style="{StaticResource AppBodyStrongTextStyle}"
                                         Text="Скрипты" />
                                     <Button
                                         x:Name="ApplyAllScriptsButton"
-                                        Grid.Column="1"
+                                        HorizontalAlignment="Stretch"
                                         Click="OnApplyAllScriptsClick"
                                         Content="Привести к эталону"
                                         IsEnabled="False" />
-                                </Grid>
+                                </StackPanel>
 
                                 <TextBlock
                                     x:Name="ScriptsStateText"
                                     Grid.Row="1"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
                                     Text="Сверка скриптов не выполнялась."
                                     TextWrapping="Wrap" />
 
@@ -1388,7 +1384,7 @@
                     CornerRadius="8">
                     <StackPanel Spacing="6">
                         <Grid>
-                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Журнал операций" />
+                            <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Журнал операций" />
                             <Button
                                 Padding="8,2"
                                 HorizontalAlignment="Right"
@@ -1461,7 +1457,7 @@
                         Grid.Column="3"
                         VerticalAlignment="Center"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="курс борта, °" />
                     <NumberBox
                         x:Name="HeadingBox"

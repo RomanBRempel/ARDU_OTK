@@ -1180,6 +1180,7 @@ public sealed partial class ReferenceEditorPage : Page
                     TransferMotorComp: MotorCompToggle.IsOn,
                     CreatedBy: AuthorBox.Text)
                 {
+                    Firmware = _parameters.Firmware,
                     Roles = _roles,
                     Scripts = _scripts.OrderBy(static s => s.Path, StringComparer.Ordinal).ToArray(),
                 }).ConfigureAwait(true);

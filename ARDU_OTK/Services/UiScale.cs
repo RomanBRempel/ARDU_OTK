@@ -51,6 +51,8 @@ public static class UiScale
         ("AppBodyFontSize", 14),
         ("AppMediumFontSize", 16),
         ("AppNumericFontSize", 17),
+        ("AppSubtitleFontSize", 20),
+        ("AppTitleFontSize", 28),
     };
 
     /// <summary>

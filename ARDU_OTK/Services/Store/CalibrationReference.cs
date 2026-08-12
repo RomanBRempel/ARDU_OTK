@@ -70,6 +70,7 @@ public sealed record CalibrationReference(
     double InterCompassSpreadDeg,
     bool TransferMotorComp,
     string ParamRoles,
+    string Firmware,
     string CreatedBy,
     DateTimeOffset CreatedUtc,
     DateTimeOffset? RetiredUtc,
@@ -77,6 +78,16 @@ public sealed record CalibrationReference(
 {
     /// <summary>Эталон выведен из обращения: выбрать его для нового прогона нельзя.</summary>
     public bool IsRetired => RetiredUtc.HasValue;
+
+    /// <summary>
+    /// Версия прошивки образца известна.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 «Не записана» и «совпала» — разные состояния. Эталон, снятый до того,
+    /// как версию стали хранить, сверить по прошивке нельзя, и молчаливое
+    /// «сошлось» на таком эталоне было бы выдуманным результатом проверки.
+    /// </remarks>
+    public bool HasFirmware => Firmware.Length > 0;
 
     /// <summary>По этому эталону уже сдавали платы — менять допуски нельзя.</summary>
     public bool HasRuns => RunCount > 0;
@@ -154,6 +165,12 @@ public sealed record NewCalibrationReference(
     string CreatedBy)
 {
     /// <summary>
+    /// Баннер прошивки образца целиком, как его прислал борт. Пусто — борт
+    /// баннера не прислал, и записывать вместо него догадку нельзя.
+    /// </summary>
+    public string Firmware { get; init; } = string.Empty;
+
+    /// <summary>
     /// Отступления технолога от умолчаний по ролям параметров. Пустая карта —
     /// эталон работает целиком по технологической карте.
     /// </summary>
@@ -198,6 +215,37 @@ public sealed record ReferenceParameters(
     IReadOnlyList<string> MissingCore,
     IReadOnlyList<string> MissingMotorComp)
 {
+    /// <summary>Строка-метка прошивки в тексте набора.</summary>
+    /// <remarks>
+    /// Живёт в самом тексте, а не только в базе: файл эталона уносят на другую
+    /// станцию и открывают текстовым редактором, и там он обязан сам сообщать,
+    /// на какой прошивке снят.
+    /// </remarks>
+    public const string FirmwareMarker = "# прошивка образца: ";
+
+    /// <summary>
+    /// Прошивка образца. Пусто — набор снят с борта, не приславшего баннер,
+    /// либо прочитан из файла без метки прошивки.
+    /// </summary>
+    public string Firmware { get; init; } = string.Empty;
+
+    /// <summary>Достаёт метку прошивки из текста набора.</summary>
+    public static string ReadFirmware(IEnumerable<string> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith(FirmwareMarker, StringComparison.Ordinal))
+            {
+                return trimmed[FirmwareMarker.Length..].Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
     /// <summary>Сколько параметров всего разобралось.</summary>
     public int ParamCount => Set.Values.Count;
 
@@ -351,7 +399,7 @@ public sealed record ReferenceParameters(
 
         if (!string.IsNullOrWhiteSpace(firmwareBanner))
         {
-            builder.Add("# прошивка образца: " + firmwareBanner);
+            builder.Add(FirmwareMarker + firmwareBanner.Trim());
         }
 
         if (set.Missing.Count > 0)
@@ -431,7 +479,12 @@ public sealed record ReferenceParameters(
             ExpectedSlots: expectedSlots,
             PopulatedSlots: populatedSlots,
             MissingCore: missingCore,
-            MissingMotorComp: missingMot);
+            MissingMotorComp: missingMot)
+        {
+            // Метка читается из самого текста, поэтому одинаково работает и для
+            // снимка с борта, и для файла, принесённого с другой станции.
+            Firmware = ReadFirmware(SplitLines(text)),
+        };
     }
 
     /// <summary>

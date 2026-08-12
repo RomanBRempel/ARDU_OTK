@@ -16,7 +16,7 @@
             VerticalAlignment="Top"
             Spacing="20">
 
-            <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Настройки" />
+            <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Настройки" />
 
             <!--
                 Рабочее место идёт первым: без азимута и оператора прогон вообще
@@ -29,7 +29,7 @@
                 BorderThickness="1"
                 CornerRadius="8">
                 <StackPanel Spacing="14">
-                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Рабочее место" />
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Рабочее место" />
 
                     <InfoBar
                         x:Name="WorkstationBar"
@@ -52,7 +52,7 @@
                         установки к установке.
                     -->
                     <StackPanel Spacing="4">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Координаты рабочего места" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Координаты рабочего места" />
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -80,13 +80,13 @@
                         </Grid>
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Десятичные градусы, север и восток положительные. Достаточно точности до сотых: магнитное склонение на таком расстоянии не меняется. Используются только тогда, когда у борта нет трёхмерного фикса GPS — живой фикс важнее, он вдобавок доказывает, что приёмник на плате исправен."
                             TextWrapping="Wrap" />
                     </StackPanel>
 
                     <StackPanel Spacing="4">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Оператор" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Оператор" />
                         <TextBox
                             x:Name="OperatorBox"
                             HorizontalAlignment="Left"
@@ -95,7 +95,7 @@
                             TextChanged="OnOperatorChanged" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Подставляется в прогон и в подпись заводимых эталонов."
                             TextWrapping="Wrap" />
                     </StackPanel>
@@ -103,7 +103,7 @@
                     <TextBlock
                         x:Name="WorkstationSavedText"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text=""
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -122,10 +122,10 @@
                 BorderThickness="1"
                 CornerRadius="8">
                 <StackPanel Spacing="12">
-                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Вид" />
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Вид" />
 
                     <StackPanel Spacing="4">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Размер шрифта" />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Размер шрифта" />
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -147,12 +147,12 @@
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Style="{StaticResource AppCaptionTextStyle}"
                                 Text="" />
                         </Grid>
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Style="{StaticResource AppCaptionTextStyle}"
                             Text="Масштабируется весь текст: подписи, кнопки, поля ввода и строки таблиц сверки. Изменение применяется сразу — страница перестраивается. Работающая приёмка при этом не прерывается: связь с бортом живёт вне страницы."
                             TextWrapping="Wrap" />
                     </StackPanel>
@@ -167,12 +167,12 @@
                 BorderThickness="1"
                 CornerRadius="8">
                 <StackPanel Spacing="12">
-                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Обновления" />
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Обновления" />
 
                     <TextBlock
                         x:Name="VersionText"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Style="{StaticResource BodyTextBlockStyle}"
+                        Style="{StaticResource AppBodyTextStyle}"
                         Text="Версия —" />
 
                     <InfoBar
@@ -195,7 +195,7 @@
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Отсутствие сети — штатная ситуация: приложение продолжает работать без обновлений. Обновление не применяется, пока идёт работа со стендом."
                         TextWrapping="Wrap" />
                 </StackPanel>
@@ -209,18 +209,18 @@
                 BorderThickness="1"
                 CornerRadius="8">
                 <StackPanel Spacing="8">
-                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Хранилище" />
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Хранилище" />
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Style="{StaticResource AppCaptionTextStyle}"
                         Text="Реестр прогонов и эталоны лежат вне каталога установки, поэтому переживают обновление."
                         TextWrapping="Wrap" />
 
                     <TextBlock
                         x:Name="StorePathText"
                         IsTextSelectionEnabled="True"
-                        Style="{StaticResource BodyTextBlockStyle}"
+                        Style="{StaticResource AppBodyTextStyle}"
                         TextWrapping="Wrap" />
 
                     <InfoBar

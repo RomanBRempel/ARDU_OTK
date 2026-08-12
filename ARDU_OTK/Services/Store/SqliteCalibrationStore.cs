@@ -57,7 +57,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     /// и что показывает оператору. v5 добавила скрипты изделия
     /// (<see cref="ReferenceScript"/>) — их пути и содержимое.
     /// </remarks>
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 
     // Формат меток времени: UTC, фиксированная ширина. Такой текст сравнивается
     // и сортируется лексикографически ровно как хронологически — на этом держатся
@@ -69,7 +69,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     private const string VerdictAborted = "aborted";
 
     /// <summary>Литерал версии схемы. Обязан совпадать с <see cref="SchemaVersion"/>: PRAGMA не принимает параметр.</summary>
-    private const string SetSchemaVersionSql = "PRAGMA user_version = 5;";
+    private const string SetSchemaVersionSql = "PRAGMA user_version = 6;";
 
     /// <summary>
     /// Эталоны изделий и настройки рабочего места — текущая, третья версия.
@@ -107,6 +107,10 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             -- заведённый до правки карты, навсегда остался бы с прежними
             -- умолчаниями и молча разошёлся бы с ней.
             ParamRoles            TEXT    NOT NULL DEFAULT '',
+            -- Прошивка образца: строка баннера целиком, как её прислал борт.
+            -- Пусто — эталон снят до того, как версию стали хранить, либо борт
+            -- баннер не прислал; это разные вещи от «версия совпала».
+            Firmware              TEXT    NOT NULL DEFAULT '',
             CreatedBy             TEXT    NOT NULL,
             CreatedUtc            TEXT    NOT NULL,
             RetiredUtc            TEXT
@@ -857,7 +861,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                p.ParamHash, p.ParamCount, p.HeadingVsJigDeg, p.InterCompassSpreadDeg,
                p.TransferMotorComp, p.CreatedBy, p.CreatedUtc, p.RetiredUtc,
                (SELECT COUNT(*) FROM Run r WHERE r.ReferenceId = p.Id) AS RunCount,
-               p.ParamRoles
+               p.ParamRoles, p.Firmware
         FROM Reference p
         """;
 
@@ -1070,11 +1074,12 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                     INSERT INTO Reference (
                         Name, NameNormalized, Description, SourceName, ParamFormat,
                         ParamText, ParamHash, ParamCount, HeadingVsJigDeg,
-                        InterCompassSpreadDeg, TransferMotorComp, ParamRoles, CreatedBy, CreatedUtc)
+                        InterCompassSpreadDeg, TransferMotorComp, ParamRoles, Firmware,
+                        CreatedBy, CreatedUtc)
                     VALUES (
                         $name, $normalized, $description, $sourceName, $format,
                         $text, $hash, $paramCount, $heading,
-                        $spread, $motorComp, $paramRoles, $createdBy, $created);
+                        $spread, $motorComp, $paramRoles, $firmware, $createdBy, $created);
                     """,
                     ct,
                     ("$name", name),
@@ -1089,6 +1094,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                     ("$spread", draft.InterCompassSpreadDeg),
                     ("$motorComp", draft.TransferMotorComp ? 1L : 0L),
                     ("$paramRoles", roleOverrides),
+                    ("$firmware", draft.Firmware ?? string.Empty),
                     ("$createdBy", draft.CreatedBy?.Trim() ?? string.Empty),
                     ("$created", nowUtc)).ConfigureAwait(false);
 
@@ -1447,6 +1453,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         InterCompassSpreadDeg: reader.GetDouble(9),
         TransferMotorComp: reader.GetInt64(10) != 0,
         ParamRoles: reader.GetString(15),
+        Firmware: reader.GetString(16),
         CreatedBy: reader.GetString(11),
         CreatedUtc: ParseUtc(reader.GetString(12)),
         RetiredUtc: reader.IsDBNull(13) ? null : ParseUtc(reader.GetString(13)),
@@ -1691,6 +1698,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             2 => MigrateV2ToV3Sql,
             3 => MigrateV3ToV4Sql,
             4 => MigrateV4ToV5Sql,
+            5 => MigrateV5ToV6Sql,
             _ => throw new CalibrationStoreException(
                 $"Миграция схемы с версии {fromVersion} не реализована в этой сборке. " +
                 "Хранилище оставлено на последней исправной версии."),
@@ -1855,6 +1863,27 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         CREATE INDEX IF NOT EXISTS IX_ReferenceScript ON ReferenceScript(ReferenceId, ScriptPath);
 
         PRAGMA user_version = 5;
+        """;
+
+    /// <summary>
+    /// Версия 5 → 6: прошивка образца в эталоне.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Эталон описывал конфигурацию, но молчал о том, какая прошивка её
+    /// исполняла. Один и тот же набор параметров на другой версии прошивки — уже
+    /// другое изделие: у части имён меняется смысл, часть исчезает, часть
+    /// появляется со значением по умолчанию. Сверка при этом сходится, а плата
+    /// ведёт себя иначе.
+    /// </para>
+    /// <para>
+    /// 🔴 Литерал заморожен в форме версии 6 — см. <see cref="MigrateV1ToV2Sql"/>.
+    /// </para>
+    /// </remarks>
+    private const string MigrateV5ToV6Sql = """
+        ALTER TABLE Reference ADD COLUMN Firmware TEXT NOT NULL DEFAULT '';
+
+        PRAGMA user_version = 6;
         """;
 
     private static async Task VerifyIntegrityAsync(SqliteConnection connection, CancellationToken ct)

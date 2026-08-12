@@ -572,6 +572,16 @@ public sealed partial class MainPage : Page
             ? ParameterEnums.Classify(state.VehicleType)
             : ParameterEnums.VehicleClass.Unknown;
 
+    /// <summary>
+    /// Расхождения по каналам и выходам, ждущие своей сводной строки.
+    /// </summary>
+    /// <remarks>
+    /// Заполняется сверкой, разбирается отрисовкой наблюдаемых: канал обязан
+    /// попасть на экран одной строкой, а расхождение и совпавшие поля приходят
+    /// из разных источников.
+    /// </remarks>
+    private readonly Dictionary<string, ParameterDifference> _channelDifferences = new(StringComparer.Ordinal);
+
     private AcceptanceSession? _session;
     private CancellationTokenSource? _acceptanceCts;
     private bool _acceptanceBusy;
@@ -902,8 +912,20 @@ public sealed partial class MainPage : Page
         CompareTickPanel.Visibility = Visibility.Collapsed;
 
         Differences.Clear();
+        _channelDifferences.Clear();
+
         foreach (var difference in plan.Differences)
         {
+            // Расхождение по каналу или выходу не идёт отдельной строкой: оно
+            // встанет в сводную строку своего канала, рядом с остальными его
+            // полями. Иначе один и тот же канал оказался бы на экране дважды —
+            // строкой расхождения и сводной строкой без него.
+            if (ChannelOrder.TrySplit(difference.Name, out _, out _))
+            {
+                _channelDifferences[difference.Name] = difference;
+                continue;
+            }
+
             Differences.Add(new ParameterDifferenceRow(difference, VehicleClass));
         }
 
@@ -917,7 +939,61 @@ public sealed partial class MainPage : Page
         CompareActionsPanel.Visibility = Visibility.Visible;
 
         RenderWatched();
+        CheckFirmware();
         UpdateAcceptanceCommands();
+    }
+
+    /// <summary>
+    /// Сверяет прошивку борта с прошивкой образца.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Одинаковый набор параметров на другой версии прошивки — это уже
+    /// другое изделие: у части имён меняется смысл, часть исчезает, часть
+    /// появляется со значением по умолчанию и совпадает с эталоном «сама
+    /// собой». Сверка при этом сходится, а плата ведёт себя иначе, и объяснить
+    /// это потом нечем.
+    ///
+    /// Расхождение не блокирует приёмку: решение о том, годится ли другая
+    /// сборка прошивки, принимает технолог, а не программа. Но замолчать его
+    /// нельзя — молчание читается как «прошивка та же».
+    /// </remarks>
+    private void CheckFirmware()
+    {
+        if (_selectedReference is not { } reference)
+        {
+            return;
+        }
+
+        var board = _services.ConnectedFirmware;
+
+        if (!reference.HasFirmware)
+        {
+            AppendLog(
+                MavSeverity.Warning,
+                "Прошивка образца в эталоне не записана — сверить нечем. "
+              + "Эталон снят до того, как версию стали хранить; пересними́те его, чтобы проверка заработала.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(board))
+        {
+            AppendLog(
+                MavSeverity.Warning,
+                $"Борт не прислал версию прошивки — сверить с эталоном ({reference.Firmware}) нечем.");
+            return;
+        }
+
+        if (string.Equals(board.Trim(), reference.Firmware.Trim(), StringComparison.Ordinal))
+        {
+            AppendLog(MavSeverity.Info, $"Прошивка совпала с эталоном: {reference.Firmware}.");
+            return;
+        }
+
+        AppendLog(
+            MavSeverity.Warning,
+            $"Прошивка борта отличается от эталонной. Эталон: {reference.Firmware}. Борт: {board.Trim()}. "
+          + "Часть параметров могла сменить смысл или появиться со значением по умолчанию — "
+          + "совпадение по именам этого не покажет.");
     }
 
     /// <summary>
@@ -960,7 +1036,49 @@ public sealed partial class MainPage : Page
 
         var board = _session?.LastBoard ?? _previewBoard;
         var shown = Differences.Select(static d => d.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var name in _channelDifferences.Keys)
+        {
+            shown.Add(name);
+        }
         var added = 0;
+
+        // Каналы и выходы собираются в сводные строки, остальное идёт как есть.
+        var groups = new SortedDictionary<string, List<ChannelField>>(
+            Comparer<string>.Create(ChannelOrder.Compare));
+
+        // Расхождения по каналам попадают в сводные строки независимо от того,
+        // помечен ли канал к показу: расхождение показывается всегда.
+        foreach (var difference in _channelDifferences.Values)
+        {
+            if (!ChannelOrder.TrySplit(difference.Name, out var diffTitle, out var diffLabel))
+            {
+                continue;
+            }
+
+            if (!groups.TryGetValue(diffTitle, out var diffFields))
+            {
+                diffFields = new List<ChannelField>();
+                groups[diffTitle] = diffFields;
+            }
+
+            diffFields.Add(new ChannelField(
+                diffLabel,
+                difference.Name,
+                difference.Expected is { } exp
+                    ? ParameterEnums.Format(
+                        difference.Name, exp, VehicleClass, ReferenceParamFile.FormatCanonical(exp))
+                    : "—",
+                difference.Actual is { } act
+                    ? ParameterEnums.Format(
+                        difference.Name,
+                        act,
+                        VehicleClass,
+                        string.Create(CultureInfo.InvariantCulture, $"{act:G9}"))
+                    : "нет",
+                difference));
+
+            added++;
+        }
 
         foreach (var pair in expected.OrderBy(static p => p.Key, StringComparer.Ordinal))
         {
@@ -978,8 +1096,40 @@ public sealed partial class MainPage : Page
                 actual = value.Value;
             }
 
+            if (ChannelOrder.TrySplit(pair.Key, out var title, out var label))
+            {
+                if (!groups.TryGetValue(title, out var fields))
+                {
+                    fields = new List<ChannelField>();
+                    groups[title] = fields;
+                }
+
+                fields.Add(new ChannelField(
+                    label,
+                    pair.Key,
+                    ParameterEnums.Format(
+                        pair.Key,
+                        pair.Value,
+                        VehicleClass,
+                        ReferenceParamFile.FormatCanonical(pair.Value)),
+                    actual is { } a
+                        ? ParameterEnums.Format(
+                            pair.Key, a, VehicleClass, string.Create(CultureInfo.InvariantCulture, $"{a:G9}"))
+                        : null,
+                    Source: null));
+
+                added++;
+                continue;
+            }
+
             Differences.Add(new ParameterDifferenceRow(pair.Key, pair.Value, actual, VehicleClass));
             added++;
+        }
+
+        foreach (var group in groups)
+        {
+            group.Value.Sort(static (x, y) => ChannelOrder.CompareField(x.Label, y.Label));
+            Differences.Add(new ParameterDifferenceRow(group.Key, group.Value));
         }
 
         if (added == 0)
@@ -1139,12 +1289,20 @@ public sealed partial class MainPage : Page
         {
             var progress = new Progress<string>(text => CompareStateText.Text = text);
             var records = await _session
-                .ApplyAsync(rows.Select(static r => r.Source).ToArray(), progress, CancellationToken.None)
+                .ApplyAsync(
+                    rows.SelectMany(static r => r.Sources).ToArray(),
+                    progress,
+                    CancellationToken.None)
                 .ConfigureAwait(true);
 
             foreach (var record in records)
             {
-                var row = rows.FirstOrDefault(r => string.Equals(r.Name, record.Name, StringComparison.Ordinal));
+                // Строка ищется по своим источникам, а не по заголовку: у
+                // сводной строки канала заголовок «RC5», а записывались
+                // RC5_MIN и RC5_MAX.
+                var row = rows.FirstOrDefault(r => r.Sources.Any(
+                    s => string.Equals(s.Name, record.Name, StringComparison.Ordinal)));
+
                 row?.ApplyOutcome(record);
             }
 
@@ -1663,11 +1821,58 @@ public sealed partial class MainPage : Page
     private async void OnAutoConnectChanged(object sender, RoutedEventArgs e)
     {
         await PersistSettingsAsync().ConfigureAwait(true);
+        await TryAutoConnectAsync().ConfigureAwait(true);
+    }
 
-        if (AutoConnectCheck.IsChecked == true && !_services.IsLinkConnected)
+    /// <summary>
+    /// Подключает или отключает наблюдательное соединение по команде оператора.
+    /// </summary>
+    /// <remarks>
+    /// Ручное подключение идёт на выбранный порт и не спрашивает флаг
+    /// автоподключения: это прямая команда, а не политика. Ручное отключение
+    /// освобождает порт — им пользуются, когда плату надо отдать Mission
+    /// Planner, не закрывая стенд.
+    /// </remarks>
+    private async void OnLinkToggleClick(object sender, RoutedEventArgs e)
+    {
+        if (_services.IsAcceptanceRunning)
         {
-            await TryAutoConnectAsync().ConfigureAwait(true);
+            ShowLinkMessage(
+                InfoBarSeverity.Warning,
+                "Идёт приёмка: порт занят ею. Остановите приёмку, потом управляйте связью.");
+            return;
         }
+
+        if (_services.IsLinkConnected)
+        {
+            await _services.DisconnectAsync().ConfigureAwait(true);
+            Log("Связь разорвана по команде оператора, порт свободен.");
+            RenderAll();
+            return;
+        }
+
+        if (_selectedPort is null)
+        {
+            // Порт не выбран — берём однозначно опознанную плату, если она
+            // одна. Молча не подключаемся ни к чему: у композитной платы
+            // портов несколько, и «какой-нибудь» из них — это тот самый
+            // SLCAN, на котором HEARTBEAT не будет никогда.
+            var candidates = PickCandidates(_ports);
+            if (candidates.Count != 1)
+            {
+                ShowLinkMessage(
+                    InfoBarSeverity.Informational,
+                    candidates.Count == 0
+                        ? "Плата ArduPilot среди портов не опознана — выберите порт на плашке."
+                        : "Опознано несколько плат — выберите нужную на плашке.");
+                return;
+            }
+
+            _selectedPort = candidates[0];
+        }
+
+        await ConnectAsync().ConfigureAwait(true);
+        RenderAll();
     }
 
     /// <summary>
@@ -1682,7 +1887,16 @@ public sealed partial class MainPage : Page
     /// </remarks>
     private async Task TryAutoConnectAsync()
     {
-        if (_services.IsAcceptanceRunning)
+        // 🔴 Флаг проверяется здесь, а не у каждого вызывающего. Раньше это
+        // решал сам вызывающий, и один из них — возврат наблюдательного
+        // соединения после приёмки — проверку не делал: снятая галка ничего
+        // не значила, приложение продолжало занимать порт само.
+        if (AutoConnectCheck.IsChecked != true)
+        {
+            return;
+        }
+
+        if (_services.IsAcceptanceRunning || _services.IsLinkConnected || _busy)
         {
             return;
         }
@@ -1690,6 +1904,18 @@ public sealed partial class MainPage : Page
         if (_ports.Count == 0)
         {
             ShowLinkMessage(InfoBarSeverity.Informational, "COM-портов не найдено — подключите борт кабелем.");
+            return;
+        }
+
+        // 🔴 Выбор оператора важнее отбора по признакам. Плашка показывала
+        // один порт, а автоподключение лезло в другой: у композитной платы
+        // MAVLink и SLCAN отличаются только номером интерфейса, и отбор,
+        // сделанный заново, законно приходил к другому ответу. Порт, названный
+        // на плашке, и порт, в который стучимся, обязаны быть одним и тем же.
+        if (_selectedPort is { } chosen
+            && _ports.Any(p => string.Equals(p.PortName, chosen.PortName, StringComparison.OrdinalIgnoreCase)))
+        {
+            await ConnectAsync().ConfigureAwait(true);
             return;
         }
 
@@ -1849,6 +2075,11 @@ public sealed partial class MainPage : Page
         // незавершённая подготовка стенда.
         PortGlow.Visibility = Visibility.Visible;
         PortGlow.Background = (Brush)Resources[connected ? "GlowBrush" : "GlowDangerBrush"];
+
+        // Кнопка называет действие, а не состояние: «Отключить» на живой связи
+        // и «Подключить» на мёртвой.
+        LinkToggleButton.Content = connected ? "Отключить" : "Подключить";
+        LinkToggleButton.IsEnabled = !_services.IsAcceptanceRunning && !_busy;
         PortCard.Style = (Style)Resources[connected ? "ActiveTileStyle" : "DangerTileStyle"];
 
         ReferenceCardTitle.Text = _selectedReference?.Name ?? "Эталон не выбран";

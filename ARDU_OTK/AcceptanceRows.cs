@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using ARDU_OTK.Services.Fc;
 using ARDU_OTK.Services.Store;
@@ -237,6 +238,21 @@ public sealed class ScriptDifferenceRow : INotifyPropertyChanged
 }
 
 /// <summary>
+/// Одно поле канала или выхода в сводной строке.
+/// </summary>
+/// <param name="Label">Короткая подпись: <c>OPTION</c>, <c>MIN</c>, <c>TRIM</c>.</param>
+/// <param name="Name">Полное имя параметра — по нему идёт запись.</param>
+/// <param name="Expected">Значение эталона, уже приведённое к показу.</param>
+/// <param name="Actual">Значение борта; <c>null</c> — борт ещё не прочитан.</param>
+/// <param name="Source">Расхождение, если поле разошлось.</param>
+public sealed record ChannelField(
+    string Label,
+    string Name,
+    string Expected,
+    string? Actual,
+    ParameterDifference? Source);
+
+/// <summary>
 /// Строка расхождения с эталоном.
 /// </summary>
 /// <remarks>
@@ -279,6 +295,14 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
                 name, value, vehicle, string.Create(CultureInfo.InvariantCulture, $"{value:G9}"))
             : "нет";
 
+        // Совпало — значение одно, и печатать его дважды незачем: две
+        // одинаковые колонки заставляют сличать глазами то, что заведомо
+        // одинаково, и на этом теряется само расхождение, когда оно появится.
+        ValueText = ExpectedText;
+        ReferenceLineVisibility = Visibility.Collapsed;
+        Tip = BuildTip(name, expected, actual);
+        Sources = Array.Empty<ParameterDifference>();
+
         // Помеченные показывать и так все на виду: значок «показываемый» рядом
         // с каждой строкой был бы шумом.
         VisibleBadgeVisibility = Visibility.Collapsed;
@@ -315,6 +339,15 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
                 string.Create(CultureInfo.InvariantCulture, $"{actual:G9}"))
             : "нет";
 
+        // Не совпало — первой строкой то, что на борту сейчас, второй эталон.
+        // Порядок именно такой: оператор смотрит на изделие, а эталон — это
+        // поправка к тому, что он видит.
+        ValueText = ActualText;
+        ReferenceLineText = "эталон: " + ExpectedText;
+        ReferenceLineVisibility = Visibility.Visible;
+        Tip = BuildTip(difference.Name, difference.Expected, difference.Actual);
+        Sources = [difference];
+
         VisibleBadgeVisibility = difference.Visible ? Visibility.Visible : Visibility.Collapsed;
 
         // Кнопка есть только там, где записью что-то решается. Мёртвая кнопка
@@ -322,9 +355,67 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         WriteButtonVisibility = difference.Writable ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// Канал приёмника или выход целиком: назначение, границы и середина одной
+    /// строкой.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пять отдельных строк на один канал — это не список каналов, а список
+    /// параметров, и раскладку пульта по нему не прочесть: чтобы понять, что
+    /// такое пятый канал, оператор собирал глазами пять строк, разнесённых
+    /// алфавитным порядком имён. Mission Planner показывает канал строкой, и
+    /// причина у этого та же: канал — это одна вещь, а не пять.
+    /// </remarks>
+    public ParameterDifferenceRow(string title, IReadOnlyList<ChannelField> fields)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentNullException.ThrowIfNull(fields);
+
+        Name = title;
+        Detail = string.Empty;
+
+        var mismatched = fields.Where(static f => f.Source is not null).ToArray();
+        Sources = mismatched.Select(static f => f.Source!).ToArray();
+        _canWrite = Sources.Any(static s => s.Writable);
+
+        ValueText = string.Join(
+            "   ",
+            fields.Select(static f => $"{f.Label} {f.Actual ?? f.Expected}"));
+
+        ExpectedText = string.Join(
+            "   ",
+            fields.Select(static f => $"{f.Label} {f.Expected}"));
+
+        ActualText = ValueText;
+
+        ReferenceLineText = mismatched.Length == 0
+            ? string.Empty
+            : "эталон: " + string.Join(
+                "   ",
+                mismatched.Select(static f => $"{f.Label} {f.Expected}"));
+
+        ReferenceLineVisibility = mismatched.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        MatchVisibility = mismatched.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        DiffVisibility = mismatched.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        VisibleBadgeVisibility = Visibility.Collapsed;
+        WriteButtonVisibility = _canWrite ? Visibility.Visible : Visibility.Collapsed;
+
+        Tip = title + "\n" + string.Join(
+            "\n",
+            fields.Select(static f => $"{f.Name}: эталон {f.Expected}, борт {f.Actual ?? "не прочитан"}"));
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ParameterDifference? Source { get; }
+
+    /// <summary>
+    /// Расхождения, которые эта строка записывает. У обычной строки их ноль
+    /// или одно, у сводной строки канала — сколько разошлось полей.
+    /// </summary>
+    public IReadOnlyList<ParameterDifference> Sources { get; } = Array.Empty<ParameterDifference>();
 
     /// <summary>Строка о совпавшем параметре — значок согласия.</summary>
     public Visibility MatchVisibility { get; }
@@ -339,6 +430,37 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
     public string ExpectedText { get; }
 
     public string ActualText { get; }
+
+    /// <summary>Что показано в колонке значения: борт, а на совпавших — общее значение.</summary>
+    public string ValueText { get; } = string.Empty;
+
+    /// <summary>Вторая строка с эталонным значением. Пусто на совпавших.</summary>
+    public string ReferenceLineText { get; } = string.Empty;
+
+    public Visibility ReferenceLineVisibility { get; }
+
+    /// <summary>
+    /// Подсказка строки: имя, оба значения и числа за именами.
+    /// </summary>
+    /// <remarks>
+    /// Число в подсказке обязательно. В строке вместо перечислимого значения
+    /// стоит имя, а вводить параметр руками и сверять его с чужой
+    /// документацией оператор будет по числу.
+    /// </remarks>
+    public string Tip { get; } = string.Empty;
+
+    private static string BuildTip(string name, double? expected, double? actual)
+    {
+        var expectedText = expected is { } e
+            ? string.Create(CultureInfo.InvariantCulture, $"{e:G9}")
+            : "нет";
+
+        var actualText = actual is { } a
+            ? string.Create(CultureInfo.InvariantCulture, $"{a:G9}")
+            : "нет";
+
+        return $"{name}\nэталон: {expectedText}\nборт: {actualText}";
+    }
 
     public Visibility VisibleBadgeVisibility { get; }
 

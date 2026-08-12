@@ -24,6 +24,52 @@
             <x:Double x:Key="AppBodyFontSize">14</x:Double>
             <x:Double x:Key="AppMediumFontSize">16</x:Double>
             <x:Double x:Key="AppNumericFontSize">17</x:Double>
+            <x:Double x:Key="AppSubtitleFontSize">20</x:Double>
+            <x:Double x:Key="AppTitleFontSize">28</x:Double>
+
+            <!--
+                🔴 Собственные стили текста поверх системных. Переопределить
+                размер у самих CaptionTextBlockStyle и прочих нельзя: они
+                берут его из словаря WinUI, где ссылка разрешается внутри
+                этого же словаря, и запись того же ключа в ресурсы приложения
+                до них не доходит. Именно поэтому масштабировался только текст
+                внутри контролов, а подписи, заголовки и строки таблиц
+                оставались прежними.
+            -->
+            <Style
+                x:Key="AppCaptionTextStyle"
+                BasedOn="{StaticResource CaptionTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{ThemeResource AppCaptionFontSize}" />
+            </Style>
+
+            <Style
+                x:Key="AppBodyTextStyle"
+                BasedOn="{StaticResource BodyTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{ThemeResource AppBodyFontSize}" />
+            </Style>
+
+            <Style
+                x:Key="AppBodyStrongTextStyle"
+                BasedOn="{StaticResource BodyStrongTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{ThemeResource AppBodyFontSize}" />
+            </Style>
+
+            <Style
+                x:Key="AppSubtitleTextStyle"
+                BasedOn="{StaticResource SubtitleTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{ThemeResource AppSubtitleFontSize}" />
+            </Style>
+
+            <Style
+                x:Key="AppTitleTextStyle"
+                BasedOn="{StaticResource TitleTextBlockStyle}"
+                TargetType="TextBlock">
+                <Setter Property="FontSize" Value="{ThemeResource AppTitleFontSize}" />
+            </Style>
 
             <!--
                 Карточка. Только theme-ресурсы: цеховой ПК может стоять в светлой
