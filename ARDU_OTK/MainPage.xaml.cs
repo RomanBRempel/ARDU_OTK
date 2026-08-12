@@ -167,13 +167,24 @@ public sealed record CompassIdentityRow(int Slot, bool? IsExternal, string KindT
 /// </remarks>
 public sealed class WatchedParameterRow
 {
-    public WatchedParameterRow(string name, double expected, double? actual, bool matches)
+    public WatchedParameterRow(
+        string name,
+        double expected,
+        double? actual,
+        bool matches,
+        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown)
     {
         Name = name;
-        ExpectedText = ReferenceParamFile.FormatCanonical(expected);
+
+        // Перечислимые значения — именем, как в Mission Planner. Число при
+        // этом остаётся на виду: по нему параметр вводят руками и сверяют с
+        // документацией.
+        ExpectedText = ParameterEnums.Format(
+            name, expected, vehicle, ReferenceParamFile.FormatCanonical(expected));
 
         ActualText = actual is { } value
-            ? string.Create(CultureInfo.InvariantCulture, $"{value:G9}")
+            ? ParameterEnums.Format(
+                name, value, vehicle, string.Create(CultureInfo.InvariantCulture, $"{value:G9}"))
             : "нет на борту";
 
         MatchVisibility = matches ? Visibility.Visible : Visibility.Collapsed;
@@ -547,6 +558,20 @@ public sealed partial class MainPage : Page
     /// <summary>Сверка скриптов изделия.</summary>
     public ObservableCollection<ScriptDifferenceRow> ScriptDiffs { get; } = new();
 
+    /// <summary>
+    /// Класс аппарата по HEARTBEAT. Нужен расшифровке полётных режимов.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пока борт не отозвался, класс неизвестен, и режимы показываются
+    /// числами. Подставить самолётную таблицу «по умолчанию» нельзя: у коптера
+    /// нулевой режим — Stabilize, у самолёта — Manual, и уверенная подпись не
+    /// того режима хуже честного числа.
+    /// </remarks>
+    private ParameterEnums.VehicleClass VehicleClass =>
+        _services.LiveState is { } state
+            ? ParameterEnums.Classify(state.VehicleType)
+            : ParameterEnums.VehicleClass.Unknown;
+
     private AcceptanceSession? _session;
     private CancellationTokenSource? _acceptanceCts;
     private bool _acceptanceBusy;
@@ -879,7 +904,7 @@ public sealed partial class MainPage : Page
         Differences.Clear();
         foreach (var difference in plan.Differences)
         {
-            Differences.Add(new ParameterDifferenceRow(difference));
+            Differences.Add(new ParameterDifferenceRow(difference, VehicleClass));
         }
 
         CompareStateText.Text = state;
@@ -953,7 +978,7 @@ public sealed partial class MainPage : Page
                 actual = value.Value;
             }
 
-            Differences.Add(new ParameterDifferenceRow(pair.Key, pair.Value, actual));
+            Differences.Add(new ParameterDifferenceRow(pair.Key, pair.Value, actual, VehicleClass));
             added++;
         }
 

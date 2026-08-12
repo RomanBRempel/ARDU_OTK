@@ -43,6 +43,21 @@ public sealed partial class ReferenceEditorPage : Page
     private static readonly CalibrationTolerances DefaultTolerances = new();
 
     private AppServices? _services;
+
+    /// <summary>
+    /// Класс аппарата подключённого борта — для расшифровки полётных режимов.
+    /// </summary>
+    /// <remarks>
+    /// Эталон может редактироваться и без борта на столе; тогда класс
+    /// неизвестен и режимы остаются числами. Догадка здесь опаснее числа:
+    /// подписать коптерный режим самолётным именем — значит утвердить эталон
+    /// по неверно прочитанной таблице.
+    /// </remarks>
+    private ParameterEnums.VehicleClass VehicleClass =>
+        _services?.LiveState is { } state
+            ? ParameterEnums.Classify(state.VehicleType)
+            : ParameterEnums.VehicleClass.Unknown;
+
     private CalibrationReference? _editing;
     private ReferenceParameters? _parameters;
     private bool _saving;
@@ -509,7 +524,7 @@ public sealed partial class ReferenceEditorPage : Page
                 continue;
             }
 
-            RoleRows.Add(new ParameterRoleRow(role, pair.Value));
+            RoleRows.Add(new ParameterRoleRow(role, pair.Value, VehicleClass));
         }
 
         RoleCountVisibleText.Text = visible.ToString(CultureInfo.InvariantCulture);

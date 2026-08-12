@@ -175,8 +175,8 @@ public sealed class ParameterRoleMap
     /// решение записывается в эталон.
     /// </para>
     /// </remarks>
-    public static IReadOnlyList<ParameterRoleRule> DefaultRules { get; } = new[]
-    {
+    public static IReadOnlyList<ParameterRoleRule> DefaultRules { get; } =
+    [
         // --- Идентичность железа: называет датчик именно той платы ----------
         new ParameterRoleRule(
             "COMPASS_DEV_ID*",
@@ -295,19 +295,10 @@ public sealed class ParameterRoleMap
         // Расхождение здесь означает не сбитую настройку, а другое изделие.
         //
         // 🔴 Маски перечислены поимённо, а не как RC?_* и SERVO?_*. Знак «?» —
-        // это любой знак, и такая маска забрала бы каналы с шестого по девятый,
-        // то есть ровно то, чего просили не показывать. Пять — значит пять.
-        new ParameterRoleRule("RC1_*", ParameterControl.ControlledVisible, RcChannelReason),
-        new ParameterRoleRule("RC2_*", ParameterControl.ControlledVisible, RcChannelReason),
-        new ParameterRoleRule("RC3_*", ParameterControl.ControlledVisible, RcChannelReason),
-        new ParameterRoleRule("RC4_*", ParameterControl.ControlledVisible, RcChannelReason),
-        new ParameterRoleRule("RC5_*", ParameterControl.ControlledVisible, RcChannelReason),
-
-        new ParameterRoleRule("SERVO1_*", ParameterControl.ControlledVisible, ServoOutputReason),
-        new ParameterRoleRule("SERVO2_*", ParameterControl.ControlledVisible, ServoOutputReason),
-        new ParameterRoleRule("SERVO3_*", ParameterControl.ControlledVisible, ServoOutputReason),
-        new ParameterRoleRule("SERVO4_*", ParameterControl.ControlledVisible, ServoOutputReason),
-        new ParameterRoleRule("SERVO5_*", ParameterControl.ControlledVisible, ServoOutputReason),
+        // это любой знак, и такая маска взяла бы SERVO_RNG_ENABLE и подобные
+        // имена, где на месте цифры стоит буква.
+        .. ChannelRules("RC", RcChannelCount, RcChannelReason),
+        .. ChannelRules("SERVO", ServoOutputCount, ServoOutputReason),
 
         new ParameterRoleRule(
             "FLTMODE*",
@@ -327,14 +318,50 @@ public sealed class ParameterRoleMap
             "*",
             ParameterControl.ControlledHidden,
             "Настройка изделия: переносится с эталона и сверяется, но у стенда оператору читать её не о чем."),
-    };
+    ];
+
+    /// <summary>
+    /// Сколько каналов приёмника и выходов держать перед глазами оператора.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Шестнадцать, а не «первые пять», как было сначала. Пятёрка была
+    /// догадкой о том, сколько каналов используется на изделии, и догадка
+    /// оказалась неверной: настроенные выходы с шестого по шестнадцатый
+    /// проверялись молча и в глаза оператору не попадали. Граница взята не с
+    /// потолка — это ровно то, что показывает Mission Planner на своих экранах
+    /// Servo Output и Radio Calibration, то есть тот самый набор, по которому
+    /// сборку сверяют глазами. Незанятые выходы стоят в «Disabled» и совпадают
+    /// с эталоном, поэтому лишними строками список не забивают.
+    /// </remarks>
+    private const int ServoOutputCount = 16;
+
+    private const int RcChannelCount = 16;
+
+    /// <summary>
+    /// Строит правила вида <c>RC1_*</c>…<c>RC16_*</c> — по одному на канал.
+    /// </summary>
+    /// <remarks>
+    /// Правила порождаются, а не выписываются: тридцать две почти одинаковые
+    /// строки расходятся при первой же правке одной из них, и расхождение
+    /// проявится как «на одном канале роль другая» без всякой причины.
+    /// </remarks>
+    private static IEnumerable<ParameterRoleRule> ChannelRules(string prefix, int count, string reason)
+    {
+        for (int i = 1; i <= count; i++)
+        {
+            yield return new ParameterRoleRule(
+                string.Create(CultureInfo.InvariantCulture, $"{prefix}{i}_*"),
+                ParameterControl.ControlledVisible,
+                reason);
+        }
+    }
 
     private const string RcChannelReason =
-        "Канал приёмника из первых пяти. Границы, середина и назначение задают управление изделием: "
+        "Канал приёмника. Границы, середина и назначение задают управление изделием: "
       + "расхождение с эталоном означает другую раскладку пульта, а не сбитую настройку.";
 
     private const string ServoOutputReason =
-        "Выход на исполнительный механизм из первых пяти. Назначение и границы задают, что именно к нему "
+        "Выход на исполнительный механизм. Назначение и границы задают, что именно к нему "
       + "подключено: расхождение — это другая сборка, а не другая настройка.";
 
     private const string VolatileReason =

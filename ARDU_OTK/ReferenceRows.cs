@@ -109,7 +109,10 @@ public sealed class ParameterRoleRow
         _ => 2,
     };
 
-    public ParameterRoleRow(ParameterRole role, double value)
+    public ParameterRoleRow(
+        ParameterRole role,
+        double value,
+        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown)
     {
         ArgumentNullException.ThrowIfNull(role);
 
@@ -119,7 +122,10 @@ public sealed class ParameterRoleRow
         SliderIndex = ToSliderIndex(role.Control);
         ModeText = ParameterRoleMap.SectionTitle(role.Control);
 
-        ValueText = ReferenceParamFile.FormatCanonical(value);
+        // Технолог решает роль параметра по смыслу значения, а не по его коду:
+        // «Aileron» отвечает на вопрос «что это», число — нет.
+        ValueText = ParameterEnums.Format(
+            role.Name, value, vehicle, ReferenceParamFile.FormatCanonical(value));
         ReasonText = role.Reason;
 
         // Отступление показывается вместе с обоснованием и подписью: строка

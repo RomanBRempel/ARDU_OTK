@@ -150,19 +150,19 @@
     "semantic_hash": "4e6ec90e5e33a7c29aa6a526553a38a4"
   },
   "ARDU_OTK/App.xaml": {
-    "mtime": 1786424269.5462062,
-    "ast_hash": "35fd414b676e54543b666ca9d9aefc25",
-    "semantic_hash": "35fd414b676e54543b666ca9d9aefc25"
+    "mtime": 1786478495.0628982,
+    "ast_hash": "69c6fa1e5f74c826016f3552a8dbc9ea",
+    "semantic_hash": ""
   },
   "ARDU_OTK/App.xaml.cs": {
-    "mtime": 1786381307.9593606,
-    "ast_hash": "042f6920ee422060bec048df4d70bf6e",
-    "semantic_hash": "042f6920ee422060bec048df4d70bf6e"
+    "mtime": 1786479275.0491517,
+    "ast_hash": "4fa2581db2af34dc6f6eb95d82057704",
+    "semantic_hash": ""
   },
   "ARDU_OTK/CompassCalibrationPage.xaml": {
-    "mtime": 1786437063.7474105,
-    "ast_hash": "ee3e217e07c7233c8bf60e171612f563",
-    "semantic_hash": "ee3e217e07c7233c8bf60e171612f563"
+    "mtime": 1786479266.788651,
+    "ast_hash": "a8e828ea768d8044bb9aac07ad73fab4",
+    "semantic_hash": ""
   },
   "ARDU_OTK/CompassCalibrationPage.xaml.cs": {
     "mtime": 1786437139.3982658,
@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786469544.6540046,
-    "ast_hash": "0c4adba774b1acf333ba8f1caab1414e",
+    "mtime": 1786479266.7868373,
+    "ast_hash": "e7147e8580fb3a2737384a54f8d38c6f",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786469660.2529838,
-    "ast_hash": "29d4d4b02468e3edf0a9637c19334000",
+    "mtime": 1786479280.8744936,
+    "ast_hash": "2420f961f6727a591eb2adca773d9232",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -190,9 +190,9 @@
     "semantic_hash": "c6c99e63c9962c6aaa1668a46a4f8654"
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
-    "mtime": 1786390530.0354772,
-    "ast_hash": "b67085914da78fa5eadbbc679236edc1",
-    "semantic_hash": "b67085914da78fa5eadbbc679236edc1"
+    "mtime": 1786479288.8445597,
+    "ast_hash": "bc4698d44065628ac6e582efd9b5453d",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Program.cs": {
     "mtime": 1786381373.6752894,
@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
-    "mtime": 1786458523.844388,
-    "ast_hash": "734d442d31c457175d90a3d87f5c7414",
+    "mtime": 1786478100.1526194,
+    "ast_hash": "744fc2a9e7f470e7e1f642a63737a406",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceChecks.cs": {
@@ -235,13 +235,13 @@
     "semantic_hash": "40ae6bad27d47cfa1eb8412095d07b8a"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkProtocol.cs": {
-    "mtime": 1786460654.6324444,
-    "ast_hash": "1d0c1a9ae12bee6b363f6f0d48bd59da",
+    "mtime": 1786478079.536506,
+    "ast_hash": "037b2db3f68942518361beabf7c5a3ef",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1786458544.2002416,
-    "ast_hash": "f9667ef58e6448dd800a14312f8375e7",
+    "mtime": 1786478163.44505,
+    "ast_hash": "a0c071536905924d7bc5cdd068a1da7a",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
@@ -275,13 +275,13 @@
     "semantic_hash": "7cccf6cb849f532fadd0f02baca204d5"
   },
   "ARDU_OTK/SettingsPage.xaml": {
-    "mtime": 1786464817.861518,
-    "ast_hash": "2651c1d3e9df34fc2a8310e55bcb4d2b",
+    "mtime": 1786479331.275043,
+    "ast_hash": "191d72bf40b58cc6c02758050091e19c",
     "semantic_hash": ""
   },
   "ARDU_OTK/SettingsPage.xaml.cs": {
-    "mtime": 1786464837.5289347,
-    "ast_hash": "ca171d267c222c3d1458eeafb17af97d",
+    "mtime": 1786479490.0697384,
+    "ast_hash": "0d612b75266fdf4e7614bbd03d467f14",
     "semantic_hash": ""
   },
   ".github/skills/ardupilot-firmware/SKILL.md": {
@@ -400,8 +400,8 @@
     "semantic_hash": "3b8ce30fe33d0e31cab26ce527f57252"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml": {
-    "mtime": 1786449360.7855046,
-    "ast_hash": "4d4f4fe51170dd01993ccf586279a21f",
+    "mtime": 1786479266.789713,
+    "ast_hash": "aff9bbc9d39a8d0df87b3bc380651c39",
     "semantic_hash": ""
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
@@ -457,6 +457,11 @@
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
     "mtime": 1786468593.771339,
     "ast_hash": "0562fb1798346097b4b76be092f5e8a7",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/UiScale.cs": {
+    "mtime": 1786478479.2162783,
+    "ast_hash": "6c8db6b64c01629980198412b3bee9f6",
     "semantic_hash": ""
   }
 }

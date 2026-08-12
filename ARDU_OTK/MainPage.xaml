@@ -145,8 +145,8 @@
                 <Grid Grid.Column="1" ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="92" />
-                        <ColumnDefinition Width="92" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="150" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -169,7 +169,8 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="{x:Bind ExpectedText}"
                         TextAlignment="Right"
-                        TextTrimming="CharacterEllipsis" />
+                        TextTrimming="CharacterEllipsis"
+                        ToolTipService.ToolTip="{x:Bind ExpectedText}" />
 
                     <TextBlock
                         Grid.Column="2"
@@ -179,7 +180,8 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="{x:Bind ActualText}"
                         TextAlignment="Right"
-                        TextTrimming="CharacterEllipsis" />
+                        TextTrimming="CharacterEllipsis"
+                        ToolTipService.ToolTip="{x:Bind ActualText}" />
 
                     <TextBlock
                         Grid.Row="1"

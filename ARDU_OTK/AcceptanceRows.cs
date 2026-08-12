@@ -258,7 +258,11 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
     /// по разным спискам они заставляют сверять их памятью: оператор смотрит на
     /// расхождения, потом ищет глазами, а что там с наблюдаемыми, и обратно.
     /// </remarks>
-    public ParameterDifferenceRow(string name, double expected, double? actual)
+    public ParameterDifferenceRow(
+        string name,
+        double expected,
+        double? actual,
+        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown)
     {
         Name = name;
         Detail = string.Empty;
@@ -267,9 +271,12 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         // 🔴 Без слов «эталон» и «борт» в каждой строке: это заголовки
         // колонок, а не часть значения. Повторённые полсотни раз, они
         // вытесняют собой сами числа, ради которых оператор в список и смотрит.
-        ExpectedText = ReferenceParamFile.FormatCanonical(expected);
+        ExpectedText = ParameterEnums.Format(
+            name, expected, vehicle, ReferenceParamFile.FormatCanonical(expected));
+
         ActualText = actual is { } value
-            ? string.Create(CultureInfo.InvariantCulture, $"{value:G9}")
+            ? ParameterEnums.Format(
+                name, value, vehicle, string.Create(CultureInfo.InvariantCulture, $"{value:G9}"))
             : "нет";
 
         // Помеченные показывать и так все на виду: значок «показываемый» рядом
@@ -281,7 +288,9 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         DiffVisibility = Visibility.Collapsed;
     }
 
-    public ParameterDifferenceRow(ParameterDifference difference)
+    public ParameterDifferenceRow(
+        ParameterDifference difference,
+        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown)
     {
         ArgumentNullException.ThrowIfNull(difference);
 
@@ -294,11 +303,16 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
         DiffVisibility = Visibility.Visible;
 
         ExpectedText = difference.Expected is { } expected
-            ? ReferenceParamFile.FormatCanonical(expected)
+            ? ParameterEnums.Format(
+                difference.Name, expected, vehicle, ReferenceParamFile.FormatCanonical(expected))
             : "—";
 
         ActualText = difference.Actual is { } actual
-            ? string.Create(CultureInfo.InvariantCulture, $"{actual:G9}")
+            ? ParameterEnums.Format(
+                difference.Name,
+                actual,
+                vehicle,
+                string.Create(CultureInfo.InvariantCulture, $"{actual:G9}"))
             : "нет";
 
         VisibleBadgeVisibility = difference.Visible ? Visibility.Visible : Visibility.Collapsed;
