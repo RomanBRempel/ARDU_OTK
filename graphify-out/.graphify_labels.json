@@ -230,21 +230,12 @@
   "228": "MagSample",
   "229": "HeartbeatMessage",
   "230": "ImuMessage",
-  "231": "MavSeverity",
   "232": "ParameterDifferenceRow",
-  "233": "ParameterProgress",
   "234": "MavlinkEncoder",
   "235": "Popup",
-  "236": "RoutedEventArgs",
-  "237": "ScriptDifferenceRow",
   "238": "StatusTextMessage",
   "239": "SysStatusMessage",
   "240": "uint",
   "241": "ushort",
-  "242": "string",
-  "243": "Task",
-  "244": "TextChangedEventArgs",
-  "245": "VehicleLiveState",
-  "246": "Visibility",
-  "247": "WorkstationSettings"
+  "242": "string"
 }

@@ -175,13 +175,13 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786519791.100784,
-    "ast_hash": "901b77f159e7baee2c07654aca3874d8",
+    "mtime": 1786520321.8471818,
+    "ast_hash": "4650748ec3e2c26128bf532c91f26c86",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786519811.8611395,
-    "ast_hash": "fe0afd650d5dcb76e9675f44709a0b4f",
+    "mtime": 1786522356.3073616,
+    "ast_hash": "c89a6e7d144c96f47919884646add554",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
-    "mtime": 1786516410.0831463,
-    "ast_hash": "d6bdc30ceb982df312a0e85d7f7b423c",
+    "mtime": 1786520292.147794,
+    "ast_hash": "aa3abbd96e8b75b2ddc96698e5765693",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkFtp.cs": {

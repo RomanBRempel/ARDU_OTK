@@ -1437,6 +1437,17 @@ public sealed partial class MainPage : Page
                 .ConfigureAwait(true);
 
             AppendLog(readiness.Ready ? MavSeverity.Info : MavSeverity.Error, readiness.Detail);
+
+            // 🔴 Слово прошивки о калибровке важнее нашего вывода по
+            // параметрам. Наш вывод — это признаки калиброванности, а прошивка
+            // вдобавок сравнивает экземпляры между собой: борт с ненулевыми
+            // смещениями и правильным масштабом законно получает отказ
+            // «Accels inconsistent». Зелёный значок рядом с таким отказом —
+            // прямая ложь, поэтому значок повторяет причину дословно.
+            _firmwareImuComplaint = FindComplaint(readiness.Blockers, "accel", "imu", "gyro");
+            _firmwareMagComplaint = FindComplaint(readiness.Blockers, "compass", "mag");
+            RenderCalibrationState();
+
             foreach (var blocker in readiness.Blockers)
             {
                 AppendLog(MavSeverity.Warning, "Мешает взведению: " + blocker);
@@ -2510,6 +2521,29 @@ public sealed partial class MainPage : Page
     /// «нет данных», а не «всё в порядке»: непрочитанное и проверенное — разные
     /// вещи, и зелёная панель без чтения была бы выдуманным результатом.
     /// </remarks>
+    /// <summary>Жалоба прошивки на инерциальные датчики; пусто — жалоб не было.</summary>
+    private string _firmwareImuComplaint = string.Empty;
+
+    /// <summary>Жалоба прошивки на компасы.</summary>
+    private string _firmwareMagComplaint = string.Empty;
+
+    /// <summary>Первая предполётная жалоба, где встретилось любое из слов.</summary>
+    private static string FindComplaint(IEnumerable<string> blockers, params string[] words)
+    {
+        foreach (var blocker in blockers)
+        {
+            foreach (var word in words)
+            {
+                if (blocker.Contains(word, StringComparison.OrdinalIgnoreCase))
+                {
+                    return blocker;
+                }
+            }
+        }
+
+        return string.Empty;
+    }
+
     private void RenderCalibrationState()
     {
         var values = (_session?.LastBoard ?? _previewBoard)?.Values;
@@ -2526,9 +2560,18 @@ public sealed partial class MainPage : Page
             plain = map;
         }
 
-        ApplyCalibrationCard(CalibrationStatus.Imu(plain), ImuCalCard, ImuCalText);
-        ApplyCalibrationCard(CalibrationStatus.Mag(plain), MagCalCard, MagCalText);
+        ApplyCalibrationCard(
+            Override(CalibrationStatus.Imu(plain), _firmwareImuComplaint), ImuCalCard, ImuCalText);
+
+        ApplyCalibrationCard(
+            Override(CalibrationStatus.Mag(plain), _firmwareMagComplaint), MagCalCard, MagCalText);
     }
+
+    /// <summary>Жалоба прошивки перекрывает вывод по параметрам.</summary>
+    private static CalibrationVerdict Override(CalibrationVerdict verdict, string complaint) =>
+        complaint.Length == 0
+            ? verdict
+            : CalibrationVerdict.Needed("прошивка: " + complaint);
 
     /// <summary>
     /// Красит значок калибровки. Подробности уходят в подсказку: на приборах

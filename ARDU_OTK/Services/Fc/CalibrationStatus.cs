@@ -44,6 +44,22 @@ public static class CalibrationStatus
     /// <summary>Префиксы экземпляров: <c>INS_ACC</c>, <c>INS_ACC2</c>, <c>INS_ACC3</c>.</summary>
     private static readonly string[] AccelPrefixes = ["INS_ACC", "INS_ACC2", "INS_ACC3"];
 
+    /// <summary>
+    /// Идентификаторы акселерометров. Ненулевой — датчик на плате есть.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Наличие параметра не означает наличия датчика. Прошивка объявляет
+    /// смещения всех трёх экземпляров независимо от того, сколько их на плате,
+    /// и у несуществующего они законно нулевые. Судить по нулям без проверки
+    /// идентификатора — значит требовать калибровку датчика, которого нет:
+    /// именно так исправная плата с двумя акселерометрами получала красную
+    /// панель, которую нечем погасить.
+    /// </remarks>
+    private static readonly string[] AccelIdNames = ["INS_ACC_ID", "INS_ACC2_ID", "INS_ACC3_ID"];
+
+    /// <summary>Признак «экземпляр применяется прошивкой».</summary>
+    private static readonly string[] AccelUseNames = ["INS_USE", "INS_USE2", "INS_USE3"];
+
     /// <summary>Компасные смещения по слотам.</summary>
     private static readonly string[] CompassOffsetPrefixes = ["COMPASS_OFS", "COMPASS_OFS2", "COMPASS_OFS3"];
 
@@ -72,10 +88,23 @@ public static class CalibrationStatus
         {
             string prefix = AccelPrefixes[i];
 
-            // Экземпляра нет — судить не о чем. Отсутствие смещений при
-            // отсутствии датчика не является отказом.
+            // Датчика нет — судить не о чем. Нулевые смещения отсутствующего
+            // экземпляра не являются отказом.
+            if (!values.TryGetValue(AccelIdNames[i], out double id) || id == 0)
+            {
+                continue;
+            }
+
+            // Выключенный экземпляр прошивка не читает, и его калибровка ни на
+            // что не влияет.
+            if (values.TryGetValue(AccelUseNames[i], out double use) && use == 0)
+            {
+                continue;
+            }
+
             if (!TryVector(values, prefix + "OFFS", out double ox, out double oy, out double oz))
             {
+                problems.Add($"акселерометр {i + 1}: смещений нет в таблице");
                 continue;
             }
 
@@ -101,9 +130,9 @@ public static class CalibrationStatus
             }
         }
 
-        if (checkedInstances == 0)
+        if (checkedInstances == 0 && problems.Count == 0)
         {
-            return CalibrationVerdict.Unknown("в таблице нет ни одного акселерометра");
+            return CalibrationVerdict.Unknown("применяемых акселерометров не найдено");
         }
 
         return problems.Count == 0
