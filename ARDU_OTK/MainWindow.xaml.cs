@@ -58,6 +58,7 @@ public sealed partial class MainWindow : Window
         RootFrame.Navigate(tag switch
         {
             "references" => typeof(ReferencesPage),
+            "osd" => typeof(OsdPage),
             "runs" => typeof(RunsPage),
             _ => typeof(MainPage),
         });

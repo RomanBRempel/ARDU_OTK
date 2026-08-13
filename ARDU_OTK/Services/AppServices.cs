@@ -397,7 +397,7 @@ public sealed class AppServices
         IProgress<string>? progress = null,
         IProgress<ParameterProgress>? detail = null,
         CancellationToken ct = default) => Task.Run(
-        () =>
+        async () =>
         {
             var link = _link;
             if (link is not { IsConnected: true })
@@ -406,9 +406,36 @@ public sealed class AppServices
                     "Нет связи с бортом: снимать эталон не с чего. Подключите образцовое изделие.");
             }
 
-            return link.ReadAllParamsAsync(progress, detail, ct);
+            var set = await link.ReadAllParamsAsync(progress, detail, ct).ConfigureAwait(false);
+
+            LastParameters = new BoardParameterSnapshot(
+                set,
+                ConnectedPort ?? string.Empty,
+                link.FirmwareBanner ?? string.Empty,
+                DateTimeOffset.UtcNow);
+
+            return set;
         },
         ct);
+
+    /// <summary>
+    /// Последняя таблица параметров, снятая с борта на этом запуске.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Хранится вместе с временем и портом, а не одним набором значений.
+    /// Снимок без времени невозможно отличить от свежего чтения, и раскладка,
+    /// показанная по таблице получасовой давности, выглядела бы как состояние
+    /// платы, стоящей на стапеле сейчас, — хотя её могли перепрошить между тем
+    /// и этим.
+    /// </para>
+    /// <para>
+    /// Существует затем, чтобы разделы, которым нужна та же таблица (просмотр
+    /// OSD), не вычитывали тысячу с лишним имён заново: это двадцать секунд
+    /// ожидания на каждый переход между экранами.
+    /// </para>
+    /// </remarks>
+    public BoardParameterSnapshot? LastParameters { get; private set; }
 
     // --- Приёмка -----------------------------------------------------------
 
@@ -819,4 +846,17 @@ public sealed class AppServices
         }
     });
 }
+
+/// <summary>
+/// Снимок таблицы параметров вместе с обстоятельствами снятия.
+/// </summary>
+/// <param name="Set">Прочитанная таблица.</param>
+/// <param name="Port">Порт, с которого читали. Пустая строка — порт неизвестен.</param>
+/// <param name="Firmware">Баннер прошивки борта, если он был получен.</param>
+/// <param name="ReadUtc">Когда снято.</param>
+public sealed record BoardParameterSnapshot(
+    FullParameterSet Set,
+    string Port,
+    string Firmware,
+    DateTimeOffset ReadUtc);
 

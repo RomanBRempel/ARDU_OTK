@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1786462245.49386,
-    "ast_hash": "8bc3d45f56b06d2ea1c59edb10865b13",
+    "mtime": 1786630027.825918,
+    "ast_hash": "320ca3fee22ca000a8daf5584bfdf8d3",
     "semantic_hash": ""
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
@@ -185,13 +185,13 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
-    "mtime": 1786530416.8837647,
-    "ast_hash": "c36bcb1d9fbb8b065d9c8c14d2131619",
+    "mtime": 1786629472.359893,
+    "ast_hash": "76d7a14dabb54de8b6499b162ce76e69",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
-    "mtime": 1786530416.8844779,
-    "ast_hash": "443b1ab45efe7586e4cedbc912468bb6",
+    "mtime": 1786629923.3396966,
+    "ast_hash": "148f419c10f1b5e4db2d60bade8867d0",
     "semantic_hash": ""
   },
   "ARDU_OTK/Program.cs": {
@@ -205,8 +205,8 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786511490.8392518,
-    "ast_hash": "10a8ceed9247703fe3405985a55bcbdc",
+    "mtime": 1786629462.9330778,
+    "ast_hash": "01365a8b061742f4242b25554dfc9258",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
@@ -450,8 +450,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/AcceptanceRows.cs": {
-    "mtime": 1786529987.823546,
-    "ast_hash": "78785f404c744129e7ce852fefc249c1",
+    "mtime": 1786609969.5312805,
+    "ast_hash": "965e3008890ce316f20d8e50e27fda73",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
@@ -507,6 +507,26 @@
   "ARDU_OTK/Services/Store/ReferencePackage.cs": {
     "mtime": 1786530491.1502974,
     "ast_hash": "bfb1451f64b180cb45b521013ee5f793",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/OsdPage.xaml": {
+    "mtime": 1786629303.4206884,
+    "ast_hash": "3b22f3e8f45d149cbd8ae6fa7bd80520",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/OsdPage.xaml.cs": {
+    "mtime": 1786629766.9967527,
+    "ast_hash": "019172fbc9489fd99a98ac92461b97a5",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/OsdRows.cs": {
+    "mtime": 1786629206.3967812,
+    "ast_hash": "8dc681fc12ba2933a663054318527ae7",
+    "semantic_hash": ""
+  },
+  "ARDU_OTK/Services/Fc/OsdLayout.cs": {
+    "mtime": 1786629157.6647413,
+    "ast_hash": "a0f21ef394e177a2d13f60400521dfb7",
     "semantic_hash": ""
   }
 }

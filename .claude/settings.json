@@ -16,7 +16,12 @@
       "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\fix_lines.py\")",
       "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\watched_panel.py\")",
       "PowerShell(python \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c---Data-ARDU-OTK\\\\f3aecfcf-3bf7-486e-882c-bb4a29ccc8ff\\\\scratchpad\\\\single_block.py\")",
-      "PowerShell(cd C:\\\\#Data\\\\ARDU_OTK; git fetch --tags -q 2>&1 | Out-Null; \"--- теги ---\"; git tag --sort=-v:refname | Select-Object -First 5; \"--- версия в csproj ---\"; Select-String -Path ARDU_OTK/ARDU_OTK.csproj -Pattern \"<Version|Velopack\" | ForEach-Object { $_.Line.Trim\\(\\) })"
+      "PowerShell(cd C:\\\\#Data\\\\ARDU_OTK; git fetch --tags -q 2>&1 | Out-Null; \"--- теги ---\"; git tag --sort=-v:refname | Select-Object -First 5; \"--- версия в csproj ---\"; Select-String -Path ARDU_OTK/ARDU_OTK.csproj -Pattern \"<Version|Velopack\" | ForEach-Object { $_.Line.Trim\\(\\) })",
+      "Bash(graphify --help)",
+      "Bash(graphify update *)",
+      "Bash(python tools/graph_freshness.py)",
+      "Bash(graphify explain *)",
+      "Bash(graphify query *)"
     ]
   },
   "hooks": {
