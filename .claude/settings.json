@@ -21,7 +21,10 @@
       "Bash(graphify update *)",
       "Bash(python tools/graph_freshness.py)",
       "Bash(graphify explain *)",
-      "Bash(graphify query *)"
+      "Bash(graphify query *)",
+      "Bash(dotnet list *)",
+      "Bash(dotnet package *)",
+      "Bash(python -c ' *)"
     ]
   },
   "hooks": {

@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1786630027.825918,
-    "ast_hash": "320ca3fee22ca000a8daf5584bfdf8d3",
+    "mtime": 1786632470.2579784,
+    "ast_hash": "db4ff99b9df0eeabcc71649c9d5a932f",
     "semantic_hash": ""
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
@@ -145,9 +145,9 @@
     "semantic_hash": "d6a31c0709d0b40c0d3b7ba10fe34f08"
   },
   "ARDU_OTK/ARDU_OTK.csproj": {
-    "mtime": 1786390645.2307851,
-    "ast_hash": "4e6ec90e5e33a7c29aa6a526553a38a4",
-    "semantic_hash": "4e6ec90e5e33a7c29aa6a526553a38a4"
+    "mtime": 1786631865.0917683,
+    "ast_hash": "d6808e29ed7d6a991888f1d983750027",
+    "semantic_hash": ""
   },
   "ARDU_OTK/App.xaml": {
     "mtime": 1786510946.4667873,
@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786607250.5001695,
-    "ast_hash": "bf00e68f4f87bc1163e40873e90a8719",
+    "mtime": 1786630689.1312525,
+    "ast_hash": "ce718c977fbba69f58e3a4242b634d7f",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {

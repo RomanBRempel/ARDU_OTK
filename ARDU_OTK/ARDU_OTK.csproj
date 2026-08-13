@@ -81,6 +81,14 @@
       установки, потому что Velopack подменяет его при обновлении.
     -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <!--
+      Нативный SQLite подтянут явно и новее, чем требует Microsoft.Data.Sqlite.
+      Транзитивная версия 2.1.11 несёт сборку SQLite с известной уязвимостью
+      высокого уровня (GHSA-2m69-gcr7-jv3q), и NuGet сообщает о ней
+      предупреждением на каждой сборке. Предупреждение, которое нельзя убрать,
+      перестают читать целиком — вместе с теми, что появятся после него.
+    -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="System.IO.Ports" Version="10.0.10" />
     <!-- Описания COM-портов (модель платы, VID/PID) берутся из WMI. -->
     <PackageReference Include="System.Management" Version="10.0.10" />

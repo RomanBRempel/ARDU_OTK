@@ -1258,17 +1258,32 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        // 🔴 Строка о совпавшем скрипте расхождения не несёт (Source == null), и
+        // делать по ней нечего. Отбор стоит здесь, а не держится на том, что
+        // кнопка на такой строке скрыта: скрытая кнопка — свойство разметки, а
+        // не гарантия типа. Пока отбора не было, приёмка получала массив, в
+        // котором null законен по типу, и компилятор говорил об этом
+        // предупреждением, а не отказом.
+        var targets = rows.Where(static r => r.Source is not null).ToArray();
+        if (targets.Length == 0)
+        {
+            return;
+        }
+
         SetAcceptanceBusy(true);
         try
         {
             var progress = new Progress<string>(text => ScriptsStateText.Text = text);
             var outcomes = await _session
-                .ApplyScriptsAsync(rows.Select(static r => r.Source).ToArray(), progress, CancellationToken.None)
+                .ApplyScriptsAsync(
+                    targets.Select(static r => r.Source!).ToArray(),
+                    progress,
+                    CancellationToken.None)
                 .ConfigureAwait(true);
 
             foreach (var (path, failure) in outcomes)
             {
-                var row = rows.FirstOrDefault(r => string.Equals(r.Path, path, StringComparison.Ordinal));
+                var row = targets.FirstOrDefault(r => string.Equals(r.Path, path, StringComparison.Ordinal));
                 row?.ApplyOutcome(failure);
             }
 
