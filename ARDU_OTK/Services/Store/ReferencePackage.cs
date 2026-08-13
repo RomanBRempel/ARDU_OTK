@@ -139,8 +139,8 @@ public sealed class ReferencePackage
     /// Разбирает файл выгрузки и проверяет его пригодность.
     /// </summary>
     /// <exception cref="InvalidDataException">
-    /// Файл не разбирается, старше или новее понимаемого формата, либо набор
-    /// параметров не сходится с записанным хешем.
+    /// Файл не разбирается, версия формата не объявлена либо новее понимаемой,
+    /// хеш набора или скрипта отсутствует, либо содержимое с ним не сходится.
     /// </exception>
     public static ReferencePackage FromJson(string json)
     {
@@ -169,6 +169,18 @@ public sealed class ReferencePackage
               + "новые правила контроля, и эталон без них окажется слабее исходного.");
         }
 
+        // 🔴 Отсутствующая версия — это не «версия 1». Поле по умолчанию равно
+        // CurrentVersion, поэтому файл вообще без поля выглядел бы своим;
+        // ноль и отрицательное значение означают, что файл собран не этой
+        // программой либо правился руками, и разбирать его по нашим правилам
+        // нельзя — соответствие полей ничем не подтверждено.
+        if (package.Version < 1)
+        {
+            throw new InvalidDataException(
+                $"В файле эталона не указана версия формата (записано {package.Version}). "
+              + "Файл собран не этой программой либо правился вручную: разбирать его по нашим правилам нельзя.");
+        }
+
         if (string.IsNullOrWhiteSpace(package.Name))
         {
             throw new InvalidDataException("В файле эталона нет имени.");
@@ -186,9 +198,21 @@ public sealed class ReferencePackage
             package.SourceName,
             ReferenceParameters.SplitLines(package.ParamText));
 
+        // 🔴 Отсутствие хеша — отказ, а не разрешение принять без проверки.
+        // Пока пустое поле пропускало сверку, защита снималась ровно тем
+        // действием, от которого защищает: достаточно было стереть строку
+        // хеша, и повреждённый или подправленный набор входил в реестр молча.
+        // Выгрузка хеш пишет всегда, поэтому законного файла без него не
+        // бывает.
+        if (package.ParamHash.Length == 0)
+        {
+            throw new InvalidDataException(
+                "В файле эталона нет хеша набора параметров: проверить, что набор дошёл неповреждённым, "
+              + "нечем. Выгрузка всегда его записывает — значит, файл правился вручную.");
+        }
+
         var actualHash = ReferenceParamFile.ComputeHash(parsed);
-        if (package.ParamHash.Length > 0
-            && !string.Equals(actualHash, package.ParamHash, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(actualHash, package.ParamHash, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
                 "Набор параметров не сходится с хешем в файле: "
@@ -198,10 +222,17 @@ public sealed class ReferencePackage
 
         foreach (var script in package.Scripts)
         {
+            if (script.Hash.Length == 0)
+            {
+                throw new InvalidDataException(
+                    $"У скрипта «{script.Path}» в файле нет хеша: проверить его содержимое нечем. "
+                  + "Скрипт исполняется на изделии наравне с остальными, и принимать его без проверки нельзя.");
+            }
+
             var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(script.Text);
             var hash = ReferenceScript.ComputeHash(bytes);
 
-            if (script.Hash.Length > 0 && !string.Equals(hash, script.Hash, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(hash, script.Hash, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidDataException(
                     $"Скрипт «{script.Path}» не сходится с хешем в файле. Файл повреждён или правился вручную.");

@@ -24,7 +24,8 @@
       "Bash(graphify query *)",
       "Bash(dotnet list *)",
       "Bash(dotnet package *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "PowerShell(graphify query \"�⥭�� ��ࠬ��஢ � ����, ������ ������ � ����, ����㧪� OSD �᪫����\")"
     ]
   },
   "hooks": {

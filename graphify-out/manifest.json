@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1786632470.2579784,
-    "ast_hash": "db4ff99b9df0eeabcc71649c9d5a932f",
+    "mtime": 1786632786.6787353,
+    "ast_hash": "50ca6f5573241ff8bbcdb5281b7f87df",
     "semantic_hash": ""
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
@@ -505,8 +505,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Store/ReferencePackage.cs": {
-    "mtime": 1786530491.1502974,
-    "ast_hash": "bfb1451f64b180cb45b521013ee5f793",
+    "mtime": 1786632862.3490336,
+    "ast_hash": "c850b86dcb36a8275f0787a8583a166e",
     "semantic_hash": ""
   },
   "ARDU_OTK/OsdPage.xaml": {

@@ -108,7 +108,10 @@
   "106": "Path",
   "107": "CompassList",
   "108": "LinkRing",
+  "109": ".OnWorkstationChanged",
   "110": "IEnumerable",
+  "111": "MotorCompToggle",
+  "112": "Action",
   "121": "ExpectedCompassSlotRow",
   "126": "double",
   "128": "ReferenceParameters",
@@ -125,6 +128,5 @@
   "213": "IReadOnlyList",
   "217": "Dictionary",
   "222": "byte",
-  "239": "SysStatusMessage",
   "242": "string"
 }

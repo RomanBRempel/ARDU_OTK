@@ -5964,8 +5964,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_mainwindow_xaml_ardu_otk_mainwindow",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": "mainwindow"
     },
     {
@@ -6096,8 +6096,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "ardu_otk_mainwindow_xaml",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": "mainwindow.xaml.cs"
     },
     {
@@ -6113,8 +6113,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_mainwindow_xaml_ardu_otk_mainwindow_rebuildcurrentpage",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": ".rebuildcurrentpage()"
     },
     {
@@ -6130,8 +6130,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_mainwindow_xaml_ardu_otk_mainwindow_onnavselectionchanged",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": ".onnavselectionchanged()"
     },
     {
@@ -6141,8 +6141,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "navigationview",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": "navigationview"
     },
     {
@@ -6152,8 +6152,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "navigationviewselectionchangedeventargs",
-      "community": 94,
-      "community_name": "PortPopup",
+      "community": 103,
+      "community_name": "AppServices",
       "norm_label": "navigationviewselectionchangedeventargs"
     },
     {
@@ -6202,8 +6202,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_readboardbutton",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 15,
+      "community_name": "UpdateService",
       "norm_label": "readboardbutton"
     },
     {
@@ -6213,8 +6213,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_xaml_button",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 15,
+      "community_name": "UpdateService",
       "norm_label": "button"
     },
     {
@@ -6230,8 +6230,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_onreadboardclick",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".onreadboardclick()"
     },
     {
@@ -6285,8 +6285,8 @@
       "source_location": "L227",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_referencebox",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "referencebox"
     },
     {
@@ -6296,8 +6296,8 @@
       "source_location": "L227",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_xaml_combobox",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "combobox"
     },
     {
@@ -6313,8 +6313,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_onreferencechanged",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".onreferencechanged()"
     },
     {
@@ -6423,8 +6423,8 @@
       "source_location": "L296",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_screenpanel",
-      "community": 15,
-      "community_name": "UpdateService",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": "screenpanel"
     },
     {
@@ -6434,8 +6434,8 @@
       "source_location": "L296",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_xaml_grid",
-      "community": 15,
-      "community_name": "UpdateService",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": "grid"
     },
     {
@@ -6489,8 +6489,8 @@
       "source_location": "L426",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_mockhost",
-      "community": 15,
-      "community_name": "UpdateService",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": "mockhost"
     },
     {
@@ -6506,8 +6506,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_onmocksizechanged",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": ".onmocksizechanged()"
     },
     {
@@ -6639,8 +6639,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_loadasync",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".loadasync()"
     },
     {
@@ -6650,8 +6650,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_cs_task",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "task"
     },
     {
@@ -6667,8 +6667,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_loadreferencesasync",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".loadreferencesasync()"
     },
     {
@@ -6695,8 +6695,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_cs_selectionchangedeventargs",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "selectionchangedeventargs"
     },
     {
@@ -6706,8 +6706,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_cs_routedeventargs",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "routedeventargs"
     },
     {
@@ -6740,8 +6740,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_rebuild",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".rebuild()"
     },
     {
@@ -6757,8 +6757,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_onscreenchanged",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": ".onscreenchanged()"
     },
     {
@@ -6768,8 +6768,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "selectorbar",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": "selectorbar"
     },
     {
@@ -6779,8 +6779,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "selectorbarselectionchangedeventargs",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": "selectorbarselectionchangedeventargs"
     },
     {
@@ -6796,8 +6796,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_showselected",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": ".showselected()"
     },
     {
@@ -6813,8 +6813,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_describescreen",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": ".describescreen()"
     },
     {
@@ -6830,8 +6830,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_rendermock",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": ".rendermock()"
     },
     {
@@ -6914,8 +6914,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_updatemocknote",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": ".updatemocknote()"
     },
     {
@@ -6925,8 +6925,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_cs_sizechangedeventargs",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": "sizechangedeventargs"
     },
     {
@@ -6942,8 +6942,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_updatemockheight",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 109,
+      "community_name": ".OnWorkstationChanged",
       "norm_label": ".updatemockheight()"
     },
     {
@@ -6959,8 +6959,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_ardu_otk_osdpage_report",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": ".report()"
     },
     {
@@ -6970,8 +6970,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_osdpage_xaml_cs_infobarseverity",
-      "community": 103,
-      "community_name": "AppServices",
+      "community": 26,
+      "community_name": ".Log",
       "norm_label": "infobarseverity"
     },
     {
@@ -9561,8 +9561,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_runspage_xaml_ardu_otk_runrow",
-      "community": 64,
-      "community_name": "Establishing the Creative Foundation",
+      "community": 112,
+      "community_name": "Action",
       "norm_label": "runrow"
     },
     {
@@ -9572,8 +9572,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_runspage_xaml_cs_string",
-      "community": 64,
-      "community_name": "Establishing the Creative Foundation",
+      "community": 112,
+      "community_name": "Action",
       "norm_label": "string"
     },
     {
@@ -9583,8 +9583,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_runspage_xaml_cs_brush",
-      "community": 64,
-      "community_name": "Establishing the Creative Foundation",
+      "community": 112,
+      "community_name": "Action",
       "norm_label": "brush"
     },
     {
@@ -9600,8 +9600,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_runspage_xaml_ardu_otk_runrow_brush",
-      "community": 64,
-      "community_name": "Establishing the Creative Foundation",
+      "community": 112,
+      "community_name": "Action",
       "norm_label": ".brush()"
     },
     {
@@ -10340,8 +10340,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_paramvalue",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "paramvalue"
     },
     {
@@ -10357,8 +10357,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_paramvalue_asint",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": ".asint()"
     },
     {
@@ -10374,8 +10374,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_statustextevent",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "statustextevent"
     },
     {
@@ -10650,8 +10650,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_cs_iprogress",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "iprogress"
     },
     {
@@ -10803,8 +10803,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_ivehiclefiletransfer",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "ivehiclefiletransfer"
     },
     {
@@ -10820,8 +10820,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_ivehiclefiletransfer_listdirectoryasync",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".listdirectoryasync()"
     },
     {
@@ -10831,8 +10831,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_cs_ireadonlylist",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "ireadonlylist"
     },
     {
@@ -10848,8 +10848,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_ivehiclefiletransfer_readfileasync",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".readfileasync()"
     },
     {
@@ -10865,8 +10865,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_ardu_otk_services_fc_ivehiclefiletransfer_writefileasync",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".writefileasync()"
     },
     {
@@ -10876,8 +10876,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_abstractions_cs_readonlymemory",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "readonlymemory"
     },
     {
@@ -11919,8 +11919,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_readslotasync",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".readslotasync()"
     },
     {
@@ -11987,8 +11987,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_onstatustext",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": ".onstatustext()"
     },
     {
@@ -12150,8 +12150,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_calibrationcontracts_ardu_otk_services_fc_mavbustype",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "mavbustype"
     },
     {
@@ -12167,8 +12167,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_calibrationcontracts_ardu_otk_services_fc_compassdeviceid",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassdeviceid"
     },
     {
@@ -12184,8 +12184,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_calibrationcontracts_ardu_otk_services_fc_compassslot",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassslot"
     },
     {
@@ -12861,8 +12861,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassidentity.cs"
     },
     {
@@ -12878,8 +12878,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_magaxis",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": "magaxis"
     },
     {
@@ -12895,8 +12895,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_externalkind",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "externalkind"
     },
     {
@@ -12912,8 +12912,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_expectedcompassslot",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "expectedcompassslot"
     },
     {
@@ -12929,8 +12929,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassfieldcomparison",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassfieldcomparison"
     },
     {
@@ -12946,8 +12946,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassslotcomparison",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassslotcomparison"
     },
     {
@@ -12957,8 +12957,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_cs_ireadonlylist",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "ireadonlylist"
     },
     {
@@ -12974,8 +12974,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compasstopologyverdict",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compasstopologyverdict"
     },
     {
@@ -12991,8 +12991,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "compassidentity"
     },
     {
@@ -13002,8 +13002,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_cs_string",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "string"
     },
     {
@@ -13013,8 +13013,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_cs_int",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "int"
     },
     {
@@ -13024,8 +13024,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_cs_hashset",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": "hashset"
     },
     {
@@ -13041,8 +13041,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_usename",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".usename()"
     },
     {
@@ -13058,8 +13058,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_externalname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".externalname()"
     },
     {
@@ -13075,8 +13075,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_orientname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".orientname()"
     },
     {
@@ -13092,8 +13092,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_devidname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".devidname()"
     },
     {
@@ -13109,8 +13109,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_scalename",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".scalename()"
     },
     {
@@ -13126,8 +13126,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_priorityidname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".priorityidname()"
     },
     {
@@ -13143,8 +13143,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_offsetname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".offsetname()"
     },
     {
@@ -13160,8 +13160,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_diagonalname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".diagonalname()"
     },
     {
@@ -13177,8 +13177,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_offdiagonalname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".offdiagonalname()"
     },
     {
@@ -13194,8 +13194,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_motorcompname",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".motorcompname()"
     },
     {
@@ -13211,8 +13211,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_isneverwrite",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".isneverwrite()"
     },
     {
@@ -13228,8 +13228,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_transferablecalibrationnames",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".transferablecalibrationnames()"
     },
     {
@@ -13245,8 +13245,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_corecalibrationnames",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".corecalibrationnames()"
     },
     {
@@ -13262,8 +13262,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_bustypename",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".bustypename()"
     },
     {
@@ -13279,8 +13279,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_trygetsensorname",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".trygetsensorname()"
     },
     {
@@ -13296,8 +13296,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_describesensor",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".describesensor()"
     },
     {
@@ -13313,8 +13313,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_describe",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".describe()"
     },
     {
@@ -13330,8 +13330,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_externalkindtext",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".externalkindtext()"
     },
     {
@@ -13347,8 +13347,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_classify",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".classify()"
     },
     {
@@ -13364,8 +13364,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_isexternal",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".isexternal()"
     },
     {
@@ -13381,8 +13381,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_issamesensor",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".issamesensor()"
     },
     {
@@ -13398,8 +13398,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_readexpectedslots",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".readexpectedslots()"
     },
     {
@@ -13415,8 +13415,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_todeviceid",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".todeviceid()"
     },
     {
@@ -13432,8 +13432,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_comparetoreference",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".comparetoreference()"
     },
     {
@@ -13449,8 +13449,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_compare",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".compare()"
     },
     {
@@ -13466,8 +13466,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_buildslotcomparison",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".buildslotcomparison()"
     },
     {
@@ -13483,8 +13483,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_formataddress",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".formataddress()"
     },
     {
@@ -13500,8 +13500,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_index",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".index()"
     },
     {
@@ -13517,8 +13517,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassidentity_ardu_otk_services_fc_compassidentity_axisindex",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".axisindex()"
     },
     {
@@ -13528,8 +13528,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "compassparametersnapshot.cs"
     },
     {
@@ -13545,8 +13545,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compasssnapshot",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "compasssnapshot"
     },
     {
@@ -13562,8 +13562,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compassparametersnapshot",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "compassparametersnapshot"
     },
     {
@@ -13579,8 +13579,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compassparametersnapshot_readasync",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": ".readasync()"
     },
     {
@@ -13590,8 +13590,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_iprogress",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "iprogress"
     },
     {
@@ -13601,8 +13601,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_cancellationtoken",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "cancellationtoken"
     },
     {
@@ -13612,8 +13612,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_task",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "task"
     },
     {
@@ -13629,8 +13629,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compassparametersnapshot_snapshotnames",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".snapshotnames()"
     },
     {
@@ -13640,8 +13640,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_ienumerable",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": "ienumerable"
     },
     {
@@ -13657,8 +13657,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compassparametersnapshot_tryreadasync",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": ".tryreadasync()"
     },
     {
@@ -13668,8 +13668,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_dictionary",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "dictionary"
     },
     {
@@ -13679,8 +13679,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_cs_list",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": "list"
     },
     {
@@ -13696,8 +13696,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_compassparametersnapshot_ardu_otk_services_fc_compassparametersnapshot_safebanner",
-      "community": 84,
-      "community_name": "UpdateService.IsBusy update interlock",
+      "community": 56,
+      "community_name": "SerialPortCatalog",
       "norm_label": ".safebanner()"
     },
     {
@@ -14292,8 +14292,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "span",
-      "community": 7,
-      "community_name": "MavlinkProtocol.cs",
+      "community": 81,
+      "community_name": "AppPaths",
       "norm_label": "span"
     },
     {
@@ -14309,8 +14309,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_mavlinkprotocol_ardu_otk_services_fc_mavlink_mavlinkframe",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": "mavlinkframe"
     },
     {
@@ -15662,8 +15662,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_dispatch",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".dispatch()"
     },
     {
@@ -15679,8 +15679,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handleheartbeat",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handleheartbeat()"
     },
     {
@@ -15696,8 +15696,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handlesysstatus",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handlesysstatus()"
     },
     {
@@ -15713,8 +15713,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handleattitude",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handleattitude()"
     },
     {
@@ -15747,8 +15747,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handlegps",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handlegps()"
     },
     {
@@ -15764,8 +15764,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handlegps2",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handlegps2()"
     },
     {
@@ -15781,8 +15781,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handleautopilotversion",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handleautopilotversion()"
     },
     {
@@ -15798,8 +15798,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_handlevfrhud",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".handlevfrhud()"
     },
     {
@@ -16075,8 +16075,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_cs_func",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": "func"
     },
     {
@@ -16086,8 +16086,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "framesubscription",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": "framesubscription"
     },
     {
@@ -16103,8 +16103,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_unsubscribe",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": ".unsubscribe()"
     },
     {
@@ -16120,8 +16120,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_serialvehiclelink_offertosubscriptions",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".offertosubscriptions()"
     },
     {
@@ -16432,8 +16432,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_framesubscription",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": "framesubscription"
     },
     {
@@ -16443,8 +16443,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "idisposable",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": "idisposable"
     },
     {
@@ -16454,8 +16454,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "channel",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": "channel"
     },
     {
@@ -16471,8 +16471,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_framesubscription_offer",
-      "community": 0,
-      "community_name": "SerialVehicleLink",
+      "community": 66,
+      "community_name": ".Dispatch",
       "norm_label": ".offer()"
     },
     {
@@ -16488,8 +16488,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_framesubscription_complete",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": ".complete()"
     },
     {
@@ -16522,8 +16522,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_mavlink_serialvehiclelink_ardu_otk_services_fc_mavlink_framesubscription_dispose",
-      "community": 239,
-      "community_name": "SysStatusMessage",
+      "community": 97,
+      "community_name": "NumberBox",
       "norm_label": ".dispose()"
     },
     {
@@ -16914,8 +16914,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_osdlayout_ardu_otk_services_fc_osdscreen",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": "osdscreen"
     },
     {
@@ -16925,8 +16925,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_osdlayout_cs_ireadonlylist",
-      "community": 26,
-      "community_name": ".Log",
+      "community": 46,
+      "community_name": "UpdateService.IsBusy update interlock",
       "norm_label": "ireadonlylist"
     },
     {
@@ -18147,8 +18147,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_referenceparamfile_ardu_otk_services_fc_referenceparamfile_detectslots",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".detectslots()"
     },
     {
@@ -18164,8 +18164,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_referenceparamfile_ardu_otk_services_fc_referenceparamfile_findmissingtransferable",
-      "community": 24,
-      "community_name": "Button",
+      "community": 4,
+      "community_name": "CompassIdentity",
       "norm_label": ".findmissingtransferable()"
     },
     {
@@ -18876,8 +18876,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_fc_serialcompasscalibrationjob_ardu_otk_services_fc_runcontext",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "runcontext"
     },
     {
@@ -18887,8 +18887,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_serialcompasscalibrationjob_cs_datetimeoffset",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "datetimeoffset"
     },
     {
@@ -18898,8 +18898,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_serialcompasscalibrationjob_cs_list",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "list"
     },
     {
@@ -18909,8 +18909,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "pendingwrite",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "pendingwrite"
     },
     {
@@ -18920,8 +18920,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "concurrentqueue",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "concurrentqueue"
     },
     {
@@ -18931,8 +18931,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_fc_serialcompasscalibrationjob_cs_dictionary",
-      "community": 56,
-      "community_name": "SerialPortCatalog",
+      "community": 90,
+      "community_name": "RoutedEventArgs",
       "norm_label": "dictionary"
     },
     {
@@ -19603,8 +19603,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_calibrationreference_ardu_otk_services_store_calibrationreference_readexpectedslots",
-      "community": 4,
-      "community_name": "CompassIdentity",
+      "community": 0,
+      "community_name": "SerialVehicleLink",
       "norm_label": ".readexpectedslots()"
     },
     {
@@ -19974,8 +19974,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromreference",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".fromreference()"
     },
     {
@@ -19985,8 +19985,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencepackage_cs_ireadonlylist",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": "ireadonlylist"
     },
     {
@@ -20027,7 +20027,7 @@
       "label": ".ToDraft()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L216",
+      "source_location": "L247",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Store",
         "scope_chain": [
@@ -20044,7 +20044,7 @@
       "label": ".Describe()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L263",
+      "source_location": "L294",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Store",
         "scope_chain": [
@@ -20081,8 +20081,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": "referencescript"
     },
     {
@@ -20092,8 +20092,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_string",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": "string"
     },
     {
@@ -20103,8 +20103,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_char",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": "char"
     },
     {
@@ -20114,8 +20114,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_int",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "int"
     },
     {
@@ -20131,8 +20131,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_isconfigfile",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".isconfigfile()"
     },
     {
@@ -20148,8 +20148,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_defaultboardpath",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".defaultboardpath()"
     },
     {
@@ -20165,8 +20165,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_trynormalizeboardpath",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".trynormalizeboardpath()"
     },
     {
@@ -20182,8 +20182,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_tobytes",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".tobytes()"
     },
     {
@@ -20199,8 +20199,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_computehash",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".computehash()"
     },
     {
@@ -20210,8 +20210,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_readonlyspan",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": "readonlyspan"
     },
     {
@@ -20227,8 +20227,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_frombytes",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".frombytes()"
     },
     {
@@ -20244,8 +20244,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_load",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".load()"
     },
     {
@@ -20261,8 +20261,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_referencescript_normalizepath",
-      "community": 66,
-      "community_name": ".Dispatch",
+      "community": 51,
+      "community_name": "Window",
       "norm_label": ".normalizepath()"
     },
     {
@@ -20312,8 +20312,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_scripttransfer",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "scripttransfer"
     },
     {
@@ -20329,8 +20329,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_scripttransfer_readallasync",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".readallasync()"
     },
     {
@@ -20340,8 +20340,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_iprogress",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "iprogress"
     },
     {
@@ -20351,8 +20351,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_list",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "list"
     },
     {
@@ -20362,8 +20362,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_cancellationtoken",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "cancellationtoken"
     },
     {
@@ -20373,8 +20373,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_task",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "task"
     },
     {
@@ -20384,8 +20384,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_cs_ireadonlylist",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": "ireadonlylist"
     },
     {
@@ -20401,8 +20401,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_scripttransfer_readdirectoryasync",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".readdirectoryasync()"
     },
     {
@@ -20418,8 +20418,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_store_referencescript_ardu_otk_services_store_scripttransfer_combine",
-      "community": 51,
-      "community_name": "Window",
+      "community": 24,
+      "community_name": "Button",
       "norm_label": ".combine()"
     },
     {
@@ -21677,8 +21677,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_services_updateservice_ardu_otk_services_updateservice_applyandrestart",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": ".applyandrestart()"
     },
     {
@@ -22049,8 +22049,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "ardu_otk_settingspage_updateactionbutton",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": "updateactionbutton"
     },
     {
@@ -22060,8 +22060,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "ardu_otk_settingspage_xaml_xaml_button",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": "button"
     },
     {
@@ -22077,8 +22077,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_settingspage_xaml_ardu_otk_settingspage_onupdateactionclick",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": ".onupdateactionclick()"
     },
     {
@@ -22149,8 +22149,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "ardu_otk_settingspage_xaml_cs_routedeventargs",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": "routedeventargs"
     },
     {
@@ -22362,8 +22362,8 @@
       },
       "_origin": "ast",
       "id": "ardu_otk_settingspage_xaml_ardu_otk_settingspage_onunloaded",
-      "community": 98,
-      "community_name": "InfoBar",
+      "community": 111,
+      "community_name": "MotorCompToggle",
       "norm_label": ".onunloaded()"
     },
     {
@@ -22882,9 +22882,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "hold the update interlock while the bench is working",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_skill_update_interlock_rule"
     },
     {
@@ -23862,9 +23862,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "updateservice.isbusy update interlock",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_references_dotnet_mavlink_and_winui_integration_update_busy_interlock"
     },
     {
@@ -23876,9 +23876,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "isbenchbusy predicate (fail-safe to busy)",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_references_dotnet_mavlink_and_winui_integration_isbenchbusy"
     },
     {
@@ -23932,9 +23932,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "sitl testing scope and its limits",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_references_dotnet_mavlink_and_winui_integration_sitl_testing"
     },
     {
@@ -24618,9 +24618,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "write as you go; never commit a run only at the end",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_references_reference_profiles_and_storage_write_as_you_go"
     },
     {
@@ -24632,9 +24632,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 90,
+      "community": 98,
       "norm_label": "interrupted-run sweep to verdict='aborted'",
-      "community_name": "RoutedEventArgs",
+      "community_name": "InfoBar",
       "id": "_github_skills_ardupilot_firmware_references_reference_profiles_and_storage_interrupted_run_recovery"
     },
     {
@@ -24800,9 +24800,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 79,
+      "community": 84,
       "norm_label": "premium-frontend-ui skill",
-      "community_name": "Performance, Diagnostics, and Responsiveness",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_premium_frontend_ui"
     },
     {
@@ -24814,9 +24814,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 79,
+      "community": 84,
       "norm_label": "immersive digital environments",
-      "community_name": "Performance, Diagnostics, and Responsiveness",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_immersive_digital_environments"
     },
     {
@@ -24898,9 +24898,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 79,
+      "community": 84,
       "norm_label": "entry sequence (preloading & initialization)",
-      "community_name": "Performance, Diagnostics, and Responsiveness",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_entry_sequence"
     },
     {
@@ -24912,9 +24912,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 87,
+      "community": 84,
       "norm_label": "hero architecture",
-      "community_name": "NumberBox",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_hero_architecture"
     },
     {
@@ -24926,9 +24926,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 79,
+      "community": 84,
       "norm_label": "fluid & contextual navigation",
-      "community_name": "Performance, Diagnostics, and Responsiveness",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_fluid_contextual_navigation"
     },
     {
@@ -25010,9 +25010,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 39,
+      "community": 94,
       "norm_label": "typography & visual texture",
-      "community_name": "WinUI WinGet DSC Bootstrap Configuration",
+      "community_name": "PortPopup",
       "id": "_github_skills_premium_frontend_ui_skill_typography_and_visual_texture"
     },
     {
@@ -25024,9 +25024,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 39,
+      "community": 94,
       "norm_label": "atmospheric filters (noise, grain, glass)",
-      "community_name": "WinUI WinGet DSC Bootstrap Configuration",
+      "community_name": "PortPopup",
       "id": "_github_skills_premium_frontend_ui_skill_atmospheric_filters"
     },
     {
@@ -25164,9 +25164,9 @@
       "captured_at": null,
       "author": "Utkarsh Patrikar",
       "contributor": null,
-      "community": 87,
+      "community": 84,
       "norm_label": "splittype typography chunking",
-      "community_name": "NumberBox",
+      "community_name": "UpdateService.IsBusy update interlock",
       "id": "_github_skills_premium_frontend_ui_skill_splittype"
     },
     {
@@ -25304,9 +25304,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 97,
+      "community": 79,
       "norm_label": "native winui / fluent first (no bespoke chrome)",
-      "community_name": "NumberBox",
+      "community_name": "Performance, Diagnostics, and Responsiveness",
       "id": "_github_skills_winui_app_skill_native_winui_first"
     },
     {
@@ -25318,9 +25318,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 97,
+      "community": 79,
       "norm_label": "prefer native commandbar for grouped commands",
-      "community_name": "NumberBox",
+      "community_name": "Performance, Diagnostics, and Responsiveness",
       "id": "_github_skills_winui_app_skill_commandbar_preference"
     },
     {
@@ -25332,9 +25332,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 97,
+      "community": 94,
       "norm_label": "communitytoolkit only when built-ins fall short",
-      "community_name": "NumberBox",
+      "community_name": "PortPopup",
       "id": "_github_skills_winui_app_skill_communitytoolkit_last_resort"
     },
     {
@@ -25346,9 +25346,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 39,
+      "community": 94,
       "norm_label": "light and dark mode by default (theme-aware resources)",
-      "community_name": "WinUI WinGet DSC Bootstrap Configuration",
+      "community_name": "PortPopup",
       "id": "_github_skills_winui_app_skill_light_and_dark_theming"
     },
     {
@@ -25374,9 +25374,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 97,
+      "community": 79,
       "norm_label": "avoid double-card border wrappers",
-      "community_name": "NumberBox",
+      "community_name": "Performance, Diagnostics, and Responsiveness",
       "id": "_github_skills_winui_app_skill_no_double_card_borders"
     },
     {
@@ -25402,9 +25402,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 39,
+      "community": 94,
       "norm_label": "common routes reference table",
-      "community_name": "WinUI WinGet DSC Bootstrap Configuration",
+      "community_name": "PortPopup",
       "id": "_github_skills_winui_app_skill_common_routes_table"
     },
     {
@@ -67553,7 +67553,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L239",
+      "source_location": "L270",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_todraft",
@@ -67697,7 +67697,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L241",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_todraft",
@@ -68587,7 +68587,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L185",
+      "source_location": "L197",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromjson",
@@ -68746,7 +68746,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L189",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromjson",
@@ -71736,7 +71736,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L216",
+      "source_location": "L247",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -71966,7 +71966,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L220",
+      "source_location": "L251",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_todraft",
@@ -72038,7 +72038,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L187",
+      "source_location": "L199",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromjson",
@@ -72050,7 +72050,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L195",
+      "source_location": "L219",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromjson",
@@ -72154,7 +72154,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L263",
+      "source_location": "L294",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage",
@@ -72195,7 +72195,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L216",
+      "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage",
@@ -72324,7 +72324,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L202",
+      "source_location": "L233",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_fromjson",
@@ -72336,7 +72336,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Store/ReferencePackage.cs",
-      "source_location": "L255",
+      "source_location": "L286",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_store_referencepackage_ardu_otk_services_store_referencepackage_todraft",
@@ -84090,5 +84090,5 @@
       "weight": 1.0
     }
   ],
-  "built_at_commit": "2764a9164674585a9e2623081e12fcdc20168166"
+  "built_at_commit": "50f8e78ab0017756cf94538d8eeb4597be3707e1"
 }
