@@ -950,7 +950,7 @@
       "label": ".CheckArmReadinessAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -967,7 +967,7 @@
       "label": ".WaitForInitialisationAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -995,7 +995,7 @@
       "label": ".ReadSlotAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L901",
+      "source_location": "L866",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1023,7 +1023,7 @@
       "label": ".ReadOrZeroAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L924",
+      "source_location": "L889",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1040,7 +1040,7 @@
       "label": ".ReadPriorityOrderAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L937",
+      "source_location": "L902",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1057,7 +1057,7 @@
       "label": ".DescribeRecent()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L950",
+      "source_location": "L915",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1074,7 +1074,7 @@
       "label": ".OnStatusText()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L969",
+      "source_location": "L934",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1091,7 +1091,7 @@
       "label": ".EnsureConnected()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L977",
+      "source_location": "L942",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -1108,7 +1108,7 @@
       "label": ".DisposeAsync()",
       "file_type": "code",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L985",
+      "source_location": "L950",
       "metadata": {
         "namespace": "ARDU_OTK.Services.Fc",
         "scope_chain": [
@@ -29705,7 +29705,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L785",
+      "source_location": "L750",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_compasscalibrationasync",
@@ -29847,7 +29847,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "weight": 1.0,
       "context": "generic_arg",
       "metadata": {
@@ -29884,7 +29884,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -29939,7 +29939,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L950",
+      "source_location": "L915",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -29950,7 +29950,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L985",
+      "source_location": "L950",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -29961,7 +29961,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L977",
+      "source_location": "L942",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -29994,7 +29994,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L969",
+      "source_location": "L934",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -30005,7 +30005,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L924",
+      "source_location": "L889",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -30027,7 +30027,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L937",
+      "source_location": "L902",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -30038,7 +30038,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L901",
+      "source_location": "L866",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -30071,7 +30071,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession",
@@ -30201,7 +30201,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L855",
+      "source_location": "L820",
       "weight": 1.0,
       "context": "field",
       "metadata": {
@@ -30592,7 +30592,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L937",
+      "source_location": "L902",
       "weight": 1.0,
       "context": "generic_arg",
       "metadata": {
@@ -30652,7 +30652,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L969",
+      "source_location": "L934",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30769,7 +30769,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30874,7 +30874,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L924",
+      "source_location": "L889",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30889,7 +30889,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L937",
+      "source_location": "L902",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30904,7 +30904,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L901",
+      "source_location": "L866",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30949,7 +30949,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -30994,7 +30994,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -31099,7 +31099,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L924",
+      "source_location": "L889",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -31114,7 +31114,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L937",
+      "source_location": "L902",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -31129,7 +31129,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L901",
+      "source_location": "L866",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -31174,7 +31174,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -31471,7 +31471,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L798",
+      "source_location": "L763",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -31576,7 +31576,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "weight": 1.0,
       "context": "parameter_type",
       "metadata": {
@@ -32021,7 +32021,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L756",
+      "source_location": "L729",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_compasscalibrationasync",
@@ -32057,7 +32057,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L800",
+      "source_location": "L765",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_checkarmreadinessasync",
@@ -32069,7 +32069,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L818",
+      "source_location": "L783",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_checkarmreadinessasync",
@@ -32080,7 +32080,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L868",
+      "source_location": "L833",
       "weight": 1.0,
       "context": "generic_arg",
       "metadata": {
@@ -32111,7 +32111,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L903",
+      "source_location": "L868",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_readslotasync",
@@ -32122,7 +32122,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L901",
+      "source_location": "L866",
       "weight": 1.0,
       "context": "generic_arg",
       "metadata": {
@@ -32138,7 +32138,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L942",
+      "source_location": "L907",
       "weight": 1.0,
       "_origin": "ast",
       "source": "ardu_otk_services_fc_acceptancesession_ardu_otk_services_fc_acceptancesession_readpriorityorderasync",
@@ -32149,7 +32149,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "ARDU_OTK/Services/Fc/AcceptanceSession.cs",
-      "source_location": "L985",
+      "source_location": "L950",
       "weight": 1.0,
       "context": "return_type",
       "metadata": {
@@ -80168,5 +80168,5 @@
       "weight": 1.0
     }
   ],
-  "built_at_commit": "fda96722475c14a6dd818ee80295f1063f5a74ca"
+  "built_at_commit": "4b9c03cd4722d7bee164e322cd3b078d9f805210"
 }

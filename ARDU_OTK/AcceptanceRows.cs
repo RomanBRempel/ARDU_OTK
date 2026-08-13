@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
@@ -441,14 +441,56 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
     /// </remarks>
     public string Tip { get; } = string.Empty;
 
+    /// <summary>Ширина колонки назначения в знаках моноширинного шрифта.</summary>
+    /// <remarks>
+    /// Четырнадцать — самое длинное ходовое имя назначения (<c>GroundSteering</c>).
+    /// Более длинное имя колонку раздвинет, а не обрежется: потерянная буква в
+    /// назначении выхода — это неверно опознанная сборка, и ровный столбик
+    /// такой цены не стоит.
+    /// </remarks>
+    private const int AssignmentWidth = 14;
+
+    /// <summary>Ширина колонки числового поля: границы и середина — четырёхзначные.</summary>
+    private const int NumberWidth = 4;
+
+    /// <summary>Флажок реверса и его пустое место — одной ширины.</summary>
+    private const string ReverseFlag = "реверс";
+
+    /// <summary>
+    /// Пустое место флажка реверса: неразрывные пробелы.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Неразрывные, а не обычные. Флажок стоит последним в строке, и обычные
+    /// хвостовые пробелы раскладка текста при выравнивании вправо отбрасывает —
+    /// колонка, заданная ими, не соблюдалась бы вовсе, и строка без реверса
+    /// снова уезжала бы вправо относительно строки с реверсом.
+    /// </remarks>
+    private static readonly string ReverseBlank = new(' ', ReverseFlag.Length);
+
     /// <summary>
     /// Складывает поля канала в одну строку.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Назначение идёт без подписи — значение само себя называет, а слово
     /// «OPTION», повторённое в каждой строке, только занимает место. Реверс
     /// показывается флажком и только когда он включён: «REVERSED 0» — это
     /// сообщение об отсутствии события.
+    /// </para>
+    /// <para>
+    /// 🔴 Отсутствующее поле занимает своё место пробелами, а не выпадает из
+    /// строки. Строка печатается моноширинным шрифтом и прижата вправо, поэтому
+    /// выпавшее поле сдвигает все остальные: у выхода без реверса колонки
+    /// уезжали на длину флажка, у выхода с коротким назначением — на разницу
+    /// длин имён. Столбик, по которому раскладку читают не глядя, переставал
+    /// быть столбиком ровно там, где он и нужен, — в списке из десяти выходов
+    /// подряд.
+    /// </para>
+    /// <para>
+    /// 🔴 Пустое место флажка набрано неразрывными пробелами. Обычные хвостовые
+    /// пробелы раскладка текста при выравнивании вправо отбрасывает, и ширина
+    /// колонки, заданная ими, не соблюдалась бы вовсе.
+    /// </para>
     /// </remarks>
     private static string Compose(IEnumerable<ChannelField> fields, Func<ChannelField, string> pick)
     {
@@ -465,10 +507,9 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
 
             if (ChannelOrder.IsFlag(field.Label))
             {
-                if (!IsZero(value))
-                {
-                    parts.Add("реверс");
-                }
+                parts.Add(IsZero(value)
+                    ? ReverseBlank
+                    : ReverseFlag);
 
                 continue;
             }
@@ -481,16 +522,15 @@ public sealed class ParameterDifferenceRow : INotifyPropertyChanged
                 // поле сошлось с эталоном; на расхождении оно остаётся —
                 // «эталон требует назначение, а на борту его нет» это уже факт,
                 // а не пустота.
-                if (field.Source is null && IsNothing(value))
-                {
-                    continue;
-                }
+                var assignment = field.Source is null && IsNothing(value)
+                    ? string.Empty
+                    : value;
 
-                parts.Add(value);
+                parts.Add(assignment.PadLeft(AssignmentWidth));
                 continue;
             }
 
-            parts.Add($"{field.Label} {value}");
+            parts.Add($"{field.Label} {value.PadLeft(NumberWidth)}");
         }
 
         return string.Join("   ", parts);
