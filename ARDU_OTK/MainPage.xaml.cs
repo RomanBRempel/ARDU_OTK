@@ -1887,9 +1887,33 @@ public sealed partial class MainPage : Page
 
         if (_services.IsLinkConnected)
         {
-            await _services.DisconnectAsync().ConfigureAwait(true);
-            Log("Связь разорвана по команде оператора, порт свободен.");
+            // 🔴 Разрыв не мгновенен: закрытие порта и остановка цикла приёма
+            // ждут по три секунды каждое — SerialPort.Dispose умеет висеть на
+            // незавершённом чтении. Всё это время кнопка оставалась живой и
+            // молчала, и нажатие читалось как «кнопка не работает». Занятость
+            // показывается тем же кольцом, что и подключение.
+            SetBusy(true);
             RenderAll();
+
+            try
+            {
+                await _services.DisconnectAsync().ConfigureAwait(true);
+                Log("Связь разорвана по команде оператора, порт свободен.");
+            }
+            catch (Exception ex)
+            {
+                // Обработчик — async void: без перехвата отказ уходит в
+                // необработанное исключение и закрывает приложение вместо того,
+                // чтобы назвать оператору причину.
+                ShowLinkMessage(InfoBarSeverity.Error, "Связь не разорвана: " + ex.Message);
+                Log("Разрыв связи не удался: " + ex.Message);
+            }
+            finally
+            {
+                SetBusy(false);
+                RenderAll();
+            }
+
             return;
         }
 

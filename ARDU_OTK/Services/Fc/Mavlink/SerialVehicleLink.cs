@@ -1732,13 +1732,24 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
     /// разделителями.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// 🔴 Обратный слэш Windows на борту разделителем не является: он попадает
     /// в имя файла, и вместо <c>APM/scripts/x.lua</c> сервер ищет файл с именем
     /// <c>APM\scripts\x.lua</c> в корне — получая «файл не найден» там, где файл
     /// есть.
+    /// </para>
+    /// <para>
+    /// 🔴 Корень карты — исключение: снятие ведущего слэша обратило бы его в
+    /// пустое имя, а перечисление безымянного каталога сервер не выполняет.
+    /// Корень обязан уйти на борт как <c>/</c> — так его называют и наземные
+    /// станции.
+    /// </para>
     /// </remarks>
-    private static string NormalizeFtpPath(string path) =>
-        path.Replace('\\', '/').TrimStart('/');
+    private static string NormalizeFtpPath(string path)
+    {
+        var normalized = path.Replace('\\', '/').TrimStart('/');
+        return normalized.Length == 0 ? "/" : normalized;
+    }
 
     private FrameSubscription Subscribe(Func<MavlinkFrame, bool> predicate)
     {

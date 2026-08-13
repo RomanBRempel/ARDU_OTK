@@ -898,7 +898,7 @@ public sealed partial class ReferenceEditorPage : Page
                 // снимок даже не заглядывает в одиночку, и пустой результат читался
                 // как «скриптов нет» там, где не нашлось и настроечных файлов.
                 scripts.Count == 0
-                    ? $"В дереве {ReferenceScript.FilesRoot} настроечных файлов не найдено "
+                    ? "На карте борта настроечных файлов не найдено "
                     + $"({string.Join(", ", ReferenceScript.FileExtensions)})."
                     : $"Снято файлов: {scripts.Count.ToString(CultureInfo.InvariantCulture)}.",
             };
@@ -954,7 +954,7 @@ public sealed partial class ReferenceEditorPage : Page
         var hint = new TextBlock
         {
             Text = $"Скрипты прошивка исполняет из {ReferenceScript.ScriptsDirectory}. "
-                 + $"Настроечный текст может лежать и в самом {ReferenceScript.FilesRoot} — "
+                 + "Настроечный текст лежит и в корне карты — позывной там же, — "
                  + "путь обязан совпадать с тем, где файл лежит на изделии, иначе сверять будет нечего.",
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.7,

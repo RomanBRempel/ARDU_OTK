@@ -36,8 +36,31 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
     /// <summary>Каталог, из которого прошивка исполняет скрипты Lua.</summary>
     public const string ScriptsDirectory = "APM/scripts";
 
-    /// <summary>Корень настроечных файлов прошивки на карте.</summary>
+    /// <summary>
+    /// Корень карты борта: отсюда снимок начинает обход.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Именно корень, а не <see cref="FilesRoot"/>. Настроечные файлы лежат на
+    /// карте не только под <c>APM</c>: позывной прошивка читает из <c>callsign.txt</c>
+    /// в самом корне. Обход, начинавшийся с <c>APM</c>, такой файл не видел вовсе —
+    /// он не попадал ни в эталон, ни в сверку, и изделие с чужим позывным
+    /// объявлялось сошедшимся при полностью совпавших параметрах и скриптах.
+    /// </remarks>
+    public const string CardRoot = "/";
+
+    /// <summary>Каталог настроечных файлов прошивки на карте.</summary>
     public const string FilesRoot = "APM";
+
+    /// <summary>
+    /// Приставка виртуальных пространств имён прошивки.
+    /// </summary>
+    /// <remarks>
+    /// <c>@SYS</c>, <c>@ROMFS</c>, <c>@PARAM</c> и им подобные — это не карта, а
+    /// окна прошивки в собственную память, выставленные наружу тем же MAVFTP.
+    /// Их содержимое не хранится на карте, меняется на каждом включении и
+    /// настройкой изделия не является.
+    /// </remarks>
+    public const char VirtualPrefix = '@';
 
     /// <summary>Расширение исполняемого скрипта. Прошивка берёт только такие файлы.</summary>
     public const string ScriptExtension = ".lua";
@@ -81,15 +104,25 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
     public static bool IsConfigFile(string name) =>
         FileExtensions.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Путь на карте борта, предлагаемый для файла, добавляемого с диска станции.</summary>
-    public static string DefaultBoardPath(string fileName) => $"{ScriptsDirectory}/{fileName}";
+    /// <summary>
+    /// Путь на карте борта, предлагаемый для файла, добавляемого с диска станции.
+    /// </summary>
+    /// <remarks>
+    /// Предположение, а не вывод: исполняемый скрипт прошивка берёт из
+    /// <see cref="ScriptsDirectory"/>, а настроечный текст чаще лежит в корне
+    /// карты — там же, где <c>callsign.txt</c>. Оператор путь подтверждает.
+    /// </remarks>
+    public static string DefaultBoardPath(string fileName) =>
+        fileName.EndsWith(ScriptExtension, StringComparison.OrdinalIgnoreCase)
+            ? $"{ScriptsDirectory}/{fileName}"
+            : fileName;
 
     /// <summary>
     /// Проверяет путь на карте борта, под которым файл кладут в эталон.
     /// </summary>
     /// <remarks>
     /// 🔴 Эталон вправе содержать только то, что снимок с борта способен
-    /// прочитать: снимок обходит <see cref="FilesRoot"/> и берёт файлы с
+    /// прочитать: снимок обходит карту от <see cref="CardRoot"/> и берёт файлы с
     /// расширениями из <see cref="FileExtensions"/>. Запись эталона вне этого
     /// набора не может совпасть никогда — сверка вечно докладывала бы «файла нет
     /// на борту» при лежащем на карте файле, и отличить настоящую пропажу от
@@ -124,13 +157,6 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
             return false;
         }
 
-        if (!candidate.StartsWith(FilesRoot + "/", StringComparison.OrdinalIgnoreCase))
-        {
-            problem = $"Путь обязан начинаться с «{FilesRoot}/»: снимок с борта берёт файлы только оттуда, "
-                    + "и запись вне этого дерева сверить будет нечем.";
-            return false;
-        }
-
         var name = candidate[(candidate.LastIndexOf('/') + 1)..];
         if (!IsConfigFile(name))
         {
@@ -141,10 +167,17 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
         }
 
         var parts = candidate.Split('/');
-        if (parts.Length - 2 > ScriptTransfer.MaxDepth)
+        if (parts.Length - 1 > ScriptTransfer.MaxDepth)
         {
-            problem = $"Файл лежит глубже {ScriptTransfer.MaxDepth} каталогов от «{FilesRoot}» — "
+            problem = $"Файл лежит глубже {ScriptTransfer.MaxDepth} каталогов от корня карты — "
                     + "туда снимок с борта не заходит.";
+            return false;
+        }
+
+        if (parts[0].StartsWith(VirtualPrefix))
+        {
+            problem = $"«{parts[0]}» — виртуальное пространство прошивки, а не карта. "
+                    + "Его содержимое настройкой изделия не является и в эталон не входит.";
             return false;
         }
 
@@ -289,7 +322,7 @@ public sealed record ScriptDifference(
 public static class ScriptTransfer
 {
     /// <summary>
-    /// Читает все скрипты из каталога скриптов борта.
+    /// Читает все настроечные файлы с карты борта.
     /// </summary>
     /// <remarks>
     /// Нечитаемый файл не рушит снимок и не пропадает молча: он возвращается
@@ -309,7 +342,7 @@ public static class ScriptTransfer
         var scripts = new List<ReferenceScript>();
         await ReadDirectoryAsync(
             transfer,
-            ReferenceScript.FilesRoot,
+            ReferenceScript.CardRoot,
             depth: 0,
             scripts,
             progress,
@@ -320,15 +353,15 @@ public static class ScriptTransfer
     }
 
     /// <summary>
-    /// Глубина обхода каталогов от <c>APM</c>.
+    /// Глубина обхода каталогов от корня карты.
     /// </summary>
     /// <remarks>
-    /// Настроечные файлы лежат либо в самом <c>APM</c>, либо в <c>APM/scripts</c>
-    /// и его подкаталогах модулей. Дальше на карте начинаются данные, а не
-    /// настройки; предел обхода не даёт снимку уйти в чужое дерево, если карту
-    /// использовали ещё для чего-нибудь.
+    /// Настроечные файлы лежат в корне карты (<c>callsign.txt</c>), в <c>APM</c>,
+    /// в <c>APM/scripts</c> и в подкаталогах модулей — это четыре уровня. Дальше
+    /// на карте начинаются данные, а не настройки; предел обхода не даёт снимку
+    /// уйти в чужое дерево, если карту использовали ещё для чего-нибудь.
     /// </remarks>
-    public const int MaxDepth = 3;
+    public const int MaxDepth = 4;
 
     private static async Task ReadDirectoryAsync(
         IVehicleFileTransfer transfer,
@@ -367,7 +400,7 @@ public static class ScriptTransfer
                 continue;
             }
 
-            var path = $"{directory}/{entry.Name}";
+            var path = Combine(directory, entry.Name);
 
             if (entry.Size > ReferenceScript.MaxFileBytes)
             {
@@ -406,9 +439,18 @@ public static class ScriptTransfer
                 continue;
             }
 
+            if (entry.Name.StartsWith(ReferenceScript.VirtualPrefix))
+            {
+                // @SYS, @ROMFS и прочие окна прошивки в собственную память. Обход
+                // корня без этого правила уходил бы в них на каждом снимке: они
+                // видны рядом с каталогами карты, но настройкой изделия не
+                // являются и по MAVFTP отдаются медленно.
+                continue;
+            }
+
             await ReadDirectoryAsync(
                 transfer,
-                $"{directory}/{entry.Name}",
+                Combine(directory, entry.Name),
                 depth + 1,
                 scripts,
                 progress,
@@ -416,6 +458,19 @@ public static class ScriptTransfer
                 ct).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Складывает путь так, чтобы корень карты не давал ведущего слэша.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пути эталона хранятся без ведущего слэша — см. <see cref="ReferenceScript.NormalizePath"/>.
+    /// Наивная склейка дала бы для корня <c>/callsign.txt</c>, и один и тот же
+    /// файл существовал бы в эталоне под двумя именами: снятый с борта и
+    /// добавленный с диска перестали бы считаться одним файлом, а сверка
+    /// объявила бы один недостающим, а второй лишним.
+    /// </remarks>
+    private static string Combine(string directory, string name) =>
+        directory == ReferenceScript.CardRoot ? name : $"{directory}/{name}";
 
     /// <summary>
     /// Сверяет скрипты борта с эталоном.
