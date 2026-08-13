@@ -679,26 +679,30 @@ public sealed class AcceptanceSession : IAsyncDisposable
         var before = await ReadPriorityOrderAsync(ct).ConfigureAwait(false);
 
         // 🔴 Команда вычисляет эталонное магнитное поле по всемирной магнитной
-        // модели В ТОЧКЕ БОРТА. Без координат ей считать не по чему, и она
-        // отвечает отказом с сообщением «Mag: no position available».
+        // модели В ТОЧКЕ БОРТА, и точку эту стенд обязан назвать сам.
         //
-        // Обычно координаты берёт сам борт из фикса GPS. Живой фикс всегда
-        // важнее заданных: он вдобавок доказывает, что приёмник на плате
-        // исправен, а введённые координаты не доказывают ничего. Поэтому
-        // координаты рабочего места передаются только тогда, когда фикса нет —
-        // в цехе внутри здания его не бывает.
+        // Прежде стенд передавал нули, если видел у борта фикс, — то есть
+        // поручал борту найти собственные координаты. Это поручение борт
+        // выполняет не тем путём, каким стенд его проверял: стенд смотрит на
+        // GPS_RAW_INT первого приёмника, борт спрашивает сперва решение EKF,
+        // затем основной приёмник — а основным при двух приёмниках оказывается
+        // и тот, у которого решения нет. Предикаты расходятся, борт отвечает
+        // «Mag: no position available», и шаг падает при координатах, которые
+        // стенд в эту самую секунду показывает оператору на приборах.
+        //
+        // Поэтому координаты передаются всегда и берутся из того же фикса,
+        // который стенд показывает: живой фикс борта, иначе координаты рабочего
+        // места. Гадать за борт больше не о чем.
         var fix = _link.LiveState?.Gps;
-        var useStand = fix?.Is3D != true && standLatitudeDeg is { } && standLongitudeDeg is { };
+        var liveFix = fix is { Is3D: true } live ? live : (GpsFix?)null;
 
-        var lat = useStand ? (float)standLatitudeDeg!.Value : 0f;
-        var lon = useStand ? (float)standLongitudeDeg!.Value : 0f;
+        var source = liveFix is { } known
+            ? (Lat: known.LatitudeDeg, Lon: known.LongitudeDeg, FromBoard: true)
+            : standLatitudeDeg is { } standLat && standLongitudeDeg is { } standLon
+                ? (Lat: standLat, Lon: standLon, FromBoard: false)
+                : default((double Lat, double Lon, bool FromBoard)?);
 
-        // Координаты стенда понадобились повтором, хотя фикс у борта стенд видел.
-        // Отдельно от useStand: это разные события, и в протоколе они значат
-        // разное — «фикса не было» и «фикс был, но борт им не воспользовался».
-        var retriedWithStand = false;
-
-        if (fix?.Is3D != true && !useStand)
+        if (source is not { } point)
         {
             return StepResult.Fail(
                 "Калибровать нечем: у борта нет трёхмерного фикса GPS, а координаты рабочего места не заданы. "
@@ -707,72 +711,33 @@ public sealed class AcceptanceSession : IAsyncDisposable
               + "борт под открытое небо.");
         }
 
-        progress?.Report(useStand
-            ? $"Калибровка компаса по курсу {headingDeg:F1}° и координатам стенда (FIXED_MAG_CAL_YAW)…"
-            : $"Калибровка компаса по курсу {headingDeg:F1}° (FIXED_MAG_CAL_YAW)…");
+        progress?.Report(
+            $"Калибровка компаса по курсу {headingDeg:F1}° в точке {point.Lat:F5}, {point.Lon:F5} "
+          + $"({(point.FromBoard ? "фикс борта" : "координаты стенда")}, FIXED_MAG_CAL_YAW)…");
 
         var result = await _link.SendCommandAsync(
             MavCommand.FixedMagCalYaw,
-            (float)headingDeg, 0f, lat, lon, 0f, 0f, 0f,
+            (float)headingDeg, 0f, (float)point.Lat, (float)point.Lon, 0f, 0f, 0f,
             CommandTimeout,
             ct).ConfigureAwait(false);
 
         await Task.Delay(PostCommandSettle, ct).ConfigureAwait(false);
 
-        // 🔴 «Борт возьмёт координаты сам» — это предположение, а не факт, и
-        // проверяется оно на стороне борта другими данными, чем у стенда. Стенд
-        // судит о фиксе по первому приёмнику, борт спрашивает сперва решение
-        // EKF, потом основной приёмник — а основным при двух приёмниках может
-        // оказаться тот, у которого решения нет. Когда предикаты расходятся,
-        // борт отвечает «Mag: no position available», и шаг падал целиком,
-        // хотя координаты рабочего места лежали рядом и не были использованы.
-        // Повтор с ними убирает этот тупик, не отменяя правила «живой фикс
-        // важнее заданного»: он остаётся первой попыткой.
-        if (result != MavResult.Accepted
-            && !useStand
-            && standLatitudeDeg is { } fallbackLat
-            && standLongitudeDeg is { } fallbackLon)
-        {
-            progress?.Report(
-                $"Борт координат не назвал, повтор по координатам стенда ({fallbackLat:F5}, {fallbackLon:F5})…");
-
-            result = await _link.SendCommandAsync(
-                MavCommand.FixedMagCalYaw,
-                (float)headingDeg, 0f, (float)fallbackLat, (float)fallbackLon, 0f, 0f, 0f,
-                CommandTimeout,
-                ct).ConfigureAwait(false);
-
-            await Task.Delay(PostCommandSettle, ct).ConfigureAwait(false);
-
-            if (result == MavResult.Accepted)
-            {
-                retriedWithStand = true;
-            }
-        }
-
         if (result != MavResult.Accepted)
         {
             return StepResult.Fail(
-                $"Калибровка компаса отклонена: {result}. " + DescribeRecent("mag", "compass", "position")
-              + (standLatitudeDeg is null || standLongitudeDeg is null
-                    ? " Координаты рабочего места не заданы — повторить по ним было нечем."
-                    : " Повтор по координатам рабочего места тоже отклонён."));
+                $"Калибровка компаса отклонена: {result}. " + DescribeRecent("mag", "compass", "position"));
         }
 
         var after = await ReadPriorityOrderAsync(ct).ConfigureAwait(false);
         var orderChanged = !before.SequenceEqual(after);
 
         var note =
-            (useStand
-                ? $"Компасы откалиброваны по курсу {headingDeg:F1}° и координатам стенда "
-                  + $"({standLatitudeDeg!.Value:F5}, {standLongitudeDeg!.Value:F5}) — фикса GPS у борта нет, "
-                  + "и исправность приёмника этой калибровкой не подтверждена. "
-                : retriedWithStand
-                    ? $"Компасы откалиброваны по курсу {headingDeg:F1}° и координатам стенда "
-                      + $"({standLatitudeDeg!.Value:F5}, {standLongitudeDeg!.Value:F5}). Стенд видел у борта "
-                      + "фикс GPS, но борт своих координат не назвал — проверьте основной приёмник и "
-                      + "решение EKF, исправность приёмника этой калибровкой не подтверждена. "
-                    : $"Компасы откалиброваны по курсу {headingDeg:F1}° и собственным координатам борта. ")
+            $"Компасы откалиброваны по курсу {headingDeg:F1}° в точке {point.Lat:F5}, {point.Lon:F5} "
+          + (point.FromBoard
+                ? "по живому фиксу борта. "
+                : "по координатам рабочего места — фикса GPS у борта нет, и исправность приёмника "
+                  + "этой калибровкой не подтверждена. ")
             + "Команда сохранила смещения немедленно и принудительно поставила COMPASS_DIA*=(1,1,1) и "
             + "COMPASS_ODI*=(0,0,0) — перенесённая из эталона мягкожелезная компенсация с этого момента "
             + "не действует.";
