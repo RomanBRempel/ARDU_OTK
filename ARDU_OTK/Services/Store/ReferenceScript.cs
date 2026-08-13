@@ -81,6 +81,86 @@ public sealed record ReferenceScript(string Path, string Text, string Hash, int 
     public static bool IsConfigFile(string name) =>
         FileExtensions.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Путь на карте борта, предлагаемый для файла, добавляемого с диска станции.</summary>
+    public static string DefaultBoardPath(string fileName) => $"{ScriptsDirectory}/{fileName}";
+
+    /// <summary>
+    /// Проверяет путь на карте борта, под которым файл кладут в эталон.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Эталон вправе содержать только то, что снимок с борта способен
+    /// прочитать: снимок обходит <see cref="FilesRoot"/> и берёт файлы с
+    /// расширениями из <see cref="FileExtensions"/>. Запись эталона вне этого
+    /// набора не может совпасть никогда — сверка вечно докладывала бы «файла нет
+    /// на борту» при лежащем на карте файле, и отличить настоящую пропажу от
+    /// невидимой для снимка записи было бы нечем. Поэтому набор проверяется на
+    /// входе в эталон, а не на сверке.
+    /// </remarks>
+    /// <param name="path">Путь, введённый оператором.</param>
+    /// <param name="normalized">Приведённый путь; пусто при отказе.</param>
+    /// <param name="problem">Что именно не так; пусто при успехе.</param>
+    public static bool TryNormalizeBoardPath(string? path, out string normalized, out string problem)
+    {
+        normalized = string.Empty;
+        problem = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            problem = "Путь пуст. Укажите, где файл лежит на карте борта.";
+            return false;
+        }
+
+        var candidate = NormalizePath(path);
+
+        if (candidate.EndsWith('/'))
+        {
+            problem = "Путь оканчивается каталогом. Нужен путь до файла вместе с именем.";
+            return false;
+        }
+
+        if (candidate.Split('/').Any(static part => part is "" or "." or ".."))
+        {
+            problem = "В пути пустой сегмент либо «.»/«..». Такой путь борт не примет.";
+            return false;
+        }
+
+        if (!candidate.StartsWith(FilesRoot + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            problem = $"Путь обязан начинаться с «{FilesRoot}/»: снимок с борта берёт файлы только оттуда, "
+                    + "и запись вне этого дерева сверить будет нечем.";
+            return false;
+        }
+
+        var name = candidate[(candidate.LastIndexOf('/') + 1)..];
+        if (!IsConfigFile(name))
+        {
+            problem = $"Расширение файла «{name}» не входит в набор эталона "
+                    + $"({string.Join(", ", FileExtensions)}). Снимок с борта такой файл не читает, "
+                    + "и сверка вечно докладывала бы, что его нет на борту.";
+            return false;
+        }
+
+        var parts = candidate.Split('/');
+        if (parts.Length - 2 > ScriptTransfer.MaxDepth)
+        {
+            problem = $"Файл лежит глубже {ScriptTransfer.MaxDepth} каталогов от «{FilesRoot}» — "
+                    + "туда снимок с борта не заходит.";
+            return false;
+        }
+
+        var skipped = parts
+            .FirstOrDefault(part => SkippedDirectories.Contains(part, StringComparer.OrdinalIgnoreCase));
+        if (skipped is not null)
+        {
+            problem = $"Каталог «{skipped}» снимок с борта не обходит: там лежат следы работы изделия, "
+                    + "а не его настройка.";
+            return false;
+        }
+
+        normalized = candidate;
+        return true;
+    }
+
     /// <summary>Имя файла без каталога — для показа оператору.</summary>
     public string FileName => Path[(Path.LastIndexOf('/') + 1)..];
 
@@ -248,7 +328,7 @@ public static class ScriptTransfer
     /// настройки; предел обхода не даёт снимку уйти в чужое дерево, если карту
     /// использовали ещё для чего-нибудь.
     /// </remarks>
-    private const int MaxDepth = 3;
+    public const int MaxDepth = 3;
 
     private static async Task ReadDirectoryAsync(
         IVehicleFileTransfer transfer,

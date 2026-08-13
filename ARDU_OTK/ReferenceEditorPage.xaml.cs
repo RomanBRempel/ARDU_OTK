@@ -811,7 +811,15 @@ public sealed partial class ReferenceEditorPage : Page
                 picker,
                 WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
 
-            picker.FileTypeFilter.Add(ReferenceScript.ScriptExtension);
+            // 🔴 Набор берётся из эталона, а не из одного расширения скрипта.
+            // Прежде фильтр стоял на «.lua», и настроечный текст — позывной,
+            // таблицы, пороги — в эталон с диска попасть не мог вовсе. Снимок с
+            // борта такие файлы читал, а мастер их не принимал: эталон, собранный
+            // руками, молча оказывался без них, и сверять на изделии было нечего.
+            foreach (var extension in ReferenceScript.FileExtensions)
+            {
+                picker.FileTypeFilter.Add(extension);
+            }
 
             var file = await picker.PickSingleFileAsync();
             if (file is null)
@@ -819,12 +827,17 @@ public sealed partial class ReferenceEditorPage : Page
                 return;
             }
 
-            AddScript(ReferenceScript.Load(file.Path));
+            var fileName = System.IO.Path.GetFileName(file.Path);
+            var boardPath = await AskBoardPathAsync(fileName).ConfigureAwait(true);
+            if (boardPath is null)
+            {
+                return;
+            }
+
+            AddScript(ReferenceScript.Load(file.Path, boardPath));
 
             ScriptsBar.Severity = InfoBarSeverity.Success;
-            ScriptsBar.Message =
-                $"Добавлен {System.IO.Path.GetFileName(file.Path)}. На борту он будет лежать по пути "
-              + $"{ReferenceScript.ScriptsDirectory}/{System.IO.Path.GetFileName(file.Path)}.";
+            ScriptsBar.Message = $"Добавлен {fileName}. На борту он будет лежать по пути {boardPath}.";
             ScriptsBar.IsOpen = true;
         }
         catch (Exception ex)
@@ -880,9 +893,14 @@ public sealed partial class ReferenceEditorPage : Page
 
             var notes = new List<string>(3)
             {
+                // Снимок обходит APM целиком, а не один каталог скриптов, и берёт
+                // не только исполняемые файлы. Прежний текст называл каталог, куда
+                // снимок даже не заглядывает в одиночку, и пустой результат читался
+                // как «скриптов нет» там, где не нашлось и настроечных файлов.
                 scripts.Count == 0
-                    ? $"В каталоге {ReferenceScript.ScriptsDirectory} исполняемых скриптов не найдено."
-                    : $"Снято скриптов: {scripts.Count.ToString(CultureInfo.InvariantCulture)}.",
+                    ? $"В дереве {ReferenceScript.FilesRoot} настроечных файлов не найдено "
+                    + $"({string.Join(", ", ReferenceScript.FileExtensions)})."
+                    : $"Снято файлов: {scripts.Count.ToString(CultureInfo.InvariantCulture)}.",
             };
 
             if (scripting is { } value && value == 0)
@@ -910,6 +928,79 @@ public sealed partial class ReferenceEditorPage : Page
         {
             SetReadingScripts(false);
         }
+    }
+
+    /// <summary>
+    /// Спрашивает, где добавляемый файл лежит на карте борта.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Путь не выводится из имени файла. Скрипты прошивка исполняет из
+    /// <c>APM/scripts</c>, а настроечный текст лежит и рядом со скриптом, и в
+    /// самом <c>APM</c>: <c>APM/callsign.txt</c> и <c>APM/scripts/callsign.txt</c> —
+    /// разные файлы с одинаковым именем. Подставленный молча путь дал бы эталон,
+    /// который ищет файл там, где его никто не клал, и сверка вечно докладывала бы
+    /// «файла нет на борту» при лежащем на карте файле.
+    /// </remarks>
+    /// <returns>Приведённый путь либо <c>null</c>, если оператор отказался.</returns>
+    private async Task<string?> AskBoardPathAsync(string fileName)
+    {
+        var box = new TextBox
+        {
+            Text = ReferenceScript.DefaultBoardPath(fileName),
+            SelectionStart = 0,
+            SelectionLength = ReferenceScript.DefaultBoardPath(fileName).Length - fileName.Length,
+        };
+
+        var hint = new TextBlock
+        {
+            Text = $"Скрипты прошивка исполняет из {ReferenceScript.ScriptsDirectory}. "
+                 + $"Настроечный текст может лежать и в самом {ReferenceScript.FilesRoot} — "
+                 + "путь обязан совпадать с тем, где файл лежит на изделии, иначе сверять будет нечего.",
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.7,
+        };
+
+        var problemText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+        };
+
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(hint);
+        panel.Children.Add(box);
+        panel.Children.Add(problemText);
+
+        var dialog = new ContentDialog
+        {
+            Title = $"Путь файла {fileName} на карте борта",
+            Content = panel,
+            PrimaryButtonText = "Добавить",
+            CloseButtonText = "Отмена",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        string? accepted = null;
+
+        // Проверка на нажатии, а не после закрытия: отвергнутый путь исправляют
+        // в том же окне, не открывая его заново и не набирая путь с нуля.
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            if (ReferenceScript.TryNormalizeBoardPath(box.Text, out var normalized, out var problem))
+            {
+                accepted = normalized;
+                return;
+            }
+
+            args.Cancel = true;
+            problemText.Text = problem;
+            problemText.Visibility = Visibility.Visible;
+        };
+
+        await dialog.ShowAsync();
+        return accepted;
     }
 
     /// <summary>Значение <c>SCR_ENABLE</c> образца; <c>null</c>, если прошивка его не отдала.</summary>

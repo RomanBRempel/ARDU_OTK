@@ -253,5 +253,13 @@
   "251": ".DisposeAsync",
   "252": "ReferenceList",
   "253": "bool",
-  "254": "SelectionChangedEventArgs"
+  "254": "SelectionChangedEventArgs",
+  "255": "Task",
+  "256": "TimeSpan",
+  "257": "uint",
+  "258": "ushort",
+  "259": "VehicleLiveState",
+  "260": "MavFtpEntry",
+  "261": "MavFtpOpcode",
+  "262": "MavFtpPayload"
 }
