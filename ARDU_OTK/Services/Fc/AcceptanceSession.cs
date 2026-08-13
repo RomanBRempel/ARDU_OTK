@@ -693,6 +693,11 @@ public sealed class AcceptanceSession : IAsyncDisposable
         var lat = useStand ? (float)standLatitudeDeg!.Value : 0f;
         var lon = useStand ? (float)standLongitudeDeg!.Value : 0f;
 
+        // Координаты стенда понадобились повтором, хотя фикс у борта стенд видел.
+        // Отдельно от useStand: это разные события, и в протоколе они значат
+        // разное — «фикса не было» и «фикс был, но борт им не воспользовался».
+        var retriedWithStand = false;
+
         if (fix?.Is3D != true && !useStand)
         {
             return StepResult.Fail(
@@ -714,10 +719,44 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
         await Task.Delay(PostCommandSettle, ct).ConfigureAwait(false);
 
+        // 🔴 «Борт возьмёт координаты сам» — это предположение, а не факт, и
+        // проверяется оно на стороне борта другими данными, чем у стенда. Стенд
+        // судит о фиксе по первому приёмнику, борт спрашивает сперва решение
+        // EKF, потом основной приёмник — а основным при двух приёмниках может
+        // оказаться тот, у которого решения нет. Когда предикаты расходятся,
+        // борт отвечает «Mag: no position available», и шаг падал целиком,
+        // хотя координаты рабочего места лежали рядом и не были использованы.
+        // Повтор с ними убирает этот тупик, не отменяя правила «живой фикс
+        // важнее заданного»: он остаётся первой попыткой.
+        if (result != MavResult.Accepted
+            && !useStand
+            && standLatitudeDeg is { } fallbackLat
+            && standLongitudeDeg is { } fallbackLon)
+        {
+            progress?.Report(
+                $"Борт координат не назвал, повтор по координатам стенда ({fallbackLat:F5}, {fallbackLon:F5})…");
+
+            result = await _link.SendCommandAsync(
+                MavCommand.FixedMagCalYaw,
+                (float)headingDeg, 0f, (float)fallbackLat, (float)fallbackLon, 0f, 0f, 0f,
+                CommandTimeout,
+                ct).ConfigureAwait(false);
+
+            await Task.Delay(PostCommandSettle, ct).ConfigureAwait(false);
+
+            if (result == MavResult.Accepted)
+            {
+                retriedWithStand = true;
+            }
+        }
+
         if (result != MavResult.Accepted)
         {
             return StepResult.Fail(
-                $"Калибровка компаса отклонена: {result}. " + DescribeRecent("mag", "compass", "position"));
+                $"Калибровка компаса отклонена: {result}. " + DescribeRecent("mag", "compass", "position")
+              + (standLatitudeDeg is null || standLongitudeDeg is null
+                    ? " Координаты рабочего места не заданы — повторить по ним было нечем."
+                    : " Повтор по координатам рабочего места тоже отклонён."));
         }
 
         var after = await ReadPriorityOrderAsync(ct).ConfigureAwait(false);
@@ -728,7 +767,12 @@ public sealed class AcceptanceSession : IAsyncDisposable
                 ? $"Компасы откалиброваны по курсу {headingDeg:F1}° и координатам стенда "
                   + $"({standLatitudeDeg!.Value:F5}, {standLongitudeDeg!.Value:F5}) — фикса GPS у борта нет, "
                   + "и исправность приёмника этой калибровкой не подтверждена. "
-                : $"Компасы откалиброваны по курсу {headingDeg:F1}° и собственным координатам борта. ")
+                : retriedWithStand
+                    ? $"Компасы откалиброваны по курсу {headingDeg:F1}° и координатам стенда "
+                      + $"({standLatitudeDeg!.Value:F5}, {standLongitudeDeg!.Value:F5}). Стенд видел у борта "
+                      + "фикс GPS, но борт своих координат не назвал — проверьте основной приёмник и "
+                      + "решение EKF, исправность приёмника этой калибровкой не подтверждена. "
+                    : $"Компасы откалиброваны по курсу {headingDeg:F1}° и собственным координатам борта. ")
             + "Команда сохранила смещения немедленно и принудительно поставила COMPASS_DIA*=(1,1,1) и "
             + "COMPASS_ODI*=(0,0,0) — перенесённая из эталона мягкожелезная компенсация с этого момента "
             + "не действует.";
