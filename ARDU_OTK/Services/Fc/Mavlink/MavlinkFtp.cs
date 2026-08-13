@@ -96,6 +96,23 @@ public readonly record struct MavFtpPayload(
     /// <summary><c>errno</c> файловой системы при <see cref="MavFtpError.FailErrno"/>.</summary>
     public byte Errno => Data.Length > 1 ? Data.Span[1] : (byte)0;
 
+    /// <summary>
+    /// Отказ объясняется состоянием файловой сессии на борту, а не самим файлом.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Файловая сессия у борта одна, и открытый в ней файл закрывается только
+    /// явным завершением сессии. Незакрытая сессия — оборванный кабель, снятое
+    /// питание станции, потерянный ответ на открытие — отвечает на любое
+    /// следующее открытие общим кодом <see cref="MavFtpError.Fail"/>, по которому
+    /// причину не отличить от отказа самого файла. Признак собран здесь, а не на
+    /// месте вызова, чтобы чтение и запись лечили это состояние одинаково.
+    /// </remarks>
+    public bool IndicatesStaleSession => Opcode == MavFtpOpcode.Nak
+        && Error is MavFtpError.Fail
+                 or MavFtpError.None
+                 or MavFtpError.InvalidSession
+                 or MavFtpError.NoSessionsAvailable;
+
     /// <summary>Читаемое описание отказа — уходит оператору без перевода на месте вызова.</summary>
     public string DescribeError() => Opcode != MavFtpOpcode.Nak
         ? string.Empty
@@ -112,7 +129,11 @@ public readonly record struct MavFtpPayload(
             MavFtpError.FailErrno => string.Create(
                 CultureInfo.InvariantCulture,
                 $"отказ файловой системы, errno {Errno}"),
-            _ => "отказ файловой операции",
+            // Код в тексте — не украшение: Fail приходит и на занятую сессию, и
+            // на отказ самого файла, и без номера разбор упирается в общую фразу.
+            _ => string.Create(
+                CultureInfo.InvariantCulture,
+                $"отказ файловой операции, код {(byte)Error}"),
         };
 
     /// <summary>Собирает нагрузку запроса в буфер ровно <see cref="Length"/> байт.</summary>

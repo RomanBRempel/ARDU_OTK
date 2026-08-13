@@ -1354,20 +1354,9 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var open = await FtpRequestAsync(
-                session: 0,
-                MavFtpOpcode.OpenFileRO,
-                offset: 0,
-                Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
-                allowNak: true,
-                ct).ConfigureAwait(false);
+            var session = await OpenFtpFileAsync(
+                MavFtpOpcode.OpenFileRO, path, "не открыт", ct).ConfigureAwait(false);
 
-            if (open.Opcode == MavFtpOpcode.Nak)
-            {
-                throw new VehicleLinkException($"Файл «{path}» не открыт: {open.DescribeError()}.");
-            }
-
-            var session = open.Session;
             var content = new List<byte>(4096);
 
             try
@@ -1441,46 +1430,11 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         await _ftpGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // 🔴 У борта файловая сессия одна. Сессия, не закрытая предыдущим
-            // обменом — оборванным кабелем, снятым питанием станции, аварийным
-            // выходом приложения, — блокирует создание файла до перезагрузки
-            // борта, и отказ приходит общим кодом Fail, по которому причину не
-            // угадать. Сброс перед записью убирает этот класс отказов целиком.
-            // Ответ на сам сброс не нужен и не ожидается: часть прошивок на него
-            // не отвечает вовсе. Ждать его — значит подменить полезную гигиену
-            // отказом там, где всё в порядке.
-            try
-            {
-                await FtpRequestAsync(
-                    session: 0,
-                    MavFtpOpcode.ResetSessions,
-                    offset: 0,
-                    ReadOnlyMemory<byte>.Empty,
-                    allowNak: true,
-                    ct).ConfigureAwait(false);
-            }
-            catch (VehicleLinkException ex)
-            {
-                Log(MavSeverity.Debug, $"Сброс файловых сессий не подтверждён: {ex.Message}");
-            }
-
             // CreateFile создаёт файл заново, обрезая существующий. Именно это и
             // нужно: дозапись поверх старого содержимого дала бы склейку двух
             // скриптов, синтаксически верную и делающую не то.
-            var create = await FtpRequestAsync(
-                session: 0,
-                MavFtpOpcode.CreateFile,
-                offset: 0,
-                Encoding.UTF8.GetBytes(NormalizeFtpPath(path)),
-                allowNak: true,
-                ct).ConfigureAwait(false);
-
-            if (create.Opcode == MavFtpOpcode.Nak)
-            {
-                throw new VehicleLinkException($"Файл «{path}» не создан: {create.DescribeError()}.");
-            }
-
-            var session = create.Session;
+            var session = await OpenFtpFileAsync(
+                MavFtpOpcode.CreateFile, path, "не создан", ct).ConfigureAwait(false);
 
             try
             {
@@ -1551,6 +1505,104 @@ public sealed class SerialVehicleLink : IVehicleLink, IVehicleFileTransfer
         finally
         {
             _ftpGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Открывает файловую сессию борта под чтение или запись и возвращает её номер.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Открытие сессии — единственное место, где состояние борта видно клиенту,
+    /// и потому единственное место, где его можно и нужно чинить. Сессия у борта
+    /// одна: пока в ней открыт файл, любое следующее открытие отвергается общим
+    /// кодом <c>Fail</c> — и так до перезагрузки борта. Закрыть чужую сессию некому,
+    /// клиент её не открывал: она осталась от оборванного кабеля, снятого питания
+    /// или потерянного ответа на предыдущее открытие, после которого повтор ушёл
+    /// уже в занятый сервер.
+    /// </para>
+    /// <para>
+    /// 🔴 Лечение стоит здесь, а не на месте вызова, потому что прежняя редакция
+    /// лечила его на одном месте вызова из двух: запись сбрасывала сессии перед
+    /// созданием файла, чтение — нет. Один и тот же отказ борта поэтому чинился
+    /// при выгрузке скрипта и оставался вечным при его чтении: снятие с борта
+    /// сообщало «файл не открыт: отказ файловой операции» по всем файлам подряд,
+    /// и эталон снимался пустым при полной карте скриптов. Общая предпосылка
+    /// операции обязана жить в одном месте, иначе она чинится по одному найденному
+    /// симптому.
+    /// </para>
+    /// <para>
+    /// Сброс делается по отказу, а не перед каждым открытием: лишний обмен на
+    /// каждый файл снимка — это десятки лишних обменов на исправном борту ради
+    /// случая, который виден по ответу.
+    /// </para>
+    /// </remarks>
+    /// <param name="opcode"><see cref="MavFtpOpcode.OpenFileRO"/> либо <see cref="MavFtpOpcode.CreateFile"/>.</param>
+    /// <param name="path">Путь на карте борта — в сообщении об отказе он приводится как задан.</param>
+    /// <param name="failureVerb">Чем кончилось дело для оператора: «не открыт», «не создан».</param>
+    /// <exception cref="VehicleLinkException">Борт отказал и после сброса сессий.</exception>
+    private async Task<byte> OpenFtpFileAsync(
+        MavFtpOpcode opcode,
+        string path,
+        string failureVerb,
+        CancellationToken ct)
+    {
+        byte[] name = Encoding.UTF8.GetBytes(NormalizeFtpPath(path));
+
+        var reply = await FtpRequestAsync(session: 0, opcode, offset: 0, name, allowNak: true, ct)
+            .ConfigureAwait(false);
+
+        if (reply.Opcode != MavFtpOpcode.Nak)
+        {
+            return reply.Session;
+        }
+
+        if (!reply.IndicatesStaleSession)
+        {
+            throw new VehicleLinkException($"Файл «{path}» {failureVerb}: {reply.DescribeError()}.");
+        }
+
+        Log(
+            MavSeverity.Debug,
+            $"MAVFTP {opcode} «{path}»: {reply.DescribeError()}. Сбрасываю файловые сессии и повторяю.");
+
+        await ResetFtpSessionsAsync(ct).ConfigureAwait(false);
+
+        reply = await FtpRequestAsync(session: 0, opcode, offset: 0, name, allowNak: true, ct)
+            .ConfigureAwait(false);
+
+        if (reply.Opcode == MavFtpOpcode.Nak)
+        {
+            throw new VehicleLinkException(
+                $"Файл «{path}» {failureVerb} и после сброса файловых сессий: {reply.DescribeError()}.");
+        }
+
+        return reply.Session;
+    }
+
+    /// <summary>
+    /// Сбрасывает файловые сессии борта.
+    /// </summary>
+    /// <remarks>
+    /// Ответ на сброс не обязателен: часть прошивок на него не отвечает вовсе.
+    /// Ждать подтверждения — значит превратить полезную гигиену в отказ там, где
+    /// всё в порядке, поэтому неподтверждённый сброс только пишется в журнал.
+    /// </remarks>
+    private async Task ResetFtpSessionsAsync(CancellationToken ct)
+    {
+        try
+        {
+            await FtpRequestAsync(
+                session: 0,
+                MavFtpOpcode.ResetSessions,
+                offset: 0,
+                ReadOnlyMemory<byte>.Empty,
+                allowNak: true,
+                ct).ConfigureAwait(false);
+        }
+        catch (VehicleLinkException ex)
+        {
+            Log(MavSeverity.Debug, $"Сброс файловых сессий не подтверждён: {ex.Message}");
         }
     }
 
