@@ -330,33 +330,108 @@ public sealed class AppServices
     public event EventHandler? LinkChanged;
 
     /// <summary>
-    /// Подключается к борту и удерживает соединение до явного отключения.
+    /// Снимок таблицы параметров сменился: прочитан новый, снят прежний либо
+    /// чтение сорвалось. Может прийти из любого потока.
+    /// </summary>
+    public event EventHandler? ParametersChanged;
+
+    /// <summary>Идёт чтение таблицы параметров.</summary>
+    public bool IsReadingParameters { get; private set; }
+
+    /// <summary>Почему таблицы нет, если чтение сорвалось; иначе <c>null</c>.</summary>
+    public string? ParametersError { get; private set; }
+
+    /// <summary>
+    /// Подключается к борту, снимает его таблицу параметров и удерживает
+    /// соединение до явного отключения.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Порт открывается монопольно, поэтому перед запуском процедуры это
     /// соединение закрывается: иначе процедура не сможет открыть тот же порт.
+    /// </para>
+    /// <para>
+    /// 🔴 Таблица читается здесь, а не в том разделе, которому она понадобилась.
+    /// Съём состояния — свойство подключения: борт положили на стенд, значит
+    /// его состояние снято, один раз и целиком. Пока чтение висело на
+    /// предварительной сверке «Стенда», снимок появлялся только при выбранном
+    /// эталоне, и каждому следующему разделу приходилось заводить собственную
+    /// кнопку «прочитать с борта» — то есть второе место, где решается, когда
+    /// изделие опрашивается, и второй ответ на вопрос «что на плате сейчас».
+    /// </para>
     /// </remarks>
-    public Task ConnectAsync(string portName, CancellationToken ct = default) => Task.Run(
-        async () =>
+    public async Task ConnectAsync(
+        string portName,
+        IProgress<string>? progress = null,
+        IProgress<ParameterProgress>? detail = null,
+        CancellationToken ct = default)
+    {
+        await Task.Run(
+            async () =>
+            {
+                await DisconnectAsync().ConfigureAwait(false);
+
+                var link = new SerialVehicleLink();
+                try
+                {
+                    await link.ConnectAsync(portName, TimeSpan.FromSeconds(12), ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                    await link.DisposeAsync().ConfigureAwait(false);
+                    throw;
+                }
+
+                _link = link;
+                ConnectedPort = portName;
+                LinkChanged?.Invoke(this, EventArgs.Empty);
+            },
+            ct).ConfigureAwait(false);
+
+        await ReadOnConnectAsync(progress, detail, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Снимает таблицу параметров сразу после установления связи.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Отказ чтения не отменяет связь. Канал открыт, приборы работают, и
+    /// объявлять «подключение не удалось» из-за недочитанной таблицы значило бы
+    /// сказать о стенде неправду. Причина отказа остаётся в
+    /// <see cref="ParametersError"/>, о смене состояния объявляется
+    /// <see cref="ParametersChanged"/>.
+    /// </para>
+    /// <para>
+    /// Прежний снимок снимается до чтения, а не после. На стенде сменилась
+    /// плата; таблица прошлой платы, показанная до конца чтения новой, на вид
+    /// ничем не отличается от свежей.
+    /// </para>
+    /// </remarks>
+    private async Task ReadOnConnectAsync(
+        IProgress<string>? progress,
+        IProgress<ParameterProgress>? detail,
+        CancellationToken ct)
+    {
+        LastParameters = null;
+        ParametersError = null;
+        IsReadingParameters = true;
+        ParametersChanged?.Invoke(this, EventArgs.Empty);
+
+        try
         {
-            await DisconnectAsync().ConfigureAwait(false);
-
-            var link = new SerialVehicleLink();
-            try
-            {
-                await link.ConnectAsync(portName, TimeSpan.FromSeconds(12), ct).ConfigureAwait(false);
-            }
-            catch
-            {
-                await link.DisposeAsync().ConfigureAwait(false);
-                throw;
-            }
-
-            _link = link;
-            ConnectedPort = portName;
-            LinkChanged?.Invoke(this, EventArgs.Empty);
-        },
-        ct);
+            await ReadAllParametersAsync(progress, detail, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ParametersError = ex.Message;
+        }
+        finally
+        {
+            IsReadingParameters = false;
+            ParametersChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     /// <summary>
     /// Снимает эталон компасов с подключённого образцового изделия.
@@ -408,11 +483,7 @@ public sealed class AppServices
 
             var set = await link.ReadAllParamsAsync(progress, detail, ct).ConfigureAwait(false);
 
-            LastParameters = new BoardParameterSnapshot(
-                set,
-                ConnectedPort ?? string.Empty,
-                link.FirmwareBanner ?? string.Empty,
-                DateTimeOffset.UtcNow);
+            PublishParameters(set, link.FirmwareBanner ?? string.Empty);
 
             return set;
         },
@@ -430,12 +501,44 @@ public sealed class AppServices
     /// и этим.
     /// </para>
     /// <para>
-    /// Существует затем, чтобы разделы, которым нужна та же таблица (просмотр
-    /// OSD), не вычитывали тысячу с лишним имён заново: это двадцать секунд
-    /// ожидания на каждый переход между экранами.
+    /// Существует затем, чтобы разделы, которым нужна та же таблица (сверка с
+    /// эталоном, просмотр OSD), не вычитывали тысячу с лишним имён заново: это
+    /// двадцать секунд ожидания на каждый переход между экранами и столько же
+    /// занятого канала.
     /// </para>
     /// </remarks>
     public BoardParameterSnapshot? LastParameters { get; private set; }
+
+    /// <summary>
+    /// Объявляет прочитанную таблицу снимком стенда.
+    /// </summary>
+    /// <remarks>
+    /// Единственное место, где снимок сменяется: у таблицы борта один
+    /// владелец, иначе разделы показывали бы каждый своё состояние платы и
+    /// расходились бы во времени съёма.
+    /// </remarks>
+    private void PublishParameters(FullParameterSet set, string firmware)
+    {
+        LastParameters = new BoardParameterSnapshot(
+            set,
+            ConnectedPort ?? string.Empty,
+            firmware,
+            DateTimeOffset.UtcNow);
+
+        ParametersError = null;
+        ParametersChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Приёмка прочитала таблицу борта — снимок стенда обновляется ею.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Иначе после приёмки разделы показывали бы доприёмочную таблицу: своё
+    /// чтение приёмка ведёт по своему каналу, и снимок, снятый подключением, к
+    /// её концу описывает плату, которую она только что перезаписала.
+    /// </remarks>
+    private void OnSessionBoardRead(object? sender, FullParameterSet set) =>
+        PublishParameters(set, ConnectedFirmware ?? string.Empty);
 
     // --- Приёмка -----------------------------------------------------------
 
@@ -474,6 +577,8 @@ public sealed class AppServices
             throw;
         }
 
+        session.BoardRead += OnSessionBoardRead;
+
         _session = session;
         LinkChanged?.Invoke(this, EventArgs.Empty);
         return session;
@@ -487,6 +592,7 @@ public sealed class AppServices
 
         if (session is not null)
         {
+            session.BoardRead -= OnSessionBoardRead;
             await session.DisposeAsync().ConfigureAwait(false);
             _procedureRunning = false;
             LinkChanged?.Invoke(this, EventArgs.Empty);

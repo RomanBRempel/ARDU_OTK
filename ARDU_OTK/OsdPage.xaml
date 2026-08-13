@@ -193,31 +193,20 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <!--
+                    Кнопки чтения здесь нет намеренно: таблицу снимает
+                    подключение к борту, целиком и один раз. Собственная кнопка
+                    означала бы второй опрос той же платы — два снимка разного
+                    возраста и вопрос «который из них изделие на стенде» без
+                    ответа.
+                -->
                 <StackPanel Spacing="6">
                     <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Борт" />
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Button
-                            x:Name="ReadBoardButton"
-                            Click="OnReadBoardClick"
-                            Content="Прочитать с борта" />
-                        <ProgressRing
-                            x:Name="ReadBoardRing"
-                            Grid.Column="1"
-                            Width="18"
-                            Height="18"
-                            VerticalAlignment="Center"
-                            IsActive="False"
-                            Visibility="Collapsed" />
-                    </Grid>
                     <TextBlock
                         x:Name="BoardStateText"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource AppCaptionTextStyle}"
-                        Text="Таблица параметров не читалась."
+                        Text="Таблица параметров не читалась: подключите борт на экране «Стенд»."
                         TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -476,7 +465,7 @@
                 VerticalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Style="{StaticResource AppBodyTextStyle}"
-                Text="Прочитайте таблицу с борта либо выберите эталон."
+                Text="Подключите борт на экране «Стенд» либо выберите эталон."
                 TextWrapping="Wrap" />
         </Grid>
     </Grid>

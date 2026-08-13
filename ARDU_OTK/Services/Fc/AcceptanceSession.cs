@@ -164,8 +164,20 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
         var board = await _link.ReadAllParamsAsync(progress, detail, ct).ConfigureAwait(false);
         LastBoard = board;
+        BoardRead?.Invoke(this, board);
         return ParameterTransfer.Plan(reference, board.Values, roles);
     }
+
+    /// <summary>
+    /// Приёмка прочитала таблицу борта.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Объявляется наружу, потому что во время приёмки этот канал —
+    /// единственный: наблюдательное соединение погашено, и стенд узнаёт
+    /// состояние платы только отсюда. Без объявления разделы, показывающие
+    /// снимок борта, всю приёмку и после неё держали бы доприёмочную таблицу.
+    /// </remarks>
+    public event EventHandler<FullParameterSet>? BoardRead;
 
     /// <summary>
     /// Таблица борта, прочитанная последней сверкой.

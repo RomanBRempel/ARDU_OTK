@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1786632786.6787353,
-    "ast_hash": "50ca6f5573241ff8bbcdb5281b7f87df",
+    "mtime": 1786633278.1360018,
+    "ast_hash": "32216d5785e18c85bdc1dd876bc76bc8",
     "semantic_hash": ""
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786630689.1312525,
-    "ast_hash": "ce718c977fbba69f58e3a4242b634d7f",
+    "mtime": 1786633138.3061967,
+    "ast_hash": "8ffbad17bf7a6c334595d95afb5167c2",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -205,8 +205,8 @@
     "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1786629462.9330778,
-    "ast_hash": "01365a8b061742f4242b25554dfc9258",
+    "mtime": 1786633077.6045716,
+    "ast_hash": "48f92c1e63e13e87db8255d5bb0e6d12",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
-    "mtime": 1786609260.5714567,
-    "ast_hash": "d8278ccc1f00f47614c9e2cc68421d6e",
+    "mtime": 1786633086.7993999,
+    "ast_hash": "c58fe70c75839e94cf213e14a5abcb3d",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/UiScale.cs": {
@@ -510,13 +510,13 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/OsdPage.xaml": {
-    "mtime": 1786629303.4206884,
-    "ast_hash": "3b22f3e8f45d149cbd8ae6fa7bd80520",
+    "mtime": 1786633151.8102973,
+    "ast_hash": "d902987140e41d5aa860011cf16e70b4",
     "semantic_hash": ""
   },
   "ARDU_OTK/OsdPage.xaml.cs": {
-    "mtime": 1786629766.9967527,
-    "ast_hash": "019172fbc9489fd99a98ac92461b97a5",
+    "mtime": 1786633198.097467,
+    "ast_hash": "8ad58af046ef22e904092f84b35a6678",
     "semantic_hash": ""
   },
   "ARDU_OTK/OsdRows.cs": {

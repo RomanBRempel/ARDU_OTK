@@ -45,10 +45,11 @@ public sealed class OsdReferenceChoice
 /// пилоту.
 /// </para>
 /// <para>
-/// Страница ничего не пишет на борт. Приведение OSD к эталону делает та же
-/// сверка, что и для остальных параметров: второй путь записи означал бы второе
-/// место, где решается, что на изделии должно стоять, и оно молча разошлось бы
-/// с первым.
+/// Страница не пишет на борт и не читает его. Приведение OSD к эталону делает
+/// та же сверка, что и для остальных параметров, а таблицу снимает подключение
+/// к борту: второй путь записи означал бы второе место, где решается, что на
+/// изделии должно стоять, а второй путь чтения — второй ответ на вопрос, что на
+/// нём стоит сейчас. Оба молча разошлись бы с первым.
 /// </para>
 /// </remarks>
 public sealed partial class OsdPage : Page
@@ -74,12 +75,11 @@ public sealed partial class OsdPage : Page
 
     private bool _loadingReferences;
 
-    private bool _reading;
-
     public OsdPage()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await LoadAsync().ConfigureAwait(true);
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public ObservableCollection<OsdValueRow> GeneralRows { get; } = new();
@@ -90,19 +90,80 @@ public sealed partial class OsdPage : Page
 
     private bool HasReference => _referenceValues is not null;
 
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // Снимок может смениться, пока раздел открыт: борт подключили заново
+        // или приёмка перечитала таблицу. Раскладка, оставшаяся от прежней
+        // платы, на вид не отличается от текущей.
+        _services.ParametersChanged += OnParametersChanged;
+        await LoadAsync().ConfigureAwait(true);
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        _services.ParametersChanged -= OnParametersChanged;
+
+    private void OnParametersChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
+    {
+        ShowBoardState();
+        Rebuild();
+    });
+
     private async Task LoadAsync()
     {
-        // Снимок борта берётся тот же, что уже прочитан на этом запуске:
-        // повторное вычитывание тысячи имён ради взгляда на раскладку — это
-        // двадцать секунд ожидания за вопрос «а как там OSD».
+        ShowBoardState();
+        await LoadReferencesAsync().ConfigureAwait(true);
+        Rebuild();
+    }
+
+    /// <summary>
+    /// Показывает, откуда взялась раскладка: снимок борта, его отсутствие или
+    /// сорванное чтение.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Раздел борт не опрашивает. Таблицу целиком снимает подключение, и
+    /// снимок берётся тот же, что у остальных разделов: повторное вычитывание
+    /// тысячи имён ради взгляда на раскладку — это двадцать секунд ожидания за
+    /// вопрос «а как там OSD» и второй ответ на вопрос, что стоит на плате.
+    /// </remarks>
+    private void ShowBoardState()
+    {
+        if (_services.IsReadingParameters)
+        {
+            _boardValues = null;
+            BoardStateText.Text = "Идёт чтение таблицы параметров с борта…";
+            return;
+        }
+
         if (_services.LastParameters is { } snapshot)
         {
             _boardValues = OsdLayout.ToValues(snapshot.Set);
             BoardStateText.Text = DescribeSnapshot(snapshot);
+
+            if (!snapshot.Set.IsComplete)
+            {
+                // Неполная таблица и полная — разные вещи. Раскладка, собранная
+                // из недочитанной таблицы, выглядит так же убедительно, как
+                // полная, и молчание об этом означало бы показ выдумки.
+                Report(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Борт отдал не всю таблицу: не получено имён {snapshot.Set.Missing.Count} "
+                        + $"из {snapshot.Set.Declared}. Панели, чьи параметры не пришли, показаны как отсутствующие."),
+                    InfoBarSeverity.Warning);
+            }
+            else
+            {
+                PageBar.IsOpen = false;
+            }
+
+            return;
         }
 
-        await LoadReferencesAsync().ConfigureAwait(true);
-        Rebuild();
+        _boardValues = null;
+        BoardStateText.Text = _services.ParametersError is { Length: > 0 } error
+            ? "Таблица параметров не прочитана: " + error
+            : "Таблица параметров не читалась: подключите борт на экране «Стенд» — "
+              + "снимок снимается подключением.";
     }
 
     private async Task LoadReferencesAsync()
@@ -194,86 +255,6 @@ public sealed partial class OsdPage : Page
 
         ApplyReference((ReferenceBox.SelectedItem as OsdReferenceChoice)?.Reference);
         Rebuild();
-    }
-
-    private async void OnReadBoardClick(object sender, RoutedEventArgs e)
-    {
-        if (_reading)
-        {
-            return;
-        }
-
-        // Порт открывается монопольно, и во время приёмки он принадлежит сессии.
-        // Сказать об этом прямо обязательно: отказ «нет связи» на подключённом
-        // борту читается как неисправность стенда.
-        if (_services.IsAcceptanceRunning)
-        {
-            Report(
-                "Идёт приёмка: порт занят ею. Раскладку можно прочитать после её завершения.",
-                InfoBarSeverity.Warning);
-            return;
-        }
-
-        if (!_services.IsLinkConnected)
-        {
-            Report(
-                "Нет связи с бортом. Подключитесь к плате на экране «Стенд» — читать раскладку не с чего.",
-                InfoBarSeverity.Warning);
-            return;
-        }
-
-        _reading = true;
-        ReadBoardButton.IsEnabled = false;
-        ReadBoardRing.IsActive = true;
-        ReadBoardRing.Visibility = Visibility.Visible;
-        BoardStateText.Text = "Чтение таблицы параметров…";
-
-        try
-        {
-            var detail = new Progress<ParameterProgress>(p =>
-                BoardStateText.Text = p.Total > 0
-                    ? string.Create(CultureInfo.InvariantCulture, $"Принято {p.Done} из {p.Total}: {p.Name}")
-                    : string.Create(CultureInfo.InvariantCulture, $"Принято {p.Done}: {p.Name}"));
-
-            var set = await _services.ReadAllParametersAsync(null, detail).ConfigureAwait(true);
-
-            _boardValues = OsdLayout.ToValues(set);
-            BoardStateText.Text = _services.LastParameters is { } snapshot
-                ? DescribeSnapshot(snapshot)
-                : string.Create(CultureInfo.InvariantCulture, $"Прочитано имён: {set.Values.Count}.");
-
-            if (!set.IsComplete)
-            {
-                // Неполная таблица и полная — разные вещи. Раскладка, собранная
-                // из недочитанной таблицы, выглядит так же убедительно, как
-                // полная, и молчание об этом означало бы показ выдумки.
-                var shortfall = string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"Борт отдал не всю таблицу: не получено имён {set.Missing.Count} из {set.Declared}. ");
-
-                Report(
-                    shortfall + "Панели, чьи параметры не пришли, показаны как отсутствующие.",
-                    InfoBarSeverity.Warning);
-            }
-            else
-            {
-                PageBar.IsOpen = false;
-            }
-
-            Rebuild();
-        }
-        catch (Exception ex)
-        {
-            BoardStateText.Text = "Таблица параметров не прочитана.";
-            Report("Чтение не выполнено: " + ex.Message, InfoBarSeverity.Error);
-        }
-        finally
-        {
-            _reading = false;
-            ReadBoardButton.IsEnabled = true;
-            ReadBoardRing.IsActive = false;
-            ReadBoardRing.Visibility = Visibility.Collapsed;
-        }
     }
 
     private static string DescribeSnapshot(BoardParameterSnapshot snapshot)

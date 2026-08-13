@@ -248,6 +248,7 @@ public sealed partial class MainPage : Page
         BuildTickAnimation();
 
         _services.LinkChanged += OnLinkChanged;
+        _services.ParametersChanged += OnParametersChanged;
         _hudTimer.Tick += OnHudTick;
         _portsTimer.Tick += OnPortsTick;
 
@@ -353,6 +354,7 @@ public sealed partial class MainPage : Page
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _services.LinkChanged -= OnLinkChanged;
+        _services.ParametersChanged -= OnParametersChanged;
         _hudTimer.Stop();
         _hudTimer.Tick -= OnHudTick;
         _portsTimer.Stop();
@@ -1797,6 +1799,10 @@ public sealed partial class MainPage : Page
         Log($"Выбран эталон «{profile.Name}».");
         RenderExpansion();
         RenderAll();
+
+        // Сверка по уже снятому снимку: борт для неё не опрашивается, поэтому
+        // ждать переподключения ради смены требования незачем.
+        PreviewCompare();
         await PersistSettingsAsync().ConfigureAwait(true);
     }
 
@@ -2048,9 +2054,25 @@ public sealed partial class MainPage : Page
         SetBusy(true);
         LinkBar.IsOpen = false;
 
+        // Подключение снимает всю таблицу параметров, и ход съёма показывается
+        // там же, где потом окажется его итог: два десятка секунд молчащего
+        // экрана читаются как зависшая программа.
+        CompareStateText.Text = "Открываю канал связи…";
+        CompareProgress.Visibility = Visibility.Visible;
+        CompareProgress.IsIndeterminate = true;
+
+        var progress = new Progress<string>(text =>
+        {
+            CompareStateText.Text = text;
+            AnimateCompareProgress(text);
+        });
+
         try
         {
-            await _services.ConnectAsync(port.PortName).ConfigureAwait(true);
+            await _services
+                .ConnectAsync(port.PortName, progress, new Progress<ParameterProgress>(ShowReadTick))
+                .ConfigureAwait(true);
+
             Log($"Установлена связь с бортом на {port.PortName}.");
         }
         catch (Exception ex)
@@ -2060,6 +2082,8 @@ public sealed partial class MainPage : Page
         }
         finally
         {
+            CompareProgress.Visibility = Visibility.Collapsed;
+            CompareTickPanel.Visibility = Visibility.Collapsed;
             SetBusy(false);
             RenderAll();
         }
@@ -2215,7 +2239,7 @@ public sealed partial class MainPage : Page
         // сверки не было, в списке стоят эталонные значения. Пересобирается
         // только когда никакой сверки ещё не выполнялось — иначе затёрло бы
         // её итог.
-        if (_session is null && _previewBoard is null && !_previewBusy)
+        if (_session is null && _previewBoard is null && !_services.IsReadingParameters)
         {
             Differences.Clear();
             RenderWatched();
@@ -2289,59 +2313,55 @@ public sealed partial class MainPage : Page
         if (connected)
         {
             _ = LoadCompassIdentityAsync();
-            _ = PreviewCompareAsync();
+            PreviewCompare();
         }
     }
 
     /// <summary>
-    /// Сверяет борт с эталоном сразу после подключения, не дожидаясь запуска
-    /// приёмки.
+    /// Сверяет борт с эталоном по снимку, снятому подключением, не дожидаясь
+    /// запуска приёмки.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// 🔴 Сверка ничего на борту не меняет: это одно чтение таблицы параметров.
-    /// Поэтому ждать «Старта», чтобы узнать, чем плата отличается от эталона,
-    /// незачем — оператор видит это сразу, как только положил её на стенд, и
-    /// решает, стоит ли вообще запускать процедуру.
+    /// 🔴 Сверка не читает борт и ничего на нём не меняет: таблицу снимает
+    /// подключение, здесь она только сравнивается с эталоном. Поэтому ждать
+    /// «Старта», чтобы узнать, чем плата отличается от эталона, незачем —
+    /// оператор видит это сразу, как положил её на стенд, а эталон, выбранный
+    /// после подключения, не стоит второго опроса борта.
     /// </para>
     /// <para>
-    /// Во время приёмки не выполняется: там сверка идёт своим чередом и
-    /// повторное чтение тысячи имён отняло бы у процедуры канал.
+    /// Во время приёмки не выполняется: там сверка идёт своим чередом по своему
+    /// каналу.
     /// </para>
     /// </remarks>
-    private async Task PreviewCompareAsync()
+    private void PreviewCompare()
     {
         if (_selectedReference is not { } reference
             || _acceptanceBusy
             || _session is not null
-            || _previewBusy)
+            || _services.IsReadingParameters)
         {
             return;
         }
 
-        _previewBusy = true;
+        if (_services.LastParameters is not { } snapshot)
+        {
+            if (_services.ParametersError is { Length: > 0 } error)
+            {
+                CompareStateText.Text = "Таблица параметров не прочитана: " + error;
+            }
+
+            return;
+        }
+
         try
         {
-            CompareStateText.Text = "Вычитываю прошивку борта…";
-            CompareProgress.Visibility = Visibility.Visible;
-            CompareProgress.IsIndeterminate = true;
-
-            var progress = new Progress<string>(text =>
-            {
-                CompareStateText.Text = text;
-                AnimateCompareProgress(text);
-            });
-
-            var detail = new Progress<ParameterProgress>(ShowReadTick);
-
-            var board = await _services.ReadAllParametersAsync(progress, detail).ConfigureAwait(true);
-
             var plan = ParameterTransfer.Plan(
                 reference.ParseParameters().Values,
-                board.Values,
+                snapshot.Set.Values,
                 reference.ToRoleMap());
 
-            _previewBoard = board;
+            _previewBoard = snapshot.Set;
             ShowCompare(plan, plan.IsClean
                 ? "Борт совпал с эталоном. Приёмку можно запускать."
                 : $"Расходится параметров: {plan.Differences.Count}. Это предварительная сверка — "
@@ -2354,15 +2374,23 @@ public sealed partial class MainPage : Page
         {
             CompareStateText.Text = "Предварительная сверка не выполнена: " + ex.Message;
         }
-        finally
-        {
-            CompareProgress.Visibility = Visibility.Collapsed;
-            CompareTickPanel.Visibility = Visibility.Collapsed;
-            _previewBusy = false;
-        }
     }
 
-    private bool _previewBusy;
+    /// <summary>
+    /// Снимок борта сменился: подключение прочитало новую таблицу, приёмка
+    /// перечитала её либо чтение сорвалось.
+    /// </summary>
+    /// <remarks>
+    /// Сверка пересчитывается здесь, а не по такту опроса портов: снимок
+    /// приходит из служб и может прийти из любого потока, а показ по прежней
+    /// таблице относился бы к плате, которой на стенде уже нет.
+    /// </remarks>
+    private void OnParametersChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
+    {
+        _previewBoard = _services.LastParameters?.Set;
+        PreviewCompare();
+        RenderCalibrationState();
+    });
 
     /// <summary>Оператор задал курс сам — подстановка с борта прекращается.</summary>
     private bool _headingEdited;
