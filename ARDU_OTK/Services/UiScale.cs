@@ -56,15 +56,10 @@ public static class UiScale
     };
 
     /// <summary>
-    /// Файл с масштабом. Намеренно не в базе приёмки: масштаб нужен до того,
-    /// как приложение откроет базу и загрузит первую страницу, а обращение к
-    /// SQLite на этом этапе асинхронно и может отказать. Это настройка
-    /// монитора рабочего места, а не данные сдачи.
+    /// Файл с масштабом. Лежит рядом с прочими настройками вида —
+    /// см. <see cref="UiState"/>, там же объяснено, почему не в базе приёмки.
     /// </summary>
-    private static string StatePath => System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ARDU_OTK.Data",
-        "ui-scale.txt");
+    private const string FileName = "ui-scale.txt";
 
     /// <summary>Текущий множитель.</summary>
     public static double Current { get; private set; } = Default;
@@ -80,49 +75,20 @@ public static class UiScale
     /// Читает сохранённый масштаб. Отсутствие файла и любая порча содержимого
     /// дают масштаб по умолчанию: настройка вида не имеет права мешать запуску.
     /// </summary>
-    public static double Load()
-    {
-        try
-        {
-            string path = StatePath;
-            if (!System.IO.File.Exists(path))
-            {
-                return Default;
-            }
-
-            string text = System.IO.File.ReadAllText(path).Trim();
-            return double.TryParse(
-                text,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out double factor)
-                ? Clamp(factor)
-                : Default;
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            return Default;
-        }
-    }
+    public static double Load() =>
+        double.TryParse(
+            UiState.Read(FileName),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out double factor)
+            ? Clamp(factor)
+            : Default;
 
     /// <summary>Сохраняет масштаб на следующий запуск.</summary>
-    public static void Save(double factor)
-    {
-        try
-        {
-            string path = StatePath;
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-            System.IO.File.WriteAllText(
-                path,
-                Clamp(factor).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            // Не сохранилось — масштаб доживёт до конца сеанса и вернётся к
-            // прежнему после перезапуска. Ронять приложение из-за этого нельзя.
-            App.LogFatal("UiScale.Save", ex);
-        }
-    }
+    public static void Save(double factor) => UiState.Write(
+        FileName,
+        Clamp(factor).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+        "UiScale.Save");
 
     /// <summary>
     /// Записывает масштабированные размеры в ресурсы приложения.

@@ -54,6 +54,7 @@ public sealed partial class SettingsPage : Page
 
         RenderState();
         LoadFontScale();
+        LoadTheme();
         await LoadWorkstationAsync().ConfigureAwait(true);
     }
 
@@ -130,6 +131,113 @@ public sealed partial class SettingsPage : Page
         if (App.MainWindow is MainWindow window)
         {
             window.RebuildCurrentPage();
+        }
+    }
+
+    // --- Тема оформления --------------------------------------------------
+
+    /// <summary>Выбор темы. Значение и подпись идут парой.</summary>
+    private static readonly (AppTheme Theme, string Label)[] ThemeChoices =
+    {
+        (AppTheme.System, "Как в Windows"),
+        (AppTheme.Light, "Светлая"),
+        (AppTheme.Dark, "Тёмная"),
+    };
+
+    /// <summary>Заполнение списка не должно выглядеть как выбор оператора.</summary>
+    private bool _themeLoading;
+
+    private void LoadTheme()
+    {
+        _themeLoading = true;
+        try
+        {
+            ThemeBox.Items.Clear();
+            int selected = 0;
+            for (int i = 0; i < ThemeChoices.Length; i++)
+            {
+                ThemeBox.Items.Add(ThemeChoices[i].Label);
+                if (ThemeChoices[i].Theme == UiTheme.Current)
+                {
+                    selected = i;
+                }
+            }
+
+            ThemeBox.SelectedIndex = selected;
+        }
+        finally
+        {
+            _themeLoading = false;
+        }
+
+        RenderThemeRestart();
+    }
+
+    private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_themeLoading || ThemeBox.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        // Выбор того же самого — не изменение. Список успевает поднять событие
+        // и без участия оператора (например, когда страница только строится), и
+        // без этой проверки такое событие переписало бы сохранённую настройку.
+        AppTheme theme = ThemeChoices[ThemeBox.SelectedIndex].Theme;
+        if (theme == UiTheme.Current)
+        {
+            return;
+        }
+
+        UiTheme.Save(theme);
+        RenderThemeRestart();
+    }
+
+    /// <summary>
+    /// Показывает расхождение между выбранной темой и той, с которой работает
+    /// приложение сейчас.
+    /// </summary>
+    /// <remarks>
+    /// Сообщение нужно именно потому, что выбор в списке не меняет экран
+    /// немедленно: молча сохранённая настройка выглядит как несработавшая, и
+    /// оператор жмёт её второй и третий раз, решив, что не попал.
+    /// </remarks>
+    private void RenderThemeRestart()
+    {
+        ThemeRestartBar.IsOpen = UiTheme.RestartRequired;
+        if (!UiTheme.RestartRequired)
+        {
+            return;
+        }
+
+        ThemeRestartBar.Severity = InfoBarSeverity.Informational;
+        ThemeRestartBar.Message =
+            "Новая тема сохранена и появится при следующем запуске приложения.";
+    }
+
+    private void OnThemeRestartClick(object sender, RoutedEventArgs e)
+    {
+        // Тот же запрет, что и у обновления: перезапуск в середине замера
+        // теряет результат, а деталь уже стоит в приспособлении.
+        if (_updates.IsBusy())
+        {
+            ThemeRestartBar.Severity = InfoBarSeverity.Warning;
+            ThemeRestartBar.Message =
+                "Идёт работа со стендом — тема применится после её завершения, "
+              + "при следующем запуске приложения.";
+            return;
+        }
+
+        try
+        {
+            Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+        }
+        catch (Exception ex)
+        {
+            ThemeRestartBar.Severity = InfoBarSeverity.Warning;
+            ThemeRestartBar.Message =
+                "Перезапустить не удалось: " + ex.Message
+              + ". Закройте и откройте приложение — тема уже сохранена.";
         }
     }
 

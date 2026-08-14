@@ -156,6 +156,37 @@
                             Text="Масштабируется весь текст: подписи, кнопки, поля ввода и строки таблиц сверки. Изменение применяется сразу — страница перестраивается. Работающая приёмка при этом не прерывается: связь с бортом живёт вне страницы."
                             TextWrapping="Wrap" />
                     </StackPanel>
+
+                    <!--
+                        Тема. Своя, а не системная: настройка Windows на цеховом
+                        ПК задана под другую задачу и другого пользователя, и
+                        трогать её ради стенда нельзя — ровно как и системный
+                        масштаб экрана выше.
+                    -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Тема" />
+                        <ComboBox
+                            x:Name="ThemeBox"
+                            HorizontalAlignment="Left"
+                            MinWidth="220"
+                            SelectionChanged="OnThemeChanged" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="Тёмная тема нужна там, где стенд стоит в затемнённом помещении: светлый экран во всю стену слепит и мешает смотреть на борт. Применяется при следующем запуске — цвета разбираются один раз, на старте приложения."
+                            TextWrapping="Wrap" />
+
+                        <InfoBar
+                            x:Name="ThemeRestartBar"
+                            IsClosable="False"
+                            IsOpen="False"
+                            Severity="Informational"
+                            Title="Тема изменена">
+                            <InfoBar.ActionButton>
+                                <Button Click="OnThemeRestartClick" Content="Перезапустить" />
+                            </InfoBar.ActionButton>
+                        </InfoBar>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

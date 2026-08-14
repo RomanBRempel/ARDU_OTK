@@ -11,14 +11,21 @@
 
     <Page.Resources>
 
-        <!--  Подсветка снизу: мягкое свечение под активным блоком  -->
+        <!--
+            Подсветка снизу: мягкое свечение под активным блоком.
+
+            Цвета — из палитры приложения (App.xaml), по набору на тему: на
+            тёмном фоне тон другой, чем на светлом. Здесь остаётся только
+            форма свечения, чтобы вид рабочего экрана не расходился с темой,
+            когда палитру поправят.
+        -->
         <LinearGradientBrush x:Key="GlowBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Offset="0" Color="#7A16C060" />
-            <GradientStop Offset="1" Color="#0016C060" />
+            <GradientStop Offset="0" Color="{ThemeResource TileAccentGlowColor}" />
+            <GradientStop Offset="1" Color="{ThemeResource TileAccentGlowFadeColor}" />
         </LinearGradientBrush>
 
         <!--  Акцент плашки: тот же тон, что у подсветки снизу.  -->
-        <SolidColorBrush x:Key="TileAccentBrush" Color="#16C060" />
+        <SolidColorBrush x:Key="TileAccentBrush" Color="{ThemeResource TileAccentColor}" />
 
         <!--  Плашка: вся площадь нажимаемая  -->
         <Style x:Key="TileStyle" TargetType="Button">
@@ -52,11 +59,11 @@
             видно это должно быть через весь цех, не приглядываясь.
         -->
         <LinearGradientBrush x:Key="GlowDangerBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Offset="0" Color="#7AD13438" />
-            <GradientStop Offset="1" Color="#00D13438" />
+            <GradientStop Offset="0" Color="{ThemeResource TileDangerGlowColor}" />
+            <GradientStop Offset="1" Color="{ThemeResource TileDangerGlowFadeColor}" />
         </LinearGradientBrush>
 
-        <SolidColorBrush x:Key="TileDangerBrush" Color="#D13438" />
+        <SolidColorBrush x:Key="TileDangerBrush" Color="{ThemeResource TileDangerColor}" />
 
         <!--
             Свечение под строкой списка: слабее панельного, иначе полсотни
@@ -64,13 +71,13 @@
             что-либо сообщать.
         -->
         <LinearGradientBrush x:Key="RowGlowOkBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Offset="0" Color="#0016C060" />
-            <GradientStop Offset="1" Color="#5516C060" />
+            <GradientStop Offset="0" Color="{ThemeResource TileAccentGlowFadeColor}" />
+            <GradientStop Offset="1" Color="{ThemeResource RowAccentGlowColor}" />
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="RowGlowBadBrush" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Offset="0" Color="#00D13438" />
-            <GradientStop Offset="1" Color="#66D13438" />
+            <GradientStop Offset="0" Color="{ThemeResource TileDangerGlowFadeColor}" />
+            <GradientStop Offset="1" Color="{ThemeResource RowDangerGlowColor}" />
         </LinearGradientBrush>
 
         <Style

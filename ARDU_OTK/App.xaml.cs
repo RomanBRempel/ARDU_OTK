@@ -42,6 +42,11 @@ public partial class App : Application
     /// </summary>
     public App()
     {
+        // Тема — до InitializeComponent: разметка приложения разбирается уже
+        // здесь, и цвета в ней подставляются по теме, действующей на этот
+        // момент. Записать тему позже WinUI не даёт вовсе.
+        Services.UiTheme.Apply(Services.UiTheme.Load(), this);
+
         InitializeComponent();
 
         // Необработанное исключение в WinUI гасит процесс без следов: Windows

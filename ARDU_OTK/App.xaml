@@ -12,6 +12,52 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!--
+                🔴 Собственные цвета приложения — по одному набору на тему.
+                Зелёный «готово» и красный «не заполнено» раньше были заданы
+                литералами прямо в разметке рабочего экрана, то есть одним
+                значением на обе темы. Подобранные под светлый фон, на тёмном
+                они гаснут: #D13438 на почти чёрной карточке даёт контраст
+                около 3:1 — цвет виден, а сигнал уже нет. Здесь оба набора
+                стоят рядом, и правка одного сразу видна на фоне второго.
+
+                Ключ «Default» — это ТЁМНАЯ тема, а не светлая: так устроены
+                словари тем в WinUI (Default / Light / HighContrast). Название
+                обманчивое, но менять его нельзя — по нему ищет платформа.
+
+                Тёмные значения ярче и бледнее светлых по той же причине, по
+                какой это делает сама WinUI: на тёмном фоне читается светлота,
+                а не насыщенность. Красный взят тот же, что у системной кисти
+                SystemFillColorCriticalBrush, — значок расхождения и кант
+                карточки обязаны быть одного цвета, иначе они читаются как два
+                разных признака.
+            -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="TileAccentColor">#16C060</Color>
+                    <Color x:Key="TileAccentGlowColor">#7A16C060</Color>
+                    <Color x:Key="TileAccentGlowFadeColor">#0016C060</Color>
+                    <Color x:Key="RowAccentGlowColor">#5516C060</Color>
+
+                    <Color x:Key="TileDangerColor">#D13438</Color>
+                    <Color x:Key="TileDangerGlowColor">#7AD13438</Color>
+                    <Color x:Key="TileDangerGlowFadeColor">#00D13438</Color>
+                    <Color x:Key="RowDangerGlowColor">#66D13438</Color>
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Default">
+                    <Color x:Key="TileAccentColor">#57DB8E</Color>
+                    <Color x:Key="TileAccentGlowColor">#7A57DB8E</Color>
+                    <Color x:Key="TileAccentGlowFadeColor">#0057DB8E</Color>
+                    <Color x:Key="RowAccentGlowColor">#4457DB8E</Color>
+
+                    <Color x:Key="TileDangerColor">#FF99A4</Color>
+                    <Color x:Key="TileDangerGlowColor">#7AFF99A4</Color>
+                    <Color x:Key="TileDangerGlowFadeColor">#00FF99A4</Color>
+                    <Color x:Key="RowDangerGlowColor">#55FF99A4</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!--
                 Размеры шрифтов приложения. Значения здесь — базовые, на
                 масштабе 1.0; перед созданием окна их переписывает UiScale.
                 Объявлены они всё равно: разметка ссылается на эти ключи, и
