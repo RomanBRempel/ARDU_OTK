@@ -692,6 +692,31 @@ public sealed partial class MainPage : Page
             AppendLog(MavSeverity.Info,
                 $"Сверка: сопоставлено {plan.Compared}, совпало {plan.Matched}, расходится {plan.Differences.Count}.");
 
+            // 🔴 Очистка регистрации идёт ДО выставления очереди. Очередь
+            // строится из COMPASS_DEV_IDx, и собирать её поверх повторной
+            // записи значит раскладывать по приоритетам состав, который сам по
+            // себе неверен. На борту без повторов шаг ничего не пишет и не
+            // перезагружает — он стоит одного чтения состава.
+            SetCompassBusy(true, "регистрация компасов…");
+            var purge = await _session.PurgeCompassRegistrationAsync(progress, ct).ConfigureAwait(true);
+            SetCompassBusy(false);
+
+            AppendLog(
+                purge.IsWarning ? MavSeverity.Warning : purge.Ok ? MavSeverity.Info : MavSeverity.Error,
+                purge.Message);
+
+            await RecordCheckAsync(
+                "compass.registration",
+                "Очистка регистрации компасов",
+                purge.Ok ? (purge.IsWarning ? CheckOutcome.Inconclusive : CheckOutcome.Pass) : CheckOutcome.Fail,
+                purge.Message).ConfigureAwait(true);
+
+            if (!purge.Ok)
+            {
+                ShowCompare(plan, "Приёмка остановлена: " + purge.Message);
+                return;
+            }
+
             SetCompassBusy(true, "очередь компасов…");
             var primary = await _session.MakeExternalCompassPrimaryAsync(progress, ct).ConfigureAwait(true);
             SetCompassBusy(false);

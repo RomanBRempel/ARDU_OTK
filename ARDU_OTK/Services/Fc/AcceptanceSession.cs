@@ -464,6 +464,227 @@ public sealed class AcceptanceSession : IAsyncDisposable
             : StepResult.Pass(report + ". Прошивка считает компасы откалиброванными.");
     }
 
+    /// <summary>
+    /// Один и тот же датчик, зарегистрированный в нескольких слотах: пары
+    /// «повтор — первое вхождение».
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Личность датчика здесь — целый <c>DEV_ID</c>, а не тройка
+    /// «шина/адрес/devtype», по которой сверяется топология с эталоном. Там
+    /// сравниваются РАЗНЫЕ платы, и номер шины у них законно отличается; здесь
+    /// сравниваются слоты ОДНОЙ платы, и совпадение целого идентификатора —
+    /// это и есть «прошивка записала один датчик дважды».
+    /// </remarks>
+    private static List<(CompassSlot Duplicate, CompassSlot First)> FindTwins(
+        IReadOnlyList<CompassSlot> present)
+    {
+        var seen = new List<CompassSlot>(present.Count);
+        var twins = new List<(CompassSlot, CompassSlot)>();
+
+        foreach (var candidate in present)
+        {
+            var first = seen.FirstOrDefault(s => s.DeviceId.Raw == candidate.DeviceId.Raw);
+            if (first is null)
+            {
+                seen.Add(candidate);
+                continue;
+            }
+
+            twins.Add((candidate, first));
+        }
+
+        return twins;
+    }
+
+    /// <summary>Слоты с разными датчиками: первое вхождение каждого <c>DEV_ID</c>.</summary>
+    private static List<CompassSlot> DistinctSensors(IReadOnlyList<CompassSlot> present)
+    {
+        var seen = new List<CompassSlot>(present.Count);
+        foreach (var candidate in present)
+        {
+            if (!seen.Any(s => s.DeviceId.Raw == candidate.DeviceId.Raw))
+            {
+                seen.Add(candidate);
+            }
+        }
+
+        return seen;
+    }
+
+    /// <summary>Читаемый перечень повторов — одинаковый в журнале и в протоколе.</summary>
+    private static string DescribeTwins(IReadOnlyList<(CompassSlot Duplicate, CompassSlot First)> twins) =>
+        string.Join("; ", twins.Select(static t => string.Create(
+            CultureInfo.InvariantCulture,
+            $"{CompassIdentity.DevIdName(t.Duplicate.Slot)} повторяет "
+          + $"{CompassIdentity.DevIdName(t.First.Slot)} ({CompassIdentity.Describe(t.Duplicate.DeviceId)})")));
+
+    /// <summary>Читает состав компасов: слоты 1..3 целиком.</summary>
+    private async Task<List<CompassSlot>> ReadAllSlotsAsync(CancellationToken ct)
+    {
+        var slots = new List<CompassSlot>(CompassIdentity.MaxSlot);
+        for (var slot = CompassIdentity.MinSlot; slot <= CompassIdentity.MaxSlot; slot++)
+        {
+            slots.Add(await ReadSlotAsync(slot, ct).ConfigureAwait(false));
+        }
+
+        return slots;
+    }
+
+    /// <summary>
+    /// Обнуляет параметр и подтверждает это обратным чтением.
+    /// </summary>
+    /// <returns>
+    /// <c>null</c>, если значение уже нулевое либо обнулено и подтверждено;
+    /// иначе причина отказа — готовая строка для протокола.
+    /// </returns>
+    /// <remarks>
+    /// Отсутствие имени на борту отказом не считается: <c>COMPASS_PRIO*_ID</c>
+    /// появился в 4.1, и на прошивке старше чистить в таблице приоритетов
+    /// нечего — её там нет.
+    /// </remarks>
+    private async Task<string?> TryZeroAsync(string name, CancellationToken ct)
+    {
+        ParamValue before;
+        try
+        {
+            before = await _link.ReadParamAsync(name, ct).ConfigureAwait(false);
+        }
+        catch (VehicleLinkException)
+        {
+            return null;
+        }
+
+        if (Math.Abs(before.Value) <= 0.5)
+        {
+            return null;
+        }
+
+        await _link.WriteParamAsync(name, 0f, before.Type, ct).ConfigureAwait(false);
+
+        var readBack = await _link.ReadParamAsync(name, ct).ConfigureAwait(false);
+        return Math.Abs(readBack.Value) <= 0.5
+            ? null
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"{name}: записывали 0, обратное чтение дало {readBack.Value:F0}");
+    }
+
+    /// <summary>
+    /// Снимает повторные регистрации компасов: гасит таблицу приоритетов и
+    /// лишние <c>COMPASS_DEV_IDx</c>, перезагружает борт и убеждается, что
+    /// повтор не вернулся.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Шаг ничего не делает, пока повтора нет. Перезагрузка стоит полминуты
+    /// и рвёт связь; тратить её на исправной плате ради обряда — значит платить
+    /// временем оператора за ничто.
+    /// </para>
+    /// <para>
+    /// 🔴 Ноль в <c>COMPASS_DEV_IDx</c> — это не запись чужого значения, а
+    /// снятие собственной устаревшей записи борта, поэтому запрет из
+    /// <see cref="CompassIdentity.NeverWriteNames"/> здесь не нарушается: тот
+    /// запрет закрывает перенос идентификаторов ИЗ ЭТАЛОНА, где они называют
+    /// железо другой платы. Заполняет параметр обратно сама прошивка при
+    /// загрузке, по реально найденным датчикам — в этом и смысл очистки.
+    /// </para>
+    /// <para>
+    /// 🔴 Результат проверяется перечитыванием после перезагрузки, а не фактом
+    /// записи нулей. Если датчик действительно отвечает дважды, прошивка
+    /// заведёт вторую запись заново, и тогда дело не в параметрах, а в узле на
+    /// шине — оператор должен узнать именно это, а не «очищено».
+    /// </para>
+    /// </remarks>
+    public async Task<StepResult> PurgeCompassRegistrationAsync(
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        EnsureConnected();
+
+        progress?.Report("Проверка регистрации компасов…");
+
+        var present = (await ReadAllSlotsAsync(ct).ConfigureAwait(false))
+            .Where(static s => s.IsPresent)
+            .ToArray();
+
+        var twins = FindTwins(present);
+        if (twins.Count == 0)
+        {
+            return StepResult.Pass(
+                "Повторных регистраций компасов нет: каждый датчик объявлен один раз. "
+              + "Чистить нечего, перезагрузка не потребовалась.");
+        }
+
+        var described = DescribeTwins(twins);
+        progress?.Report("Очистка регистрации компасов…");
+
+        var refused = new List<string>();
+
+        // Таблица приоритетов гасится целиком: она собрана из тех же
+        // повторяющихся идентификаторов, и оставить её значило бы вернуть
+        // повтор в очередь сразу после загрузки.
+        for (var slot = CompassIdentity.MinSlot; slot <= CompassIdentity.MaxSlot; slot++)
+        {
+            var problem = await TryZeroAsync(CompassIdentity.PriorityIdName(slot), ct).ConfigureAwait(false);
+            if (problem is not null)
+            {
+                refused.Add(problem);
+            }
+        }
+
+        foreach (var (duplicate, _) in twins)
+        {
+            var problem = await TryZeroAsync(CompassIdentity.DevIdName(duplicate.Slot), ct).ConfigureAwait(false);
+            if (problem is not null)
+            {
+                refused.Add(problem);
+            }
+        }
+
+        if (refused.Count > 0)
+        {
+            return StepResult.Fail(
+                "Борт не принял очистку регистрации компасов: " + string.Join("; ", refused)
+              + ". Повтор остаётся: " + described + ".");
+        }
+
+        progress?.Report("Перезагрузка борта после очистки регистрации…");
+        await _link.RebootAndReconnectAsync(RebootTimeout, ct).ConfigureAwait(false);
+
+        if (!_link.IsConnected)
+        {
+            return StepResult.Fail("Борт не вернулся на связь после перезагрузки при очистке регистрации компасов.");
+        }
+
+        progress?.Report("Проверка состава компасов после очистки…");
+
+        var after = (await ReadAllSlotsAsync(ct).ConfigureAwait(false))
+            .Where(static s => s.IsPresent)
+            .ToArray();
+
+        if (after.Length == 0)
+        {
+            return StepResult.Fail(
+                "После очистки регистрации борт не видит ни одного компаса. Прежде их было "
+              + $"{present.Length}: {string.Join("; ", present.Select(CompassIdentity.Describe))}.");
+        }
+
+        var twinsAfter = FindTwins(after);
+        if (twinsAfter.Count > 0)
+        {
+            return StepResult.Warn(
+                "Повтор вернулся после перезагрузки: " + DescribeTwins(twinsAfter)
+              + ". Значит дело не в устаревшей записи, а в самом датчике: он отвечает на шине дважды. "
+              + "Параметрами это не лечится — разбираться нужно с узлом. Очередь компасов будет выставлена "
+              + "по разным датчикам, повтор в неё не попадёт.");
+        }
+
+        return StepResult.Pass(
+            "Повторная регистрация снята: " + described + ". После перезагрузки борт объявляет "
+          + $"{after.Length} компас(ов), каждый по одному разу: "
+          + string.Join("; ", after.Select(CompassIdentity.Describe)) + ".");
+    }
+
     public async Task<StepResult> MakeExternalCompassPrimaryAsync(
         IProgress<string>? progress,
         CancellationToken ct)
@@ -472,11 +693,7 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
         progress?.Report("Чтение состава компасов…");
 
-        var slots = new List<CompassSlot>(CompassIdentity.MaxSlot);
-        for (var slot = CompassIdentity.MinSlot; slot <= CompassIdentity.MaxSlot; slot++)
-        {
-            slots.Add(await ReadSlotAsync(slot, ct).ConfigureAwait(false));
-        }
+        var slots = await ReadAllSlotsAsync(ct).ConfigureAwait(false);
 
         // 🔴 Отсутствие компасов приёмку не останавливает. Очередь выставлять
         // не на чем — значит, шаг пропускается вместе с его перезагрузкой, а
@@ -507,22 +724,8 @@ public sealed class AcceptanceSession : IAsyncDisposable
         // записали. Приоритет, назначенный датчику дважды, не имеет смысла: он
         // не говорит прошивке ничего, кроме того, что очередь составлена
         // неверно.
-        var distinct = new List<CompassSlot>(present.Length);
-        var twins = new List<string>();
-        foreach (var candidate in present)
-        {
-            var first = distinct.FirstOrDefault(s => s.DeviceId.Raw == candidate.DeviceId.Raw);
-            if (first is null)
-            {
-                distinct.Add(candidate);
-                continue;
-            }
-
-            twins.Add(string.Create(
-                CultureInfo.InvariantCulture,
-                $"{CompassIdentity.DevIdName(candidate.Slot)} повторяет "
-              + $"{CompassIdentity.DevIdName(first.Slot)} ({CompassIdentity.Describe(candidate.DeviceId)})"));
-        }
+        var distinct = DistinctSensors(present);
+        var twins = FindTwins(present);
 
         // Повтор — это факт про борт, а не про очередь, и скрывать его нельзя:
         // прошивка держит вторую регистрацию датчика, которого физически один.
@@ -531,10 +734,9 @@ public sealed class AcceptanceSession : IAsyncDisposable
         var twinNote = twins.Count == 0
             ? string.Empty
             : " Борт объявляет один и тот же компас в нескольких слотах: "
-              + string.Join("; ", twins)
-              + ". В очередь он поставлен один раз. Повтор в COMPASS_DEV_IDx прошивка заводит сама при "
-              + "повторной регистрации датчика (обычно узел DroneCAN, переобъявившийся после смены "
-              + "идентификатора); чтобы он ушёл насовсем, датчик надо переобъявить на чистых параметрах.";
+              + DescribeTwins(twins)
+              + ". В очередь он поставлен один раз, но сама повторная регистрация осталась — "
+              + "снимает её шаг очистки регистрации компасов.";
 
         var external = distinct.FirstOrDefault(s => CompassIdentity.IsExternal(CompassIdentity.Classify(s)) == true);
         if (external is null)
