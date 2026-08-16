@@ -25,7 +25,18 @@
       "Bash(dotnet list *)",
       "Bash(dotnet package *)",
       "Bash(python -c ' *)",
-      "PowerShell(graphify query \"�⥭�� ��ࠬ��஢ � ����, ������ ������ � ����, ����㧪� OSD �᪫����\")"
+      "PowerShell(graphify query \"�⥭�� ��ࠬ��஢ � ����, ������ ������ � ����, ����㧪� OSD �᪫����\")",
+      "PowerShell(dotnet build c:\\\\#Data\\\\ARDU_OTK\\\\ARDU_OTK.slnx -v q --nologo 2>&1)",
+      "PowerShell(graphify update 2>&1)",
+      "PowerShell(python c:\\\\#Data\\\\ARDU_OTK\\\\tools\\\\graph_freshness.py)",
+      "PowerShell(python -c \"import json,io,sys; sys.stdout.reconfigure\\(encoding='utf-8'\\); g=json.load\\(io.open\\(r'c:\\\\#Data\\\\ARDU_OTK\\\\graphify-out\\\\graph.json',encoding='utf-8'\\)\\); print\\([e for e in g['edges'] if e['source']==e['target']]\\)\")",
+      "PowerShell(python -c \"import json,io,sys; sys.stdout.reconfigure\\(encoding='utf-8'\\); g=json.load\\(io.open\\(r'c:\\\\#Data\\\\ARDU_OTK\\\\graphify-out\\\\graph.json',encoding='utf-8'\\)\\); print\\(list\\(g.keys\\(\\)\\)\\); k=[k for k in g if 'edge' in k or 'link' in k]; print\\(k\\); L=g[k[0]]; print\\([e for e in L if e.get\\('source'\\)==e.get\\('target'\\)][:5]\\)\")",
+      "PowerShell(git -C c:\\\\#Data\\\\ARDU_OTK diff --stat -- ARDU_OTK)",
+      "PowerShell(git -C c:\\\\#Data\\\\ARDU_OTK diff -- ARDU_OTK/OsdPage.xaml.cs)",
+      "PowerShell($dir = Join-Path $env:LOCALAPPDATA 'ARDU_OTK.Data'; $f = Join-Path $dir 'ui-theme.txt'; if \\(Test-Path $f\\) { Write-Output \"EXISTS: $\\(Get-Content $f\\)\" } else { Write-Output \"ABSENT\" }; New-Item -ItemType Directory -Force -Path $dir | Out-Null; Set-Content -Path $f -Value 'dark' -Encoding utf8 -NoNewline; Write-Output \"set to dark\")",
+      "PowerShell($exe = 'C:\\\\#Data\\\\ARDU_OTK\\\\ARDU_OTK\\\\bin\\\\Debug\\\\net10.0-windows10.0.26100.0\\\\win-x64\\\\ARDU_OTK.exe'; $p = Start-Process $exe -PassThru; Start-Sleep -Seconds 12; if \\($p.HasExited\\) { Write-Output \"EXITED code=$\\($p.ExitCode\\)\" } else { Write-Output \"RUNNING pid=$\\($p.Id\\)\" }; $log = Join-Path $env:LOCALAPPDATA 'ARDU_OTK.Data\\\\startup-errors.log'; if \\(Test-Path $log\\) { Write-Output \"--- log tail ---\"; Get-Content $log -Tail 20 } else { Write-Output \"no crash log\" })",
+      "PowerShell($log = Join-Path $env:LOCALAPPDATA 'ARDU_OTK.Data\\\\startup-errors.log'; if \\(Test-Path $log\\) { Get-Content $log -Tail 40 } else { Write-Output \"no crash log\" }; Write-Output \"--- procs ---\"; Get-Process -Name ARDU_OTK -ErrorAction SilentlyContinue | Select-Object Id,StartTime)",
+      "Bash(\"/c/#Data/ARDU_OTK/ARDU_OTK/bin/Debug/net10.0-windows10.0.26100.0/win-x64/ARDU_OTK.exe\")"
     ]
   },
   "hooks": {
