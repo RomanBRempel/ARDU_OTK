@@ -943,12 +943,26 @@ public sealed class AcceptanceSession : IAsyncDisposable
             : "Борт сообщил: " + string.Join(" | ", matched);
     }
 
+    /// <summary>
+    /// Борт прислал сообщение.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Объявляется наружу по той же причине, что и <see cref="BoardRead"/>:
+    /// на время приёмки наблюдательное соединение погашено, и этот канал —
+    /// единственный. Без объявления накопленное в <see cref="Messages"/> видно
+    /// лишь тому шагу, который сам за ним пришёл, а всё остальное, что борт
+    /// сказал по ходу приёмки, оператору не показывается вовсе.
+    /// </remarks>
+    public event EventHandler<StatusTextEvent>? MessageReceived;
+
     private void OnStatusText(object? sender, StatusTextEvent e)
     {
         lock (_inboxLock)
         {
             _inbox.Add(e);
         }
+
+        MessageReceived?.Invoke(this, e);
     }
 
     private void EnsureConnected()

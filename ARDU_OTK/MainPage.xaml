@@ -413,6 +413,60 @@
                     TextWrapping="Wrap" />
             </Grid>
         </DataTemplate>
+
+        <!--
+            Сообщение борта. В отличие от журнала операций важность здесь
+            показана значком: её проставил сам борт, и отказ, набранный тем же
+            серым, что и рядовое «EKF3 IMU0 is using GPS», оператор пролистывает
+            не заметив. Текст — моноширинным и дословно: по нему ищут причину
+            в документации прошивки.
+        -->
+        <DataTemplate x:Key="VehicleMessageTemplate" x:DataType="local:CalibrationLogRow">
+            <Grid Padding="0,2" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    VerticalAlignment="Top"
+                    FontFamily="Consolas"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource AppCaptionTextStyle}"
+                    Text="{x:Bind TimeText}" />
+
+                <Grid
+                    Grid.Column="1"
+                    Width="16"
+                    Height="16"
+                    VerticalAlignment="Top">
+                    <FontIcon
+                        FontSize="{ThemeResource AppCaptionFontSize}"
+                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                        Glyph="&#xE711;"
+                        Visibility="{x:Bind CriticalVisibility}" />
+                    <FontIcon
+                        FontSize="{ThemeResource AppCaptionFontSize}"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        Glyph="&#xE7BA;"
+                        Visibility="{x:Bind WarningVisibility}" />
+                    <FontIcon
+                        FontSize="{ThemeResource AppCaptionFontSize}"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Glyph="&#xE946;"
+                        Visibility="{x:Bind InfoVisibility}" />
+                </Grid>
+
+                <TextBlock
+                    Grid.Column="2"
+                    FontFamily="Consolas"
+                    IsTextSelectionEnabled="True"
+                    Style="{StaticResource AppCaptionTextStyle}"
+                    Text="{x:Bind Text}"
+                    TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
     </Page.Resources>
 
     <!--
@@ -1388,6 +1442,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" MinHeight="120" />
+                        <RowDefinition Height="*" MinHeight="120" />
                     </Grid.RowDefinitions>
 
                 <Border
@@ -1501,6 +1556,55 @@
                             <ItemsControl ItemTemplate="{StaticResource LogTemplate}" ItemsSource="{x:Bind LogEntries}" />
                         </ScrollViewer>
                     </StackPanel>
+                </Border>
+
+                <!--
+                    🔴 Слово борта — отдельной панелью, а не строкой в журнале
+                    операций. Журнал отвечает на вопрос «что сделал стенд», и
+                    смешивать с ним показания проверяемого изделия — значит
+                    лишить оператора возможности отличить наш вывод от чужого
+                    заявления при разборе отказа.
+                -->
+                <Border
+                    Grid.Row="2"
+                    Padding="14"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Сообщения борта" />
+                            <Button
+                                Padding="8,2"
+                                HorizontalAlignment="Right"
+                                Click="OnClearVehicleMessagesClick"
+                                Content="Очистить" />
+                        </Grid>
+
+                        <!--
+                            Пустая панель обязана назвать причину пустоты.
+                            Молчащий борт и оборванный канал выглядят одинаково,
+                            а означают разное.
+                        -->
+                        <TextBlock
+                            x:Name="VehicleMessagesHintText"
+                            Grid.Row="1"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="Связи нет: борт не говорит."
+                            TextWrapping="Wrap" />
+
+                        <ScrollViewer Grid.Row="2" MaxHeight="200">
+                            <ItemsControl ItemTemplate="{StaticResource VehicleMessageTemplate}" ItemsSource="{x:Bind VehicleMessages}" />
+                        </ScrollViewer>
+                    </Grid>
                 </Border>
 
                 </Grid>

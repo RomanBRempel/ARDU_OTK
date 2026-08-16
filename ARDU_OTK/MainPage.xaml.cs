@@ -249,6 +249,7 @@ public sealed partial class MainPage : Page
 
         _services.LinkChanged += OnLinkChanged;
         _services.ParametersChanged += OnParametersChanged;
+        _services.VehicleMessageReceived += OnVehicleMessage;
         _hudTimer.Tick += OnHudTick;
         _portsTimer.Tick += OnPortsTick;
 
@@ -263,6 +264,21 @@ public sealed partial class MainPage : Page
     public ObservableCollection<CompassRow> Compasses { get; } = [];
 
     public ObservableCollection<CalibrationLogRow> LogEntries { get; } = [];
+
+    /// <summary>
+    /// Сообщения самого борта, дословно.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Отдельно от журнала операций, а не вперемешку с ним. Журнал — это
+    /// протокол действий стенда, и в нём каждая строка означает «мы сделали
+    /// вот это». Слово борта — свидетельство противоположной стороны, и
+    /// перемешивание двух источников лишает оператора единственного вопроса,
+    /// который он задаёт при разборе отказа: кто это сказал — программа или
+    /// плата. Раньше до него доходили лишь те сообщения, которые стенд сам
+    /// пересказывал под своим именем на шагах приёмки; всё остальное борт
+    /// говорил в пустоту.
+    /// </remarks>
+    public ObservableCollection<CalibrationLogRow> VehicleMessages { get; } = [];
 
     /// <summary>Выбранный эталон.</summary>
     public CalibrationReference? SelectedReference => _selectedReference;
@@ -355,6 +371,7 @@ public sealed partial class MainPage : Page
     {
         _services.LinkChanged -= OnLinkChanged;
         _services.ParametersChanged -= OnParametersChanged;
+        _services.VehicleMessageReceived -= OnVehicleMessage;
         _hudTimer.Stop();
         _hudTimer.Tick -= OnHudTick;
         _portsTimer.Stop();
@@ -1492,8 +1509,8 @@ public sealed partial class MainPage : Page
             // смещениями и правильным масштабом законно получает отказ
             // «Accels inconsistent». Зелёный значок рядом с таким отказом —
             // прямая ложь, поэтому значок повторяет причину дословно.
-            _firmwareImuComplaint = FindComplaint(readiness.Blockers, "accel", "imu", "gyro");
-            _firmwareMagComplaint = FindComplaint(readiness.Blockers, "compass", "mag");
+            _firmwareImuComplaint = FindCalibrationComplaint(readiness.Blockers, "accel", "imu", "gyro");
+            _firmwareMagComplaint = FindCalibrationComplaint(readiness.Blockers, "compass", "mag");
             RenderCalibrationState();
 
             foreach (var blocker in readiness.Blockers)
@@ -2091,6 +2108,15 @@ public sealed partial class MainPage : Page
 
     private void OnLinkChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
     {
+        // 🔴 Жалоба прошивки живёт не дольше соединения, в котором прозвучала.
+        // Это ответ конкретного борта на конкретной проверке готовности, а не
+        // свойство стенда: после отключения проверять нечего, после нового
+        // подключения на стапеле может стоять уже другая плата. Пережив
+        // соединение, жалоба продолжала перекрывать вывод по параметрам, и
+        // панель калибровки требовала работы от борта, которого нет.
+        _firmwareImuComplaint = string.Empty;
+        _firmwareMagComplaint = string.Empty;
+
         RenderAll();
 
         // Опознание компасов привязано к соединению, а не к такту индикатора:
@@ -2203,6 +2229,8 @@ public sealed partial class MainPage : Page
         // предлагает нажать и получить отказ.
         EditReferenceButton.Visibility = hasProfile ? Visibility.Visible : Visibility.Collapsed;
 
+        RenderVehicleMessagesHint(connected);
+
         var problems = new List<string>();
         if (!connected)
         {
@@ -2280,6 +2308,62 @@ public sealed partial class MainPage : Page
     });
 
     private void OnClearLogClick(object sender, RoutedEventArgs e) => LogEntries.Clear();
+
+    /// <summary>
+    /// Показывает сообщение борта дословно.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Текст не переводится и не сокращается. Прошивка называет причину
+    /// отказа своими словами, и по этим же словам её ищут в документации
+    /// ArduPilot и в чужих разборах; пересказ по-русски делает единственную
+    /// зацепку ненаходимой. Важность берётся из самого сообщения: борт
+    /// размечает её сам, и переопределять его оценку стенду нечем.
+    ///
+    /// Приходит из потока приёма канала, поэтому очередь диспетчера
+    /// обязательна: коллекция связана с разметкой.
+    /// </remarks>
+    private void OnVehicleMessage(object? sender, StatusTextEvent message) =>
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            VehicleMessages.Insert(0, new CalibrationLogRow(
+                message.Severity, message.Text, message.ReceivedUtc));
+
+            while (VehicleMessages.Count > 300)
+            {
+                VehicleMessages.RemoveAt(VehicleMessages.Count - 1);
+            }
+
+            RenderVehicleMessagesHint(_services.IsLinkConnected);
+        });
+
+    private void OnClearVehicleMessagesClick(object sender, RoutedEventArgs e)
+    {
+        VehicleMessages.Clear();
+        RenderVehicleMessagesHint(_services.IsLinkConnected);
+    }
+
+    /// <summary>
+    /// Объясняет пустую панель сообщений.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Пусто по трём разным причинам: связи нет, связь есть и борт молчит,
+    /// показывать уже нечего. Одинаковая пустота на все три — это отказ панели
+    /// отвечать на единственный вопрос, ради которого на неё смотрят: борт
+    /// ничего не сказал или мы его не слышим.
+    /// </remarks>
+    private void RenderVehicleMessagesHint(bool connected)
+    {
+        if (VehicleMessages.Count > 0)
+        {
+            VehicleMessagesHintText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        VehicleMessagesHintText.Visibility = Visibility.Visible;
+        VehicleMessagesHintText.Text = connected
+            ? "Связь есть, борт пока ничего не сказал."
+            : "Связи нет: борт не говорит.";
+    }
 
 
     /// <summary>Состояние связи, отражённое на экране последней перерисовкой.</summary>
@@ -2625,17 +2709,41 @@ public sealed partial class MainPage : Page
     /// <summary>Жалоба прошивки на компасы.</summary>
     private string _firmwareMagComplaint = string.Empty;
 
-    /// <summary>Первая предполётная жалоба, где встретилось любое из слов.</summary>
-    private static string FindComplaint(IEnumerable<string> blockers, params string[] words)
+    /// <summary>
+    /// Слова, которыми прошивка говорит именно о калибровке.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 «Неисправен» и «не откалиброван» — разные отказы с разными
+    /// действиями оператора, и панель калибровки отвечает только за второй.
+    /// <c>Compass not healthy</c> означает, что датчик молчит или врёт: его
+    /// калибровка тут не поможет, а гнать оператора крутить борт по осям из-за
+    /// оборванного шлейфа — это потерянные минуты и ложный вывод «калибровка не
+    /// помогает, плата негодна». Причина сама по себе не теряется: полный
+    /// список того, что мешает взведению, идёт в журнал и в строку итога.
+    /// </remarks>
+    private static readonly string[] CalibrationWords =
+        ["calibrat", "inconsistent", "offsets", "mag field", "not learned"];
+
+    /// <summary>
+    /// Первая предполётная жалоба, которая говорит о калибровке названного датчика.
+    /// </summary>
+    /// <remarks>
+    /// Требуются оба признака сразу: имя датчика и слово о калибровке. По
+    /// одному имени панель ловила любой отказ, где датчик просто упомянут.
+    /// </remarks>
+    private static string FindCalibrationComplaint(IEnumerable<string> blockers, params string[] sensorWords)
     {
         foreach (var blocker in blockers)
         {
-            foreach (var word in words)
+            var aboutSensor = sensorWords.Any(
+                word => blocker.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+            var aboutCalibration = CalibrationWords.Any(
+                word => blocker.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+            if (aboutSensor && aboutCalibration)
             {
-                if (blocker.Contains(word, StringComparison.OrdinalIgnoreCase))
-                {
-                    return blocker;
-                }
+                return blocker;
             }
         }
 

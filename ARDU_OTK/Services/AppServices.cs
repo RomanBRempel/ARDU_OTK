@@ -330,6 +330,22 @@ public sealed class AppServices
     public event EventHandler? LinkChanged;
 
     /// <summary>
+    /// Борт прислал сообщение — по тому каналу, который сейчас открыт.
+    /// Может прийти из любого потока.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Канал выбирается здесь, а не подписчиком. Каналов два — наблюдательное
+    /// соединение и приёмка, — и они сменяют друг друга: приёмка забирает порт
+    /// себе и возвращает его обратно. Подписчик, подписавшийся на один из них,
+    /// молча замолкал бы ровно на той половине работы, где борт говорит больше
+    /// всего, и оператор считал бы тишину исправностью.
+    /// </remarks>
+    public event EventHandler<StatusTextEvent>? VehicleMessageReceived;
+
+    private void OnVehicleMessage(object? sender, StatusTextEvent message) =>
+        VehicleMessageReceived?.Invoke(this, message);
+
+    /// <summary>
     /// Снимок таблицы параметров сменился: прочитан новый, снят прежний либо
     /// чтение сорвалось. Может прийти из любого потока.
     /// </summary>
@@ -381,6 +397,8 @@ public sealed class AppServices
                     await link.DisposeAsync().ConfigureAwait(false);
                     throw;
                 }
+
+                link.StatusTextReceived += OnVehicleMessage;
 
                 _link = link;
                 ConnectedPort = portName;
@@ -578,6 +596,7 @@ public sealed class AppServices
         }
 
         session.BoardRead += OnSessionBoardRead;
+        session.MessageReceived += OnVehicleMessage;
 
         _session = session;
         LinkChanged?.Invoke(this, EventArgs.Empty);
@@ -593,6 +612,7 @@ public sealed class AppServices
         if (session is not null)
         {
             session.BoardRead -= OnSessionBoardRead;
+            session.MessageReceived -= OnVehicleMessage;
             await session.DisposeAsync().ConfigureAwait(false);
             _procedureRunning = false;
             LinkChanged?.Invoke(this, EventArgs.Empty);
@@ -947,6 +967,7 @@ public sealed class AppServices
 
         if (link is not null)
         {
+            link.StatusTextReceived -= OnVehicleMessage;
             await link.DisposeAsync().ConfigureAwait(false);
             LinkChanged?.Invoke(this, EventArgs.Empty);
         }
