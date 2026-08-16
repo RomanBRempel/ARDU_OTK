@@ -493,32 +493,110 @@ public sealed class AcceptanceSession : IAsyncDisposable
               + "виде негодно: перед сдачей компас должен быть подключён.");
         }
 
-        var external = present.FirstOrDefault(s => CompassIdentity.IsExternal(CompassIdentity.Classify(s)) == true);
+        // 🔴 Очередь — это порядок РАЗНЫХ датчиков, и строится она по личности
+        // датчика (DEV_ID), а не по номеру слота. Слот — это место хранения, и
+        // один и тот же физический компас законно занимает два слота: у
+        // DroneCAN узел, переобъявившийся после смены идентификатора или после
+        // переподключения, регистрируется прошивкой заново, и рядом со старым
+        // COMPASS_DEV_IDx появляется второй с тем же значением.
+        //
+        // Отбор «все слоты, кроме того, откуда взят внешний» убирал только один
+        // из близнецов, второй оставался в очереди, и стенд писал один и тот же
+        // идентификатор в COMPASS_PRIO1_ID и COMPASS_PRIO2_ID. Mission Planner
+        // честно рисовал два одинаковых компаса — он показывал ровно то, что мы
+        // записали. Приоритет, назначенный датчику дважды, не имеет смысла: он
+        // не говорит прошивке ничего, кроме того, что очередь составлена
+        // неверно.
+        var distinct = new List<CompassSlot>(present.Length);
+        var twins = new List<string>();
+        foreach (var candidate in present)
+        {
+            var first = distinct.FirstOrDefault(s => s.DeviceId.Raw == candidate.DeviceId.Raw);
+            if (first is null)
+            {
+                distinct.Add(candidate);
+                continue;
+            }
+
+            twins.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"{CompassIdentity.DevIdName(candidate.Slot)} повторяет "
+              + $"{CompassIdentity.DevIdName(first.Slot)} ({CompassIdentity.Describe(candidate.DeviceId)})"));
+        }
+
+        // Повтор — это факт про борт, а не про очередь, и скрывать его нельзя:
+        // прошивка держит вторую регистрацию датчика, которого физически один.
+        // Очередь мы составим правильную, но оператор обязан узнать, что плата
+        // объявляет один компас дважды.
+        var twinNote = twins.Count == 0
+            ? string.Empty
+            : " Борт объявляет один и тот же компас в нескольких слотах: "
+              + string.Join("; ", twins)
+              + ". В очередь он поставлен один раз. Повтор в COMPASS_DEV_IDx прошивка заводит сама при "
+              + "повторной регистрации датчика (обычно узел DroneCAN, переобъявившийся после смены "
+              + "идентификатора); чтобы он ушёл насовсем, датчик надо переобъявить на чистых параметрах.";
+
+        var external = distinct.FirstOrDefault(s => CompassIdentity.IsExternal(CompassIdentity.Classify(s)) == true);
         if (external is null)
         {
-            var described = string.Join("; ", present.Select(CompassIdentity.Describe));
+            var described = string.Join("; ", distinct.Select(CompassIdentity.Describe));
             return StepResult.Warn(
                 "Среди найденных компасов нет ни одного внешнего: " + described
               + ". Ставить первым нечего — шаг пропущен вместе с перезагрузкой. Технологическая карта требует "
-              + "внешний компас первым в очереди, и без него приёмку завершать нельзя.");
-        }
-
-        if (present[0].Slot == external.Slot && slots[0].DeviceId.Raw == external.DeviceId.Raw)
-        {
-            // Уже первый — писать приоритеты и тратить перезагрузку незачем.
-            return StepResult.Pass(
-                $"Внешний компас уже первый в очереди: {CompassIdentity.Describe(external.DeviceId)}. "
-              + "Перезагрузка не потребовалась.");
+              + "внешний компас первым в очереди, и без него приёмку завершать нельзя." + twinNote);
         }
 
         // Порядок: внешний первым, остальные — в прежнем относительном порядке.
-        var order = new List<CompassSlot>(present.Length) { external };
-        order.AddRange(present.Where(s => s.Slot != external.Slot));
+        var order = new List<CompassSlot>(distinct.Count) { external };
+        order.AddRange(distinct.Where(s => s.Slot != external.Slot));
 
+        // 🔴 Желаемое состояние задаётся для ВСЕХ трёх приоритетов, включая
+        // хвост. Прежде писалось ровно столько имён, сколько компасов в
+        // очереди, а лишние оставались нетронутыми — и борт, которому дубликат
+        // уже записали, сохранял его навсегда: исправленная сборка очереди
+        // просто не доходила до COMPASS_PRIO2_ID. Ноль — это «слот свободен»,
+        // прошивка заполняет его сама при загрузке.
+        var desired = new double[CompassIdentity.MaxSlot];
         for (var i = 0; i < order.Count && i < CompassIdentity.MaxSlot; i++)
         {
+            desired[i] = order[i].DeviceId.Raw;
+        }
+
+        var current = new double[CompassIdentity.MaxSlot];
+        for (var i = 0; i < CompassIdentity.MaxSlot; i++)
+        {
+            current[i] = await ReadOrZeroAsync(
+                CompassIdentity.PriorityIdName(i + CompassIdentity.MinSlot), ct).ConfigureAwait(false);
+        }
+
+        // 🔴 Сравнивается очередь целиком, а не только «кто первый». Внешний
+        // компас мог уже стоять первым при испорченном хвосте, и проверка по
+        // одному первому слоту объявляла такую очередь готовой, оставляя
+        // дубликат на борту.
+        var settled = true;
+        for (var i = 0; i < CompassIdentity.MaxSlot; i++)
+        {
+            settled &= Math.Abs(current[i] - desired[i]) <= 0.5;
+        }
+
+        if (settled)
+        {
+            var settledText =
+                $"Внешний компас уже первый в очереди: {CompassIdentity.Describe(external.DeviceId)}. "
+              + "Очередь уже верна целиком, перезагрузка не потребовалась." + twinNote;
+
+            return twins.Count == 0 ? StepResult.Pass(settledText) : StepResult.Warn(settledText);
+        }
+
+        for (var i = 0; i < CompassIdentity.MaxSlot; i++)
+        {
+            if (Math.Abs(current[i] - desired[i]) <= 0.5)
+            {
+                continue;
+            }
+
             var name = CompassIdentity.PriorityIdName(i + CompassIdentity.MinSlot);
-            var value = (float)order[i].DeviceId.Raw;
+            var value = (float)desired[i];
 
             progress?.Report($"Запись {name}…");
 
@@ -565,10 +643,12 @@ public sealed class AcceptanceSession : IAsyncDisposable
               + "перенос калибровки лёг бы на чужой датчик.");
         }
 
-        return StepResult.Pass(
+        var doneText =
             $"Первым в очереди: {CompassIdentity.Describe(firstAfter.DeviceId)}. Проверено перечитыванием "
           + "после перезагрузки — прошивка переставила блоки параметров между слотами, и перенос калибровки "
-          + "пойдёт на верный слот.");
+          + "пойдёт на верный слот." + twinNote;
+
+        return twins.Count == 0 ? StepResult.Pass(doneText) : StepResult.Warn(doneText);
     }
 
     // --- Шаг 3. Перенос конфигурации --------------------------------------
