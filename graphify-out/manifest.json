@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786905030.676137,
-    "ast_hash": "228682a9cc337536cc8c5fa57b281d4e",
+    "mtime": 1786943104.0797641,
+    "ast_hash": "87a56dd66e2b501a398e33b78664beac",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
@@ -230,9 +230,9 @@
     "semantic_hash": "7a98bdbf3ad2fccac0e0701b96e039e3"
   },
   "ARDU_OTK/Services/Fc/CompassIdentity.cs": {
-    "mtime": 1786370720.986705,
-    "ast_hash": "40ae6bad27d47cfa1eb8412095d07b8a",
-    "semantic_hash": "40ae6bad27d47cfa1eb8412095d07b8a"
+    "mtime": 1786942900.7211397,
+    "ast_hash": "c97e33cc40a8fe90ac00d4eeef8a42e6",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkProtocol.cs": {
     "mtime": 1786519614.8025274,
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
-    "mtime": 1786607623.2530794,
-    "ast_hash": "7064a10ff0e8b84c67d02c2aa88e82c2",
+    "mtime": 1786943173.4793541,
+    "ast_hash": "9b8add367d8d451038793441c77baf3f",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkFtp.cs": {
@@ -455,8 +455,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
-    "mtime": 1786905020.1405034,
-    "ast_hash": "cbc40b9646ea0307227729021d02c90d",
+    "mtime": 1786942916.70203,
+    "ast_hash": "43565c38fdf9dc77125b519ab0ff8a43",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/UiScale.cs": {
@@ -475,8 +475,8 @@
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/Fc/CalibrationStatus.cs": {
-    "mtime": 1786528151.129716,
-    "ast_hash": "9b7c3b859e0ce34dec272c95f22b8095",
+    "mtime": 1786943003.589868,
+    "ast_hash": "5c3fcda85c28bf8dacb3478d0b4aaa69",
     "semantic_hash": ""
   },
   "ARDU_OTK/Services/WorkstationLocator.cs": {
