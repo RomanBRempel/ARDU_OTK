@@ -2,17 +2,17 @@
   ".claude/settings.json": {
     "mtime": 1786688978.1181037,
     "ast_hash": "04d934fadd44a1d6952bd2ef9369dd08",
-    "semantic_hash": ""
+    "semantic_hash": "04d934fadd44a1d6952bd2ef9369dd08"
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
-    "mtime": 1786363782.727032,
-    "ast_hash": "ea29adaff15b01b97ac21540ccaa757b",
-    "semantic_hash": "ea29adaff15b01b97ac21540ccaa757b"
+    "mtime": 1786960476.924434,
+    "ast_hash": "c56293da68fd15f8031510bfe966d226",
+    "semantic_hash": "c56293da68fd15f8031510bfe966d226"
   },
   ".github/skills/winui-app/.skill-meta.json": {
-    "mtime": 1786363805.2385483,
-    "ast_hash": "152a9ecc985f4f47566d44faf72ef760",
-    "semantic_hash": "152a9ecc985f4f47566d44faf72ef760"
+    "mtime": 1786960485.2847648,
+    "ast_hash": "dac327a3e93348391ec483d7792e71f4",
+    "semantic_hash": "dac327a3e93348391ec483d7792e71f4"
   },
   ".github/skills/README.md": {
     "mtime": 1786369600.8314822,
@@ -20,107 +20,107 @@
     "semantic_hash": "f00c9d8718eab97f57cd260836f7d06c"
   },
   ".github/skills/premium-frontend-ui/SKILL.md": {
-    "mtime": 1786363782.7011113,
+    "mtime": 1786960476.8942351,
     "ast_hash": "ef71a28e67eea52392b999dc885da983",
     "semantic_hash": "ef71a28e67eea52392b999dc885da983"
   },
   ".github/skills/winui-app/LICENSE.txt": {
-    "mtime": 1786363799.6238272,
+    "mtime": 1786960478.479552,
     "ast_hash": "175792518e4ac015ab6696d16c4f607e",
     "semantic_hash": "175792518e4ac015ab6696d16c4f607e"
   },
   ".github/skills/winui-app/SKILL.md": {
-    "mtime": 1786363799.70618,
+    "mtime": 1786960478.5513492,
     "ast_hash": "97036d7bdcab2285d3f210a39125abf7",
     "semantic_hash": "97036d7bdcab2285d3f210a39125abf7"
   },
   ".github/skills/winui-app/agents/openai.yaml": {
-    "mtime": 1786363800.4175844,
+    "mtime": 1786960479.4100184,
     "ast_hash": "c6cb1c1923422b1587a5cfa2a3d7df58",
     "semantic_hash": "c6cb1c1923422b1587a5cfa2a3d7df58"
   },
   ".github/skills/winui-app/config.yaml": {
-    "mtime": 1786363799.9357462,
+    "mtime": 1786960478.8489616,
     "ast_hash": "34220a19ead4590bd1445db7f5f868e4",
     "semantic_hash": "34220a19ead4590bd1445db7f5f868e4"
   },
   ".github/skills/winui-app/references/_sections.md": {
-    "mtime": 1786363801.4693792,
+    "mtime": 1786960480.5964203,
     "ast_hash": "911f5877f63ce3b63c6d1bd79344ead3",
     "semantic_hash": "911f5877f63ce3b63c6d1bd79344ead3"
   },
   ".github/skills/winui-app/references/accessibility-input-and-localization.md": {
-    "mtime": 1786363801.7113621,
+    "mtime": 1786960480.8736067,
     "ast_hash": "b23c7ee40106df49789fdda4fddd2056",
     "semantic_hash": "b23c7ee40106df49789fdda4fddd2056"
   },
   ".github/skills/winui-app/references/build-run-and-launch-verification.md": {
-    "mtime": 1786363801.9512093,
+    "mtime": 1786960481.1893198,
     "ast_hash": "9f70e388a598eea93760ace918e2acbc",
     "semantic_hash": "9f70e388a598eea93760ace918e2acbc"
   },
   ".github/skills/winui-app/references/community-toolkit-controls-and-helpers.md": {
-    "mtime": 1786363802.2012434,
+    "mtime": 1786960481.482483,
     "ast_hash": "6bbab97c3582b44017d18628d125fd6d",
     "semantic_hash": "6bbab97c3582b44017d18628d125fd6d"
   },
   ".github/skills/winui-app/references/controls-layout-and-adaptive-ui.md": {
-    "mtime": 1786363802.4455583,
+    "mtime": 1786960481.7983792,
     "ast_hash": "23fef507a7c30eb76d1e7fa1b3be113b",
     "semantic_hash": "23fef507a7c30eb76d1e7fa1b3be113b"
   },
   ".github/skills/winui-app/references/foundation-environment-audit-and-remediation.md": {
-    "mtime": 1786363802.6849637,
+    "mtime": 1786960482.0811985,
     "ast_hash": "24f8ea350e8c4d137913c2828a1f9f97",
     "semantic_hash": "24f8ea350e8c4d137913c2828a1f9f97"
   },
   ".github/skills/winui-app/references/foundation-setup-and-project-selection.md": {
-    "mtime": 1786363802.94377,
+    "mtime": 1786960482.3685455,
     "ast_hash": "33e91fee1e0260b7f76d4d6d78688865",
     "semantic_hash": "33e91fee1e0260b7f76d4d6d78688865"
   },
   ".github/skills/winui-app/references/foundation-template-first-recovery.md": {
-    "mtime": 1786363803.1918287,
+    "mtime": 1786960482.6669192,
     "ast_hash": "ccab4ea9c402fc05d40c405d4621c28f",
     "semantic_hash": "ccab4ea9c402fc05d40c405d4621c28f"
   },
   ".github/skills/winui-app/references/foundation-winui-app-structure.md": {
-    "mtime": 1786363803.4667368,
+    "mtime": 1786960482.938033,
     "ast_hash": "fb0515020f6d04fb9e897f25b5a9b429",
     "semantic_hash": "fb0515020f6d04fb9e897f25b5a9b429"
   },
   ".github/skills/winui-app/references/motion-animations-and-polish.md": {
-    "mtime": 1786363803.6974602,
+    "mtime": 1786960483.5174923,
     "ast_hash": "de4a54ea66cc144649157799f4def7c0",
     "semantic_hash": "de4a54ea66cc144649157799f4def7c0"
   },
   ".github/skills/winui-app/references/performance-diagnostics-and-responsiveness.md": {
-    "mtime": 1786363803.938604,
+    "mtime": 1786960483.7953415,
     "ast_hash": "54f2b964215e50c7edd44d1384743c30",
     "semantic_hash": "54f2b964215e50c7edd44d1384743c30"
   },
   ".github/skills/winui-app/references/sample-source-map.md": {
-    "mtime": 1786363804.1907256,
+    "mtime": 1786960484.084914,
     "ast_hash": "dc75a1b571d11d668bdff57d07830a33",
     "semantic_hash": "dc75a1b571d11d668bdff57d07830a33"
   },
   ".github/skills/winui-app/references/shell-navigation-and-windowing.md": {
-    "mtime": 1786363804.421453,
+    "mtime": 1786960484.3926504,
     "ast_hash": "d24139b7a270f2af01b683d80b5ac928",
     "semantic_hash": "d24139b7a270f2af01b683d80b5ac928"
   },
   ".github/skills/winui-app/references/styling-theming-materials-and-icons.md": {
-    "mtime": 1786363804.6707582,
+    "mtime": 1786960484.647225,
     "ast_hash": "35d6d7020266e1f664e5bb12031a37d5",
     "semantic_hash": "35d6d7020266e1f664e5bb12031a37d5"
   },
   ".github/skills/winui-app/references/testing-debugging-and-review-checklists.md": {
-    "mtime": 1786363804.95347,
+    "mtime": 1786960485.0171826,
     "ast_hash": "c16353a9b2816823d038c2fd0f2809af",
     "semantic_hash": "c16353a9b2816823d038c2fd0f2809af"
   },
   ".github/skills/winui-app/references/windows-app-sdk-lifecycle-notifications-and-deployment.md": {
-    "mtime": 1786363805.2345488,
+    "mtime": 1786960485.2847648,
     "ast_hash": "354ce9a416e37e5a3145110571270ce1",
     "semantic_hash": "354ce9a416e37e5a3145110571270ce1"
   },
@@ -130,7 +130,7 @@
     "semantic_hash": "ae70b88df18cfd6d9ce05b6cb82214b0"
   },
   ".github/skills/winui-app/assets/winui.png": {
-    "mtime": 1786363800.916969,
+    "mtime": 1786960479.9871392,
     "ast_hash": "ab7e034ff9c4abbf44ffdf120d8f756b",
     "semantic_hash": "ab7e034ff9c4abbf44ffdf120d8f756b"
   },
@@ -147,22 +147,22 @@
   "ARDU_OTK/ARDU_OTK.csproj": {
     "mtime": 1786631865.0917683,
     "ast_hash": "d6808e29ed7d6a991888f1d983750027",
-    "semantic_hash": ""
+    "semantic_hash": "d6808e29ed7d6a991888f1d983750027"
   },
   "ARDU_OTK/App.xaml": {
     "mtime": 1786688439.6047575,
     "ast_hash": "120524cc314a91167b4e1bdad9c0e63f",
-    "semantic_hash": ""
+    "semantic_hash": "120524cc314a91167b4e1bdad9c0e63f"
   },
   "ARDU_OTK/App.xaml.cs": {
     "mtime": 1786688417.0179703,
     "ast_hash": "3542be23cdf3332a0f03e3b5503efd12",
-    "semantic_hash": ""
+    "semantic_hash": "3542be23cdf3332a0f03e3b5503efd12"
   },
   "ARDU_OTK/CompassCalibrationPage.xaml": {
     "mtime": 1786510979.8233924,
     "ast_hash": "e1dd7d470f2da23ef1c407bf5bb54b02",
-    "semantic_hash": ""
+    "semantic_hash": "e1dd7d470f2da23ef1c407bf5bb54b02"
   },
   "ARDU_OTK/CompassCalibrationPage.xaml.cs": {
     "mtime": 1786437139.3982658,
@@ -175,24 +175,24 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786902987.7952325,
-    "ast_hash": "3a5f92de5b4315cf1853ada15214ff64",
+    "mtime": 1786962878.8010383,
+    "ast_hash": "ad5680edc475627dd8cb4f35987cb000",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786943104.0797641,
-    "ast_hash": "87a56dd66e2b501a398e33b78664beac",
+    "mtime": 1786962852.8602693,
+    "ast_hash": "2b63096f26c380f0edb0b7156120a0c2",
     "semantic_hash": ""
   },
   "ARDU_OTK/MainWindow.xaml": {
     "mtime": 1786629472.359893,
     "ast_hash": "76d7a14dabb54de8b6499b162ce76e69",
-    "semantic_hash": ""
+    "semantic_hash": "76d7a14dabb54de8b6499b162ce76e69"
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
     "mtime": 1786629923.3396966,
     "ast_hash": "148f419c10f1b5e4db2d60bade8867d0",
-    "semantic_hash": ""
+    "semantic_hash": "148f419c10f1b5e4db2d60bade8867d0"
   },
   "ARDU_OTK/Program.cs": {
     "mtime": 1786381373.6752894,
@@ -207,12 +207,12 @@
   "ARDU_OTK/Services/AppServices.cs": {
     "mtime": 1786902839.3794496,
     "ast_hash": "2a673a7565182c18cdd8e12b59f88258",
-    "semantic_hash": ""
+    "semantic_hash": "2a673a7565182c18cdd8e12b59f88258"
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
     "mtime": 1786478100.1526194,
     "ast_hash": "744fc2a9e7f470e7e1f642a63737a406",
-    "semantic_hash": ""
+    "semantic_hash": "744fc2a9e7f470e7e1f642a63737a406"
   },
   "ARDU_OTK/Services/Fc/AcceptanceChecks.cs": {
     "mtime": 1786370769.1876404,
@@ -232,17 +232,17 @@
   "ARDU_OTK/Services/Fc/CompassIdentity.cs": {
     "mtime": 1786942900.7211397,
     "ast_hash": "c97e33cc40a8fe90ac00d4eeef8a42e6",
-    "semantic_hash": ""
+    "semantic_hash": "c97e33cc40a8fe90ac00d4eeef8a42e6"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkProtocol.cs": {
     "mtime": 1786519614.8025274,
     "ast_hash": "caa8a853156b972d6fc322c1a4c25043",
-    "semantic_hash": ""
+    "semantic_hash": "caa8a853156b972d6fc322c1a4c25043"
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
     "mtime": 1786606952.6982079,
     "ast_hash": "3e5960cce41f70c341f2c202cb7d593d",
-    "semantic_hash": ""
+    "semantic_hash": "3e5960cce41f70c341f2c202cb7d593d"
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
     "mtime": 1786370817.8250935,
@@ -267,7 +267,7 @@
   "ARDU_OTK/Services/Store/SqliteCalibrationStore.cs": {
     "mtime": 1786511571.0712767,
     "ast_hash": "4aa53ca52292ae7a788840df3095cf7d",
-    "semantic_hash": ""
+    "semantic_hash": "4aa53ca52292ae7a788840df3095cf7d"
   },
   "ARDU_OTK/Services/UpdateService.cs": {
     "mtime": 1786366905.5435104,
@@ -277,12 +277,12 @@
   "ARDU_OTK/SettingsPage.xaml": {
     "mtime": 1786688478.185012,
     "ast_hash": "05828322d57e17707120d38ff65c97e5",
-    "semantic_hash": ""
+    "semantic_hash": "05828322d57e17707120d38ff65c97e5"
   },
   "ARDU_OTK/SettingsPage.xaml.cs": {
     "mtime": 1786699607.3914435,
     "ast_hash": "4497dadbfce0771f0a2b5630026cfbfa",
-    "semantic_hash": ""
+    "semantic_hash": "4497dadbfce0771f0a2b5630026cfbfa"
   },
   ".github/skills/ardupilot-firmware/SKILL.md": {
     "mtime": 1786369613.5003757,
@@ -400,44 +400,44 @@
     "semantic_hash": "3b8ce30fe33d0e31cab26ce527f57252"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml": {
-    "mtime": 1786510979.8250875,
-    "ast_hash": "95346b000e85b2ab0bc9a1579f4a7a02",
-    "semantic_hash": ""
+    "mtime": 1786960805.118895,
+    "ast_hash": "1d9347030e3ef4bd7f90bdb706b4d624",
+    "semantic_hash": "1d9347030e3ef4bd7f90bdb706b4d624"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
-    "mtime": 1786606967.772499,
-    "ast_hash": "d39857598fcc9ce3b8977b362e8755ee",
-    "semantic_hash": ""
+    "mtime": 1786960882.1309972,
+    "ast_hash": "50bd8855c3c9a8f8b70dbd00c8e57ec3",
+    "semantic_hash": "50bd8855c3c9a8f8b70dbd00c8e57ec3"
   },
   "ARDU_OTK/ReferenceRows.cs": {
-    "mtime": 1786510293.908422,
-    "ast_hash": "3defa3b88fc348eb7afbb276d3716947",
-    "semantic_hash": ""
+    "mtime": 1786960749.3542273,
+    "ast_hash": "beb2a99d1a13a53a5f862952dd3a1b4c",
+    "semantic_hash": "beb2a99d1a13a53a5f862952dd3a1b4c"
   },
   "ARDU_OTK/Services/Store/CalibrationReference.cs": {
     "mtime": 1786512212.3345191,
     "ast_hash": "ba4b20f4649a145de594551177aaeed1",
-    "semantic_hash": ""
+    "semantic_hash": "ba4b20f4649a145de594551177aaeed1"
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
     "mtime": 1786943173.4793541,
     "ast_hash": "9b8add367d8d451038793441c77baf3f",
-    "semantic_hash": ""
+    "semantic_hash": "9b8add367d8d451038793441c77baf3f"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkFtp.cs": {
     "mtime": 1786604339.0005147,
     "ast_hash": "e0216b93bf8f2131f9aadcfdbc78a011",
-    "semantic_hash": ""
+    "semantic_hash": "e0216b93bf8f2131f9aadcfdbc78a011"
   },
   "ARDU_OTK/Services/Store/ReferenceScript.cs": {
     "mtime": 1786606939.9898908,
     "ast_hash": "2ee46194df466bf92eaab9f257332a3d",
-    "semantic_hash": ""
+    "semantic_hash": "2ee46194df466bf92eaab9f257332a3d"
   },
   "tools/graph_freshness.py": {
     "mtime": 1786447416.9392793,
     "ast_hash": "a2239a79d96267761d861d3ba9010204",
-    "semantic_hash": ""
+    "semantic_hash": "a2239a79d96267761d861d3ba9010204"
   },
   ".github/workflows/graph-freshness.yml": {
     "mtime": 1786446084.1827207,
@@ -447,96 +447,96 @@
   "ARDU_OTK/Services/Fc/ParameterTransfer.cs": {
     "mtime": 1786453918.4120576,
     "ast_hash": "240cd94917c7caa8483d8e75888cc807",
-    "semantic_hash": ""
+    "semantic_hash": "240cd94917c7caa8483d8e75888cc807"
   },
   "ARDU_OTK/AcceptanceRows.cs": {
     "mtime": 1786609969.5312805,
     "ast_hash": "965e3008890ce316f20d8e50e27fda73",
-    "semantic_hash": ""
+    "semantic_hash": "965e3008890ce316f20d8e50e27fda73"
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
     "mtime": 1786942916.70203,
     "ast_hash": "43565c38fdf9dc77125b519ab0ff8a43",
-    "semantic_hash": ""
+    "semantic_hash": "43565c38fdf9dc77125b519ab0ff8a43"
   },
   "ARDU_OTK/Services/UiScale.cs": {
     "mtime": 1786688409.5670724,
     "ast_hash": "6f0f1f45e4d7f8e70d5f4c718b06b079",
-    "semantic_hash": ""
+    "semantic_hash": "6f0f1f45e4d7f8e70d5f4c718b06b079"
   },
   "ARDU_OTK/Services/Fc/ParameterEnums.cs": {
     "mtime": 1786511416.170723,
     "ast_hash": "233f5e24e78205f81e1b867d4998e2d8",
-    "semantic_hash": ""
+    "semantic_hash": "233f5e24e78205f81e1b867d4998e2d8"
   },
   "ARDU_OTK/ChannelOrder.cs": {
     "mtime": 1786519424.8079908,
     "ast_hash": "39ff11bd70a91cdd8f7d7d902e02bcc9",
-    "semantic_hash": ""
+    "semantic_hash": "39ff11bd70a91cdd8f7d7d902e02bcc9"
   },
   "ARDU_OTK/Services/Fc/CalibrationStatus.cs": {
     "mtime": 1786943003.589868,
     "ast_hash": "5c3fcda85c28bf8dacb3478d0b4aaa69",
-    "semantic_hash": ""
+    "semantic_hash": "5c3fcda85c28bf8dacb3478d0b4aaa69"
   },
   "ARDU_OTK/Services/WorkstationLocator.cs": {
     "mtime": 1786519851.6630213,
     "ast_hash": "4a4ec86c206db0d94ab703b850c06a82",
-    "semantic_hash": ""
+    "semantic_hash": "4a4ec86c206db0d94ab703b850c06a82"
   },
   "ARDU_OTK/ReferencesPage.xaml": {
     "mtime": 1786530513.8341188,
     "ast_hash": "4ecaf1a37c648747aa2c75edbba4ca1f",
-    "semantic_hash": ""
+    "semantic_hash": "4ecaf1a37c648747aa2c75edbba4ca1f"
   },
   "ARDU_OTK/ReferencesPage.xaml.cs": {
     "mtime": 1786530546.6732183,
     "ast_hash": "efafc5fbb9f8e0418f5d4209287b2816",
-    "semantic_hash": ""
+    "semantic_hash": "efafc5fbb9f8e0418f5d4209287b2816"
   },
   "ARDU_OTK/RunsPage.xaml": {
     "mtime": 1786530365.304884,
     "ast_hash": "0532b47749d2981dd850114f1fc43b1b",
-    "semantic_hash": ""
+    "semantic_hash": "0532b47749d2981dd850114f1fc43b1b"
   },
   "ARDU_OTK/RunsPage.xaml.cs": {
     "mtime": 1786530398.667115,
     "ast_hash": "a0aba54b969f5070cf2deae7fee3f489",
-    "semantic_hash": ""
+    "semantic_hash": "a0aba54b969f5070cf2deae7fee3f489"
   },
   "ARDU_OTK/Services/Store/ReferencePackage.cs": {
     "mtime": 1786632862.3490336,
     "ast_hash": "c850b86dcb36a8275f0787a8583a166e",
-    "semantic_hash": ""
+    "semantic_hash": "c850b86dcb36a8275f0787a8583a166e"
   },
   "ARDU_OTK/OsdPage.xaml": {
     "mtime": 1786633151.8102973,
     "ast_hash": "d902987140e41d5aa860011cf16e70b4",
-    "semantic_hash": ""
+    "semantic_hash": "d902987140e41d5aa860011cf16e70b4"
   },
   "ARDU_OTK/OsdPage.xaml.cs": {
     "mtime": 1786633198.097467,
     "ast_hash": "8ad58af046ef22e904092f84b35a6678",
-    "semantic_hash": ""
+    "semantic_hash": "8ad58af046ef22e904092f84b35a6678"
   },
   "ARDU_OTK/OsdRows.cs": {
     "mtime": 1786629206.3967812,
     "ast_hash": "8dc681fc12ba2933a663054318527ae7",
-    "semantic_hash": ""
+    "semantic_hash": "8dc681fc12ba2933a663054318527ae7"
   },
   "ARDU_OTK/Services/Fc/OsdLayout.cs": {
     "mtime": 1786629157.6647413,
     "ast_hash": "a0f21ef394e177a2d13f60400521dfb7",
-    "semantic_hash": ""
+    "semantic_hash": "a0f21ef394e177a2d13f60400521dfb7"
   },
   "ARDU_OTK/Services/UiState.cs": {
     "mtime": 1786688365.926106,
     "ast_hash": "4032e692c99733a906bd7c24edac8d2b",
-    "semantic_hash": ""
+    "semantic_hash": "4032e692c99733a906bd7c24edac8d2b"
   },
   "ARDU_OTK/Services/UiTheme.cs": {
     "mtime": 1786688391.9033988,
     "ast_hash": "ca1ec0fb8227d7186642ac9872539585",
-    "semantic_hash": ""
+    "semantic_hash": "ca1ec0fb8227d7186642ac9872539585"
   }
 }
