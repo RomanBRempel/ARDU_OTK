@@ -114,7 +114,7 @@ public sealed partial class ReferenceEditorPage : Page
         _ready = true;
 
         RenderScripts();
-        RebuildRoleSections();
+        RebuildRoleTree();
         UpdateGate();
     }
 
@@ -122,15 +122,30 @@ public sealed partial class ReferenceEditorPage : Page
     public ObservableCollection<ExpectedCompassSlotRow> Slots { get; } = new();
 
     /// <summary>
-    /// Все параметры эталона одним списком, с режимом контроля в каждой строке.
+    /// Все параметры эталона деревом по префиксу имени, с режимом контроля в
+    /// каждой строке.
     /// </summary>
     /// <remarks>
-    /// Один список, а не три раздела, именно из-за ползунка в строке:
-    /// переключённая строка обязана была бы перепрыгнуть в соседний раздел и
-    /// исчезнуть из-под пальца. Раскладка видна счётчиками над списком и
-    /// фильтром по режиму.
+    /// <para>
+    /// Дерево разбито по префиксу, а не по режиму контроля, именно из-за
+    /// ползунка в строке: переключённая строка обязана была бы перепрыгнуть в
+    /// соседний узел и исчезнуть из-под пальца. Префикс от переключения не
+    /// зависит, поэтому строка остаётся на месте, а раскладка видна счётчиками
+    /// над деревом и фильтром по режиму.
+    /// </para>
     /// </remarks>
-    public ObservableCollection<ParameterRoleRow> RoleRows { get; } = new();
+    public ObservableCollection<ParameterGroupRow> RoleGroups { get; } = new();
+
+    /// <summary>
+    /// Узлы, раскрытые оператором.
+    /// </summary>
+    /// <remarks>
+    /// Состояние держится по ключу узла, а не в объектах строк: дерево
+    /// пересобирается целиком при каждой правке фильтра, и раскрытие,
+    /// хранящееся в пересоздаваемых объектах, схлопывалось бы на каждом
+    /// нажатии клавиши в поле фильтра.
+    /// </remarks>
+    private readonly HashSet<string> _expandedRoleGroups = new(StringComparer.Ordinal);
 
     /// <summary>Скрипты изделия, входящие в эталон.</summary>
     public ObservableCollection<ReferenceScriptRow> Scripts { get; } = new();
@@ -514,44 +529,42 @@ public sealed partial class ReferenceEditorPage : Page
 
     // --- Контроль параметров ----------------------------------------------
 
-    private void OnRoleFilterChanged(object sender, TextChangedEventArgs e) => RebuildRoleSections();
+    private void OnRoleFilterChanged(object sender, TextChangedEventArgs e) => RebuildRoleTree();
 
     /// <summary>
-    /// Пересобирает три секции контроля по текущему набору параметров и текущей
+    /// Пересобирает дерево параметров и счётчики по текущему набору и текущей
     /// карте ролей.
     /// </summary>
     /// <remarks>
-    /// Полная пересборка, а не точечная правка списков: раскладка зависит
-    /// разом от набора, от карты ролей, от переключателя переноса
-    /// <c>COMPASS_MOT*</c> и от фильтра, и инкрементальное обновление по каждому
-    /// из четырёх поводов рано или поздно разошлось бы с тем, что уйдёт в базу.
-    /// Набор — десятки, в худшем случае тысячи имён; это доли миллисекунды.
-    /// </remarks>
-    /// <summary>
-    /// Пересобирает список параметров и счётчики по текущему набору и текущей
-    /// карте ролей.
-    /// </summary>
-    /// <remarks>
+    /// <para>
     /// Полная пересборка, а не точечная правка: раскладка зависит разом от
     /// набора, карты ролей, переключателя переноса <c>COMPASS_MOT*</c> и двух
     /// фильтров, и инкрементальное обновление по каждому из поводов рано или
     /// поздно разошлось бы с тем, что уйдёт в базу. Полный дамп прошивки —
     /// это тысяча с небольшим имён; пересборка укладывается в единицы
-    /// миллисекунд, а список виртуализован.
+    /// миллисекунд, а дерево свёрнуто и виртуализовано по узлам.
+    /// </para>
+    /// <para>
+    /// Полный счёт по режимам ведётся по всему набору, до фильтров: счётчики
+    /// над деревом отвечают за эталон целиком, и подстраиваться под текущую
+    /// выборку они не должны — иначе фильтр «COMPASS» превращал бы эталон в
+    /// два десятка параметров.
+    /// </para>
     /// </remarks>
-    private void RebuildRoleSections()
+    private void RebuildRoleTree()
     {
         if (!_ready)
         {
             return;
         }
 
-        RoleRows.Clear();
+        RoleGroups.Clear();
 
         if (_parameters is null)
         {
             RolesEmptyText.Visibility = Visibility.Visible;
             RoleFilterPanel.Visibility = Visibility.Collapsed;
+            RoleFilterEmptyText.Visibility = Visibility.Collapsed;
             RolesBar.IsOpen = false;
             RoleCountVisibleText.Text = "0";
             RoleCountHiddenText.Text = "0";
@@ -576,6 +589,9 @@ public sealed partial class ReferenceEditorPage : Page
         var off = 0;
         var hazardous = 0;
 
+        var shown = new Dictionary<string, List<ParameterRoleRow>>(StringComparer.Ordinal);
+        var totals = new Dictionary<string, int>(StringComparer.Ordinal);
+
         foreach (var pair in _parameters.Set.Values.OrderBy(static p => p.Key, StringComparer.Ordinal))
         {
             var role = _roles.Classify(pair.Key);
@@ -592,6 +608,9 @@ public sealed partial class ReferenceEditorPage : Page
                 hazardous++;
             }
 
+            var prefix = ParameterGroupRow.PrefixOf(role.Name);
+            totals[prefix] = totals.TryGetValue(prefix, out var total) ? total + 1 : 1;
+
             if (modeFilter is { } mode && role.Control != mode)
             {
                 continue;
@@ -603,14 +622,108 @@ public sealed partial class ReferenceEditorPage : Page
                 continue;
             }
 
-            RoleRows.Add(new ParameterRoleRow(role, pair.Value, VehicleClass));
+            if (!shown.TryGetValue(prefix, out var rows))
+            {
+                rows = new List<ParameterRoleRow>();
+                shown.Add(prefix, rows);
+            }
+
+            rows.Add(new ParameterRoleRow(role, pair.Value, VehicleClass));
         }
+
+        // Узел, из которого фильтр вычеркнул всё, не показывается вовсе. Пустые
+        // узлы под фильтром вернули бы ровно тот перебор глазами, ради ухода от
+        // которого дерево и заведено.
+        var prefixes = shown.Keys.ToList();
+        prefixes.Sort(ParameterGroupRow.Compare);
+
+        // 🔴 Поиск по имени раскрывает узлы сам. Иначе фильтр «OFS» отвечает
+        // списком свёрнутых узлов, и оператор, набравший имя, обязан ещё и
+        // угадать, в каком из них оно лежит.
+        var searching = nameFilter.Length > 0;
+
+        // Под поиском узлы раскрыты все и всегда, поэтому обе кнопки заведомо
+        // ничего не изменят. Живая кнопка, не делающая ничего, читается как сбой.
+        ExpandAllGroupsButton.IsEnabled = !searching;
+        CollapseAllGroupsButton.IsEnabled = !searching;
+
+        foreach (var prefix in prefixes)
+        {
+            RoleGroups.Add(new ParameterGroupRow(
+                prefix,
+                shown[prefix],
+                totals[prefix],
+                searching || _expandedRoleGroups.Contains(prefix)));
+        }
+
+        RoleFilterEmptyText.Visibility = RoleGroups.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         RoleCountVisibleText.Text = visible.ToString(CultureInfo.InvariantCulture);
         RoleCountHiddenText.Text = hidden.ToString(CultureInfo.InvariantCulture);
         RoleCountOffText.Text = off.ToString(CultureInfo.InvariantCulture);
 
         UpdateRolesBar(hazardous, visible + hidden + off);
+    }
+
+    private void OnRoleGroupExpanding(Expander sender, ExpanderExpandingEventArgs args) =>
+        RememberRoleGroup(sender, expanded: true);
+
+    private void OnRoleGroupCollapsed(Expander sender, ExpanderCollapsedEventArgs args) =>
+        RememberRoleGroup(sender, expanded: false);
+
+    /// <summary>
+    /// Запоминает раскрытие узла — и в самом узле, и в наборе ключей.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// В двух местах, потому что у них разные сроки жизни: объект узла отвечает
+    /// за переиспользуемый контейнер списка при прокрутке, набор ключей — за
+    /// полную пересборку дерева.
+    /// </para>
+    /// <para>
+    /// 🔴 Под действующим поиском раскрытие не запоминается: узлы раскрыл фильтр,
+    /// а не оператор. Запомнить их — значит после стирания фильтра вывалить
+    /// раскрытыми все узлы, которых поиск когда-либо касался.
+    /// </para>
+    /// </remarks>
+    private void RememberRoleGroup(Expander sender, bool expanded)
+    {
+        if (!_ready || sender.DataContext is not ParameterGroupRow group)
+        {
+            return;
+        }
+
+        group.IsExpanded = expanded;
+
+        if (RoleFilterBox.Text.Trim().Length > 0)
+        {
+            return;
+        }
+
+        if (expanded)
+        {
+            _expandedRoleGroups.Add(group.Prefix);
+        }
+        else
+        {
+            _expandedRoleGroups.Remove(group.Prefix);
+        }
+    }
+
+    private void OnExpandAllGroupsClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var group in RoleGroups)
+        {
+            _expandedRoleGroups.Add(group.Prefix);
+        }
+
+        RebuildRoleTree();
+    }
+
+    private void OnCollapseAllGroupsClick(object sender, RoutedEventArgs e)
+    {
+        _expandedRoleGroups.Clear();
+        RebuildRoleTree();
     }
 
     /// <summary>Плашка над списком: охват, отступления, опасные отступления, заморозка.</summary>
@@ -653,7 +766,7 @@ public sealed partial class ReferenceEditorPage : Page
         RolesBar.IsOpen = true;
     }
 
-    private void OnRoleModeFilterChanged(object sender, SelectionChangedEventArgs e) => RebuildRoleSections();
+    private void OnRoleModeFilterChanged(object sender, SelectionChangedEventArgs e) => RebuildRoleTree();
 
     /// <summary>
     /// Переключение режима контроля ползунком в строке.
@@ -1091,7 +1204,11 @@ public sealed partial class ReferenceEditorPage : Page
     {
         _parameters = null;
         Slots.Clear();
-        RoleRows.Clear();
+        RoleGroups.Clear();
+
+        // Другой эталон — другое дерево: раскрытые узлы прежнего набора к нему
+        // отношения не имеют.
+        _expandedRoleGroups.Clear();
 
         ReferencePathBox.Text = string.Empty;
         ReferenceSummaryPanel.Visibility = Visibility.Collapsed;
@@ -1102,7 +1219,7 @@ public sealed partial class ReferenceEditorPage : Page
         TopologyBar.IsOpen = false;
         SnapshotBar.IsOpen = false;
 
-        RebuildRoleSections();
+        RebuildRoleTree();
         UpdateGate();
     }
 
@@ -1159,7 +1276,7 @@ public sealed partial class ReferenceEditorPage : Page
             MissingMotBar.IsOpen = false;
         }
 
-        RebuildRoleSections();
+        RebuildRoleTree();
         UpdateGate();
     }
 
@@ -1179,7 +1296,7 @@ public sealed partial class ReferenceEditorPage : Page
     private void OnFormToggled(object sender, RoutedEventArgs e)
     {
         _roles = _roles.WithMotorCompTransfer(MotorCompToggle.IsOn);
-        RebuildRoleSections();
+        RebuildRoleTree();
         UpdateGate();
     }
 

@@ -137,8 +137,10 @@ public sealed class ParameterRoleRow
                 $"Отступление от умолчания: {over.Justification} — {DescribeAuthor(over)}")
             : string.Empty;
 
+        IsOverridden = role.IsOverridden;
         OverrideVisibility = role.IsOverridden ? Visibility.Visible : Visibility.Collapsed;
 
+        IsHazardous = role.IsHazardousOverride;
         HazardVisibility = role.IsHazardousOverride ? Visibility.Visible : Visibility.Collapsed;
         HazardText = role.IsHazardousOverride
             ? "Это имя не может совпасть с эталоном ни на одной исправной плате: контроль по нему остановит каждый прогон."
@@ -166,6 +168,12 @@ public sealed class ParameterRoleRow
     /// <summary>Параметр не может совпасть с эталоном по устройству прошивки, а не по решению технолога.</summary>
     public bool CannotMatch { get; }
 
+    /// <summary>Роль отличается от умолчания технологической карты.</summary>
+    public bool IsOverridden { get; }
+
+    /// <summary>Под контролем имя, которое совпасть не может: прогон остановится всегда.</summary>
+    public bool IsHazardous { get; }
+
     public Visibility OverrideVisibility { get; }
 
     public Visibility HazardVisibility { get; }
@@ -180,63 +188,172 @@ public sealed class ParameterRoleRow
 }
 
 /// <summary>
-/// Секция раздела контроля: контролируем и показываем, контролируем и не
-/// показываем, не контролируем.
+/// Узел дерева параметров: все имена с одним префиксом — текстом до первого
+/// подчёркивания.
 /// </summary>
 /// <remarks>
-/// Секция существует как объект, а не как три отдельные плашки в разметке,
-/// потому что заголовок, пояснение и счётчик обязаны быть выведены из одного
-/// значения <see cref="ParameterControl"/>. Три копии этих текстов в XAML
-/// разошлись бы при первой же правке формулировки.
+/// <para>
+/// 🔴 Дерево, а не плоский список, потому что полный дамп прошивки — больше
+/// тысячи имён. Плоский список отвечает только на вопрос «покажи параметр,
+/// имя которого я уже знаю»; вопрос «что здесь относится к компасам, к
+/// серво-выходам, к батарее» он оставляет на перебор глазами, а именно этот
+/// вопрос оператор и задаёт, разбирая чужой эталон.
+/// </para>
+/// <para>
+/// Разбиение ровно как в Mission Planner — по тексту до первого «_». Своё,
+/// «улучшенное» разбиение заставило бы держать в голове два дерева сразу:
+/// одно в наземной станции, другое здесь.
+/// </para>
 /// </remarks>
-public sealed class ParameterRoleSectionRow
+public sealed class ParameterGroupRow
 {
-    public ParameterRoleSectionRow(
-        ParameterControl control,
+    /// <summary>Узел для имён без подчёркивания: это не префикс, а остаток.</summary>
+    public const string NoPrefixKey = "без префикса";
+
+    public ParameterGroupRow(
+        string prefix,
         IReadOnlyList<ParameterRoleRow> rows,
         int totalCount,
         bool isExpanded)
     {
+        ArgumentNullException.ThrowIfNull(prefix);
         ArgumentNullException.ThrowIfNull(rows);
 
-        Control = control;
-        Title = ParameterRoleMap.SectionTitle(control);
-        Hint = ParameterRoleMap.SectionHint(control);
+        Prefix = prefix;
+        Title = prefix == NoPrefixKey ? NoPrefixKey : prefix + "_*";
         IsExpanded = isExpanded;
 
         Rows = new ObservableCollection<ParameterRoleRow>(rows);
 
         // Счётчик показывает и отфильтрованное, и полное число: иначе фильтр
-        // «COMPASS» создаёт впечатление, что эталон состоит из двадцати
-        // параметров, и оператор судит о нём по обрезанной картине.
+        // «OFS» создаёт впечатление, что в узле COMPASS шесть параметров, и
+        // оператор судит об эталоне по обрезанной картине.
         CountText = rows.Count == totalCount
             ? totalCount.ToString(CultureInfo.InvariantCulture)
             : string.Create(CultureInfo.InvariantCulture, $"{rows.Count} из {totalCount}");
 
-        EmptyVisibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        ListVisibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        EmptyText = totalCount == 0
-            ? "В этой секции нет ни одного параметра эталона."
-            : "Под фильтр в этой секции ничего не подошло.";
+        // Раскладка узла видна на свёрнутом узле. Иначе, чтобы узнать, есть ли
+        // в узле хоть что-то контролируемое, его пришлось бы раскрыть — то есть
+        // раскрыть все сто узлов подряд, ради чего дерево и не заводят.
+        var visible = rows.Count(static r => r.Control == ParameterControl.ControlledVisible);
+        var hidden = rows.Count(static r => r.Control == ParameterControl.ControlledHidden);
+        var off = rows.Count - visible - hidden;
+
+        var parts = new List<string>(3);
+        if (visible > 0)
+        {
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"показ {visible}"));
+        }
+
+        if (hidden > 0)
+        {
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"контроль {hidden}"));
+        }
+
+        if (off > 0)
+        {
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"вне контроля {off}"));
+        }
+
+        ModeText = string.Join(" · ", parts);
+
+        HazardVisibility = rows.Any(static r => r.IsHazardous) ? Visibility.Visible : Visibility.Collapsed;
+        OverrideVisibility = rows.Any(static r => r.IsOverridden) ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public ParameterControl Control { get; }
+    /// <summary>Ключ узла: то, по чему группировали. Не для показа — для сопоставления.</summary>
+    public string Prefix { get; }
 
+    /// <summary>Заголовок узла: <c>COMPASS_*</c>.</summary>
     public string Title { get; }
-
-    public string Hint { get; }
 
     public string CountText { get; }
 
-    public bool IsExpanded { get; }
+    /// <summary>Раскладка контроля внутри узла, видимая на свёрнутом узле.</summary>
+    public string ModeText { get; }
+
+    /// <summary>
+    /// Узел раскрыт.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Свойство изменяемое, хотя привязка односторонняя и разовая. Контейнеры
+    /// списка переиспользуются при прокрутке: если оставить здесь состояние на
+    /// момент сборки, раскрытый узел, уехавший за край экрана и вернувшийся,
+    /// пришёл бы обратно свёрнутым — а оператор считает это потерей своего места
+    /// в списке.
+    /// </remarks>
+    public bool IsExpanded { get; set; }
 
     public ObservableCollection<ParameterRoleRow> Rows { get; }
 
-    public Visibility EmptyVisibility { get; }
+    /// <summary>В узле есть имя под контролем, которое совпасть не может.</summary>
+    public Visibility HazardVisibility { get; }
 
-    public Visibility ListVisibility { get; }
+    /// <summary>В узле есть отступление от технологической карты.</summary>
+    public Visibility OverrideVisibility { get; }
 
-    public string EmptyText { get; }
+    /// <summary>Префикс имени: текст до первого подчёркивания.</summary>
+    /// <remarks>
+    /// Правило живёт здесь, а не на странице: по нему строится дерево и по нему
+    /// же запоминается, какие узлы раскрыты. Две копии правила разошлись бы, и
+    /// раскрытие перестало бы попадать в свой узел.
+    /// </remarks>
+    public static string PrefixOf(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var cut = name.IndexOf('_', StringComparison.Ordinal);
+        return cut > 0 ? name[..cut] : NoPrefixKey;
+    }
+
+    /// <summary>
+    /// Порядок узлов: <c>SERVO2</c> раньше <c>SERVO10</c>.
+    /// </summary>
+    /// <remarks>
+    /// Побайтовое сравнение поставило бы SERVO10 между SERVO1 и SERVO2, и
+    /// оператор, ищущий девятый выход, пролистал бы мимо него: глаз в дереве
+    /// ведут по номеру, а не по коду символа. Остаток без префикса уходит в
+    /// конец — он не место в алфавите, а мусорная корзина имён.
+    /// </remarks>
+    public static int Compare(string a, string b)
+    {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
+        if (a == NoPrefixKey || b == NoPrefixKey)
+        {
+            return a == b ? 0 : a == NoPrefixKey ? 1 : -1;
+        }
+
+        var (headA, numberA) = SplitTrailingNumber(a);
+        var (headB, numberB) = SplitTrailingNumber(b);
+
+        var head = string.CompareOrdinal(headA, headB);
+        return head != 0 ? head : numberA.CompareTo(numberB);
+    }
+
+    /// <summary>Делит «SERVO10» на «SERVO» и 10. Без хвостовых цифр номер равен −1.</summary>
+    private static (string Head, int Number) SplitTrailingNumber(string prefix)
+    {
+        var cut = prefix.Length;
+        while (cut > 0 && char.IsAsciiDigit(prefix[cut - 1]))
+        {
+            cut--;
+        }
+
+        if (cut == prefix.Length)
+        {
+            return (prefix, -1);
+        }
+
+        // Длинный хвост цифр — не номер экземпляра, а чужеродное имя: сравнивать
+        // его как число нельзя, но и ронять разбор списка из-за него незачем.
+        return (
+            prefix[..cut],
+            int.TryParse(prefix[cut..], NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+                ? number
+                : -1);
+    }
 }
 
 /// <summary>Строка скрипта в мастере эталона.</summary>

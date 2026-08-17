@@ -732,12 +732,23 @@
                             прячется в предполётных сообщениях. Некалиброванный
                             акселерометр или компас — это отказ взвода, о котором
                             оператор узнавал в конце приёмки, уже собрав изделие.
-                            Здесь два значка: красный — работа не сделана,
-                            зелёный — сделана.
+                            Три значка: красный — работа не сделана, зелёный —
+                            сделана и подтверждена предполётной проверкой, серый —
+                            судить не по чему. Подробность основания — в подсказке
+                            значка.
                         -->
                         <StackPanel VerticalAlignment="Center" Spacing="8">
+                            <!--
+                                Акселерометры и гироскопы разведены по разным
+                                значкам: судят о них по разным основаниям — первые
+                                по таблице параметров, вторые только по ответу
+                                предполётной проверки. Общий значок «IMU» показывал
+                                состояние акселерометров, а красили его в том числе
+                                жалобы на гироскопы, и оператор шёл делать не ту
+                                калибровку.
+                            -->
                             <Border
-                                x:Name="ImuCalCard"
+                                x:Name="AccelCalCard"
                                 Padding="8,5"
                                 Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                 BorderThickness="0,0,0,3"
@@ -747,9 +758,30 @@
                                         HorizontalAlignment="Center"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                         Style="{StaticResource AppCaptionTextStyle}"
-                                        Text="IMU calib" />
+                                        Text="ACCEL calib" />
                                     <TextBlock
-                                        x:Name="ImuCalText"
+                                        x:Name="AccelCalText"
+                                        HorizontalAlignment="Center"
+                                        FontWeight="SemiBold"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="—" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border
+                                x:Name="GyroCalCard"
+                                Padding="8,5"
+                                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderThickness="0,0,0,3"
+                                CornerRadius="4">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource AppCaptionTextStyle}"
+                                        Text="GYRO calib" />
+                                    <TextBlock
+                                        x:Name="GyroCalText"
                                         HorizontalAlignment="Center"
                                         FontWeight="SemiBold"
                                         Style="{StaticResource AppCaptionTextStyle}"

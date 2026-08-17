@@ -71,7 +71,11 @@
             конкретное число, и ответ должен быть виден без наведения мыши.
         -->
         <DataTemplate x:Key="ParameterRoleTemplate" x:DataType="local:ParameterRoleRow">
-            <Grid ColumnSpacing="16">
+            <!--
+                Отступы у самой строки, а не у контейнера списка: строки лежат
+                внутри узла дерева, где контейнера со своим отступом нет.
+            -->
+            <Grid ColumnSpacing="16" Padding="10,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -147,6 +151,76 @@
                 </StackPanel>
             </Grid>
         </DataTemplate>
+
+        <!--
+            Узел дерева параметров: префикс до первого «_», как в дереве
+            параметров Mission Planner. Свёрнутый узел обязан отвечать на вопрос
+            «стоит ли сюда заглядывать»: сколько имён, какая раскладка контроля,
+            есть ли отступления и опасные имена. Узел, который надо раскрыть,
+            чтобы это узнать, экономии на перебор не даёт.
+        -->
+        <DataTemplate x:Key="ParameterGroupTemplate" x:DataType="local:ParameterGroupRow">
+            <Expander
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Collapsed="OnRoleGroupCollapsed"
+                Expanding="OnRoleGroupExpanding"
+                IsExpanded="{x:Bind IsExpanded}">
+                <Expander.Header>
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="12"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            MinWidth="150"
+                            VerticalAlignment="Center"
+                            FontFamily="Consolas"
+                            Style="{StaticResource AppBodyStrongTextStyle}"
+                            Text="{x:Bind Title}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="{x:Bind CountText}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="{x:Bind ModeText}" />
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontSize="{ThemeResource AppSmallFontSize}"
+                            Foreground="{ThemeResource SystemFillColorAttentionBrush}"
+                            Glyph="&#xE70F;"
+                            ToolTipService.ToolTip="В узле есть отступление от технологической карты"
+                            Visibility="{x:Bind OverrideVisibility}" />
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontSize="{ThemeResource AppSmallFontSize}"
+                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                            Glyph="&#xE7BA;"
+                            ToolTipService.ToolTip="В узле есть имя под контролем, которое совпасть не может"
+                            Visibility="{x:Bind HazardVisibility}" />
+                    </StackPanel>
+                </Expander.Header>
+
+                <!--
+                    ItemsControl, а не вложенный ListView: свой список прокрутки
+                    внутри строки внешнего списка перехватывал бы колесо мыши, и
+                    прокрутка страницы останавливалась бы над каждым узлом. Узел —
+                    это десятки имён, виртуализация здесь не нужна.
+                -->
+                <ItemsControl ItemTemplate="{StaticResource ParameterRoleTemplate}" ItemsSource="{x:Bind Rows}" />
+            </Expander>
+        </DataTemplate>
+
+        <!--  Узел ставится во всю ширину списка и без отступов контейнера: их задаёт сам Expander.  -->
+        <Style
+            x:Key="GroupContainerStyle"
+            BasedOn="{StaticResource RowContainerStyle}"
+            TargetType="ListViewItem">
+            <Setter Property="Padding" Value="0,2" />
+        </Style>
 
         <!--  Скрипт изделия: путь, размер, хеш и врезка первых строк.  -->
         <DataTemplate x:Key="ReferenceScriptTemplate" x:DataType="local:ReferenceScriptRow">
@@ -514,12 +588,13 @@
                             Title="Отступления от технологической карты" />
 
                         <!--
-                            Три счётчика вместо трёх раздельных списков. С
-                            ползунком в строке раздельные списки не работают:
+                            Три счётчика вместо разбиения списка по режиму. С
+                            ползунком в строке разбиение по режиму не работает:
                             переключённая строка обязана была бы перепрыгнуть в
-                            соседний раздел и исчезнуть из-под пальца. Поэтому
-                            список один, а раскладка видна счётчиками и
-                            фильтром по режиму.
+                            соседний раздел и исчезнуть из-под пальца. Дерево
+                            ниже разбито по префиксу имени — по признаку, который
+                            от переключения ползунка не меняется, — а раскладка
+                            видна счётчиками и фильтром по режиму.
                         -->
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
@@ -568,35 +643,65 @@
                             </Border>
                         </Grid>
 
-                        <Grid ColumnSpacing="8" Visibility="Collapsed" x:Name="RoleFilterPanel">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox
-                                x:Name="RoleFilterBox"
-                                PlaceholderText="фильтр по имени, например COMPASS_OFS"
-                                TextChanged="OnRoleFilterChanged" />
-                            <ComboBox
-                                x:Name="RoleModeFilterBox"
-                                Grid.Column="1"
-                                MinWidth="190"
-                                SelectedIndex="0"
-                                SelectionChanged="OnRoleModeFilterChanged">
-                                <ComboBoxItem Content="все режимы" />
-                                <ComboBoxItem Content="контроль и показ" />
-                                <ComboBoxItem Content="только контроль" />
-                                <ComboBoxItem Content="не контролируем" />
-                            </ComboBox>
-                        </Grid>
+                        <StackPanel x:Name="RoleFilterPanel" Spacing="8" Visibility="Collapsed">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    x:Name="RoleFilterBox"
+                                    PlaceholderText="фильтр по имени, например COMPASS_OFS"
+                                    TextChanged="OnRoleFilterChanged" />
+                                <ComboBox
+                                    x:Name="RoleModeFilterBox"
+                                    Grid.Column="1"
+                                    MinWidth="190"
+                                    SelectedIndex="0"
+                                    SelectionChanged="OnRoleModeFilterChanged">
+                                    <ComboBoxItem Content="все режимы" />
+                                    <ComboBoxItem Content="контроль и показ" />
+                                    <ComboBoxItem Content="только контроль" />
+                                    <ComboBoxItem Content="не контролируем" />
+                                </ComboBox>
+                            </Grid>
+
+                            <!--
+                                Свернуть всё — это возврат к оглавлению. Без него
+                                оператор, раскрывший десяток узлов, выбирается
+                                обратно щелчками по каждому.
+                            -->
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button
+                                    x:Name="ExpandAllGroupsButton"
+                                    Click="OnExpandAllGroupsClick"
+                                    Content="Развернуть всё" />
+                                <Button
+                                    x:Name="CollapseAllGroupsButton"
+                                    Click="OnCollapseAllGroupsClick"
+                                    Content="Свернуть всё" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!--
+                            Пустой список молча — это «эталон пуст» на вид.
+                            Отсутствие совпадений с фильтром обязано быть названо.
+                        -->
+                        <TextBlock
+                            x:Name="RoleFilterEmptyText"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="Под фильтр не подошло ни одного имени."
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
 
                         <ListView
                             x:Name="RoleList"
-                            MaxHeight="460"
+                            MaxHeight="520"
                             IsItemClickEnabled="False"
-                            ItemContainerStyle="{StaticResource RowContainerStyle}"
-                            ItemTemplate="{StaticResource ParameterRoleTemplate}"
-                            ItemsSource="{x:Bind RoleRows}"
+                            ItemContainerStyle="{StaticResource GroupContainerStyle}"
+                            ItemTemplate="{StaticResource ParameterGroupTemplate}"
+                            ItemsSource="{x:Bind RoleGroups}"
                             SelectionMode="None" />
                     </StackPanel>
                 </Border>

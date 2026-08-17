@@ -858,6 +858,13 @@ public sealed partial class MainPage : Page
     private async Task ReleaseAcceptanceAsync()
     {
         var port = _session?.PortName;
+
+        // 🔴 Метка ставится до разрыва: событие о нём придёт раньше, чем мы
+        // успеем вернуться, и правило очистки обязано знать о возврате заранее.
+        // Ставится только когда есть что беречь — иначе она молча продлевала бы
+        // жизнь речи борта без всякой на то причины.
+        _prearmCarryPort = _prearmRan && !string.IsNullOrEmpty(port) ? port : null;
+
         await CloseSessionAsync().ConfigureAwait(true);
 
         if (string.IsNullOrEmpty(port))
@@ -875,6 +882,12 @@ public sealed partial class MainPage : Page
         }
         catch (Exception)
         {
+            // Вернуться на тот же порт не вышло — беречь нечего: там, куда
+            // подключимся, может стоять другая плата.
+            _prearmCarryPort = null;
+            _boardMessages.Clear();
+            _prearmRan = false;
+
             await ReloadPortsAsync().ConfigureAwait(true);
             await TryAutoConnectAsync().ConfigureAwait(true);
         }
@@ -1590,11 +1603,44 @@ public sealed partial class MainPage : Page
     {
         _acceptanceBusy = busy;
 
-        StartAcceptanceButton.Content = busy ? "Отменить приёмку" : "Старт приёмки";
-        StartAcceptanceButton.IsEnabled = busy
-            || (_services.IsLinkConnected && _selectedReference is not null);
-
+        UpdateStartAcceptanceButton();
         UpdateAcceptanceCommands();
+    }
+
+    /// <summary>
+    /// Единственное место, где решается судьба кнопки «Старт приёмки».
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Открытая приёмка запускать себя заново не даёт. Пока признак «идёт
+    /// автоматическая часть» жил в переключателе занятости, а признаки
+    /// готовности — в отрисовке, кнопкой владели двое: отрисовка включала её
+    /// поверх открытой приёмки, и второе нажатие закрывало текущий прогон как
+    /// незавершённый и открывало новый — на том же изделии, с потерей уже
+    /// сделанного. Выход из открытой приёмки один и осознанный: разобрать
+    /// расхождения (или «Принять как есть») и завершить её кнопкой «Ребут и
+    /// проверка», которая закрывает прогон итогом.
+    ///
+    /// Отмена остаётся доступна ровно там, где есть что отменять: во время
+    /// автоматической части кнопка меняет смысл на «Отменить приёмку».
+    /// </remarks>
+    private void UpdateStartAcceptanceButton()
+    {
+        StartAcceptanceButton.Content = _acceptanceBusy ? "Отменить приёмку" : "Старт приёмки";
+
+        var open = _session is not null;
+
+        StartAcceptanceButton.IsEnabled = _acceptanceBusy || (!open && _startBlockers.Count == 0);
+
+        ToolTipService.SetToolTip(
+            StartAcceptanceButton,
+            _acceptanceBusy
+                ? "Прервать автоматическую часть приёмки."
+                : open
+                    ? "Приёмка уже идёт. Завершите её кнопкой «Ребут и проверка» — она закрывает прогон "
+                      + "итогом. Повторный старт закрыл бы текущий прогон незавершённым."
+                    : _startBlockers.Count == 0
+                        ? "Запустить приёмку."
+                        : "Не готово: " + string.Join(", ", _startBlockers) + ".");
     }
 
     /// <summary>Движение на панели компасов, пока идёт работа с ними.</summary>
@@ -2151,8 +2197,26 @@ public sealed partial class MainPage : Page
         // продолжала перекрывать вывод по параметрам, и панель калибровки
         // требовала работы от борта, которого нет; пережившее соединение
         // подтверждение точно так же красило бы зелёным чужую плату.
-        _boardMessages.Clear();
-        _prearmRan = false;
+        //
+        // Исключение одно и названо в _prearmCarryPort: возврат наблюдательного
+        // соединения, который приёмка затеяла сама, на тот же порт. Плата между
+        // разрывом и возвратом не менялась и не перезагружалась.
+        var carry = _prearmCarryPort is not null
+            && (!_services.IsLinkConnected
+                || string.Equals(_services.ConnectedPort, _prearmCarryPort, StringComparison.OrdinalIgnoreCase));
+
+        // Возврат состоялся — или пришли не туда, куда собирались. Ожидание
+        // снимается в обоих случаях: пережить своё соединение метка не должна.
+        if (_services.IsLinkConnected)
+        {
+            _prearmCarryPort = null;
+        }
+
+        if (!carry)
+        {
+            _boardMessages.Clear();
+            _prearmRan = false;
+        }
 
         RenderAll();
 
@@ -2298,7 +2362,9 @@ public sealed partial class MainPage : Page
             ReadyBar.Message = "Не готово: " + string.Join(", ", problems) + ".";
         }
 
-        StartAcceptanceButton.IsEnabled = problems.Count == 0;
+        _startBlockers.Clear();
+        _startBlockers.AddRange(problems);
+        UpdateStartAcceptanceButton();
 
         // Наблюдаемые имена показываются сразу после выбора эталона: пока
         // сверки не было, в списке стоят эталонные значения. Пересобирается
@@ -2773,6 +2839,53 @@ public sealed partial class MainPage : Page
     private bool _prearmRan;
 
     /// <summary>
+    /// Порт, на который приёмка сама возвращает наблюдательное соединение.
+    /// <c>null</c> — возврата не ждём.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Единственное исключение из правила «речь борта живёт не дольше
+    /// соединения». Приёмка заканчивается тем, что рвёт собственное соединение
+    /// и тут же поднимает наблюдательное на том же порту. Плата при этом не
+    /// перезагружается и со стапеля не снимается: это тот же борт и тот же его
+    /// ответ на предполётную проверку. Обнуляя подтверждение здесь, приложение
+    /// стирало итог проверки ровно в тот момент, когда он получен: панель
+    /// уходила в «не подтверждено» сразу после «Ребут и проверка», и зелёный
+    /// был недостижим в принципе.
+    ///
+    /// Возврат на другой порт исключением не считается — там может стоять уже
+    /// другая плата, и правило действует как прежде.
+    /// </remarks>
+    private string? _prearmCarryPort;
+
+    /// <summary>
+    /// Что мешает запустить приёмку. Пустой список — можно запускать.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Признаки готовности считаются один раз и хранятся, потому что
+    /// состояние кнопки «Старт приёмки» обязано иметь единственного хозяина.
+    /// Пока их считали в отрисовке готовности, а признак «приёмка уже идёт»
+    /// — в переключателе занятости, побеждал тот, кто отработал последним:
+    /// отрисовка включала кнопку поверх открытой приёмки, и повторное нажатие
+    /// закрывало текущий прогон как незавершённый и открывало новый.
+    /// </remarks>
+    private readonly List<string> _startBlockers = new();
+
+    /// <summary>
+    /// Считать ли строку борта сообщением о неполадке.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Порог применяется только к сомнениям, но не к жалобам на калибровку.
+    /// Сомнение — это то, что борт сообщает как неполадку, а не любое
+    /// упоминание датчика: загрузочные строки вида
+    /// <c>IMU0: fast sampling enabled 2.0kHz</c> приходят на каждой загрузке с
+    /// серьёзностью Info, и, попадая в сомнения, держали панель серой всё
+    /// соединение — то есть зелёный был недостижим независимо от состояния
+    /// платы. Жалоба же остаётся жалобой при любой серьёзности: ошибка в
+    /// сторону «показать красное» безопасна, в сторону «показать зелёное» — нет.
+    /// </remarks>
+    private static bool IsFailure(StatusTextEvent message) => message.Severity <= MavSeverity.Warning;
+
+    /// <summary>
     /// Слова, которыми прошивка говорит именно о калибровке.
     /// </summary>
     /// <remarks>
@@ -2800,8 +2913,18 @@ public sealed partial class MainPage : Page
     private static bool MentionsSensor(string text, params string[] sensorWords) =>
         sensorWords.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Слова инерциального блока.</summary>
-    private static readonly string[] ImuWords = ["accel", "imu", "gyro"];
+    /// <summary>Слова акселерометров.</summary>
+    /// <remarks>
+    /// 🔴 Гироскоп сюда не входит, хотя физически он в том же блоке. Карточка
+    /// акселерометров судит по <c>INS_ACC*OFFS</c> и <c>INS_ACC*SCAL</c>, и
+    /// жалоба на гироскопы, покрасив её красным, отправляла оператора делать
+    /// калибровку акселерометров, которой отказ не снимается. У гироскопов своя
+    /// карточка и своё основание — см. <see cref="GyroCalibration"/>.
+    /// </remarks>
+    private static readonly string[] AccelWords = ["accel", "imu"];
+
+    /// <summary>Слова гироскопов.</summary>
+    private static readonly string[] GyroWords = ["gyro"];
 
     /// <summary>
     /// Сводит признаки из таблицы параметров и слово прошивки в один вердикт.
@@ -2881,20 +3004,23 @@ public sealed partial class MainPage : Page
 
         // Инерциальный блок разбирается по словам: готового классификатора
         // претензий к акселерометрам, в отличие от компасных, у нас нет.
-        var imuTexts = _boardMessages
-            .Select(static m => m.Text)
-            .Where(t => MentionsSensor(t, ImuWords))
+        var accelTexts = _boardMessages
+            .Where(m => MentionsSensor(m.Text, AccelWords))
             .ToArray();
 
-        var imuComplaint = imuTexts.FirstOrDefault(t => IsCalibrationComplaint(t, ImuWords)) ?? string.Empty;
-        var imuDoubt = imuComplaint.Length != 0
+        var accelComplaint = accelTexts
+            .FirstOrDefault(m => IsCalibrationComplaint(m.Text, AccelWords))?.Text ?? string.Empty;
+
+        var accelDoubt = accelComplaint.Length != 0
             ? string.Empty
-            : imuTexts.FirstOrDefault() ?? string.Empty;
+            : accelTexts.FirstOrDefault(IsFailure)?.Text ?? string.Empty;
 
         ApplyCalibrationCard(
-            Combine(CalibrationStatus.Imu(plain), imuComplaint, imuDoubt, _prearmRan),
-            ImuCalCard,
-            ImuCalText);
+            Combine(CalibrationStatus.Imu(plain), accelComplaint, accelDoubt, _prearmRan),
+            AccelCalCard,
+            AccelCalText);
+
+        ApplyCalibrationCard(GyroCalibration(), GyroCalCard, GyroCalText);
 
         // 🔴 Компасные претензии разбирает AcceptanceChecks, а не совпадение по
         // словам. Там уже разведены «снимается калибровкой», «причина в
@@ -2921,6 +3047,58 @@ public sealed partial class MainPage : Page
             Combine(CalibrationStatus.Mag(plain), magComplaint, magDoubt, _prearmRan),
             MagCalCard,
             MagCalText);
+    }
+
+    /// <summary>
+    /// Вывод о калибровке гироскопов.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Единственный датчик, о котором таблица параметров не говорит ничего.
+    /// <c>INS_GYROFFS*</c> выводятся заново при каждой загрузке и калибровкой
+    /// оператора не являются — по ним нельзя судить ни в одну сторону. Поэтому
+    /// вся доказательная база гироскопа — ответ предполётной проверки:
+    /// <c>PreArm: Gyros not calibrated</c> означает, что загрузочная калибровка
+    /// не сошлась, потому что плату двигали; её отсутствие в отработавшей
+    /// проверке — что сошлась. Без карточки это состояние не было видно нигде:
+    /// оно не попадало ни в один признак, по которому судили панели.
+    ///
+    /// 🔴 <c>Gyros inconsistent</c> и <c>Gyros not healthy</c> красным не
+    /// красятся. Первое — про вибрацию и обстановку, второе — про
+    /// неисправность, и калибровкой не снимается ни то, ни другое. Они уводят
+    /// карточку в серое: ручаться нельзя, но и гнать оператора калибровать
+    /// бессмысленно.
+    /// </remarks>
+    private CalibrationVerdict GyroCalibration()
+    {
+        var gyroTexts = _boardMessages
+            .Where(m => MentionsSensor(m.Text, GyroWords))
+            .ToArray();
+
+        var notCalibrated = gyroTexts
+            .FirstOrDefault(m => m.Text.Contains("not calibrated", StringComparison.OrdinalIgnoreCase));
+
+        if (notCalibrated is not null)
+        {
+            return CalibrationVerdict.Needed(
+                "прошивка: " + notCalibrated.Text
+              + ". Загрузочная калибровка гироскопов не сошлась. Перезагрузите борт, не касаясь платы "
+              + "и стапеля во время загрузки");
+        }
+
+        if (gyroTexts.FirstOrDefault(IsFailure) is { } doubt)
+        {
+            return CalibrationVerdict.Unknown(
+                "прошивка сообщила о гироскопах: " + doubt.Text
+              + " — калибровкой это не снимается, поручиться за неё нельзя");
+        }
+
+        return _prearmRan
+            ? CalibrationVerdict.Done(
+                "предполётная проверка отработала и о некалиброванных гироскопах не сообщила")
+            : CalibrationVerdict.Unknown(
+                "предполётная проверка на этом соединении не выполнялась. Калибровка гироскопов видна "
+              + "только по её ответу: в таблице параметров признаков нет, INS_GYROFFS* выводятся заново "
+              + "при каждой загрузке. Нажмите «Ребут и проверка»");
     }
 
     /// <summary>

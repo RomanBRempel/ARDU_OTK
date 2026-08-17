@@ -4,7 +4,7 @@
   "description": "Bootstrap, develop, and design modern WinUI 3 desktop applications with C# and the Windows App SDK using official Microsoft guidance, WinUI Gallery patterns, Windows App SDK samples, and CommunityTool...",
   "whenToUse": "Use this skill for WinUI 3 and Windows App SDK work that needs grounded setup guidance, app bootstrap, modern Windows UX decisions, or concrete implementation patterns.",
   "categories": [],
-  "installedAt": "2026-08-10T12:10:05.238Z",
+  "installedAt": "2026-08-17T09:54:45.289Z",
   "relativePath": "winui-app",
   "remotePath": "skills/.curated/winui-app",
   "installedVia": "packageChild",
