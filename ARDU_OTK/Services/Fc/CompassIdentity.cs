@@ -89,10 +89,18 @@ public sealed record CompassSlotComparison(
     bool RawMatches,
     IReadOnlyList<CompassFieldComparison> Fields)
 {
-    /// <summary>Слот считается совпавшим, если совпало присутствие и все три решающих подполя.</summary>
+    /// <summary>
+    /// Слот считается совпавшим, если совпало присутствие и все решающие подполя.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Набор решающих подполей берётся из <see cref="Fields"/>, а не
+    /// перечисляется здесь второй раз. Он зависит от шины — на сетевой адрес
+    /// решающим не является, — и вторая копия правила разошлась бы с первой
+    /// молча: вердикт говорил бы одно, а протокол под ним — другое.
+    /// </remarks>
     public bool Matches =>
         ExpectedPresent == ActualPresent
-        && (!ExpectedPresent || (BusTypeMatches && AddressMatches && DevTypeMatches));
+        && (!ExpectedPresent || Fields.All(f => !f.Decisive || f.Matches));
 
     /// <summary>Имена разошедшихся решающих подполей — готовая строка для протокола.</summary>
     public IReadOnlyList<string> DecisiveDifferences =>
@@ -477,15 +485,46 @@ public static class CompassIdentity
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Один ли это датчик: тип шины, адрес и <c>devtype</c>.
+    /// Говорит ли поле «адрес» о самом датчике, или это адрес, назначенный ему сетью.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Смысл поля зависит от шины, и трактовать его одинаково нельзя.
+    /// У <c>I2C</c>, <c>SPI</c> и <c>WSPI</c> адрес задан железом: он прошит в
+    /// микросхеме или разведён перемычками, и два разных датчика на одной шине
+    /// адресами не совпадут. У <c>DroneCAN</c> в этом поле лежит номер узла,
+    /// у <c>MSP</c> и <c>Serial</c> — номер экземпляра. Это сетевые адреса:
+    /// их назначает сеть (у DroneCAN — динамическое распределение самим
+    /// полётным контроллером), и на двух физически одинаковых изделиях они
+    /// законно разные.
+    ///
+    /// Ровно тот же довод уже применён к номеру шины ниже. Остановиться на нём
+    /// и оставить адрес решающим значило признать принцип и не довести его до
+    /// конца: изделие с тем же датчиком, получившим другой номер узла,
+    /// объявлялось «датчиком, которого в эталоне нет», и калибровка на него не
+    /// переносилась.
+    /// </remarks>
+    public static bool AddressIdentifiesSensor(MavBusType busType) =>
+        busType is not (MavBusType.DroneCan or MavBusType.Msp or MavBusType.Serial);
+
+    /// <summary>
+    /// Один ли это датчик: тип шины, <c>devtype</c> и — только там, где он о
+    /// датчике, — адрес.
     /// </summary>
     /// <remarks>
     /// 🔴 Номер шины (<c>bus</c>) сознательно не участвует. Он нумерует шины
     /// внутри платы и законно отличается у физически одинаковых бортов —
     /// сравнение целых <c>DEV_ID</c> забраковало бы исправное изделие.
+    /// Про адрес см. <see cref="AddressIdentifiesSensor"/>.
+    ///
+    /// 🔴 На сетевых шинах признак получается слабее: два одинаковых датчика
+    /// на разных узлах становятся неразличимы. Молча брать первый совпавший
+    /// нельзя — вызывающий обязан убедиться, что совпадение единственно, и
+    /// отказаться гадать, если их несколько.
     /// </remarks>
     public static bool IsSameSensor(CompassDeviceId a, CompassDeviceId b) =>
-        a.BusType == b.BusType && a.Address == b.Address && a.DevType == b.DevType;
+        a.BusType == b.BusType
+        && a.DevType == b.DevType
+        && (!AddressIdentifiesSensor(a.BusType) || a.Address == b.Address);
 
     /// <summary>
     /// Вычитывает из эталона ожидаемую конфигурацию слотов 1..3.
@@ -660,6 +699,13 @@ public static class CompassIdentity
         bool busNumberMatches = bothPresent && expected.Bus == actual.Bus;
         bool rawMatches = expected.Raw == actual.Raw;
 
+        // Адрес входит в вердикт только там, где он о датчике. На сетевой шине
+        // это назначенный номер узла: он законно разный у одинаковых изделий, и
+        // расхождение по нему остаётся в протоколе справочной строкой, а плату
+        // не бракует.
+        bool addressDecides = AddressIdentifiesSensor(
+            bothPresent ? expected.BusType : (expectedPresent ? expected.BusType : actual.BusType));
+
         var fields = new List<CompassFieldComparison>(6)
         {
             new(
@@ -675,11 +721,11 @@ public static class CompassIdentity
                 busTypeMatches,
                 Decisive: true),
             new(
-                "Адрес",
+                addressDecides ? "Адрес" : "Адрес (номер узла)",
                 expectedPresent ? FormatAddress(expected.Address) : EmptyDeviceText,
                 actualPresent ? FormatAddress(actual.Address) : EmptyDeviceText,
                 addressMatches,
-                Decisive: true),
+                Decisive: addressDecides),
             new(
                 "Датчик (devtype)",
                 expectedPresent ? DescribeSensor(expected.DevType) : EmptyDeviceText,

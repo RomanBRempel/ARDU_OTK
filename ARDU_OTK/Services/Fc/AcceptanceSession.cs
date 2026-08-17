@@ -358,15 +358,34 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
         foreach (var target in present)
         {
-            var source = expected.FirstOrDefault(
-                e => CompassIdentity.IsSameSensor(e.DeviceId, target.DeviceId));
+            // 🔴 Совпадение обязано быть единственным. На сетевой шине адрес —
+            // это назначенный номер узла, и в признак датчика он не входит;
+            // два одинаковых датчика на разных узлах становятся неразличимы.
+            // Взять первый совпавший значило бы перенести калибровку на датчик,
+            // выбранный порядком перечисления, — и оператор увидел бы бодрое
+            // «перенесено» там, где на самом деле кинули жребий.
+            var candidates = expected
+                .Where(e => CompassIdentity.IsSameSensor(e.DeviceId, target.DeviceId))
+                .ToArray();
 
-            if (source is null)
+            if (candidates.Length == 0)
             {
                 unmatched.Add(
                     $"слот {target.Slot}: {CompassIdentity.Describe(target.DeviceId)} — такого датчика в эталоне нет");
                 continue;
             }
+
+            if (candidates.Length > 1)
+            {
+                unmatched.Add(
+                    $"слот {target.Slot}: {CompassIdentity.Describe(target.DeviceId)} — в эталоне таких датчиков "
+                  + $"{candidates.Length} (слоты {string.Join(", ", candidates.Select(static c => c.Slot))}), "
+                  + "и различить их нечем: на этой шине адрес — назначенный номер узла, а не признак датчика. "
+                  + "Калибровка не перенесена, гадать нельзя.");
+                continue;
+            }
+
+            var source = candidates[0];
 
             var sourceNames = transferMotorComp
                 ? CompassIdentity.TransferableCalibrationNames(source.Slot)

@@ -10,7 +10,24 @@ namespace ARDU_OTK.Services.Fc;
 /// <param name="Detail">Чем именно вывод обоснован — для оператора и протокола.</param>
 public readonly record struct CalibrationVerdict(bool Known, bool Required, string Detail)
 {
+    /// <summary>
+    /// Данные есть и говорят «калибровка не нужна», но подтвердить это некому.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Отличается от <see cref="Unknown"/> только словом для оператора, но
+    /// не цветом: и то и другое — «не знаем». Зелёный означает уверенность, а
+    /// признаки в таблице параметров её не дают: прошивка судит ещё и по
+    /// согласию экземпляров между собой и по измеренному полю, чего в
+    /// параметрах не видно. Зелёный по одним параметрам был бы обещанием,
+    /// выданным за факт.
+    /// </remarks>
+    public bool Unconfirmed { get; init; }
+
     public static CalibrationVerdict Unknown(string detail) => new(false, false, detail);
+
+    /// <summary>Признаки за «не нужна», но подтверждения прошивки нет.</summary>
+    public static CalibrationVerdict NotConfirmed(string detail) =>
+        new(false, false, detail) { Unconfirmed = true };
 
     public static CalibrationVerdict Needed(string detail) => new(true, true, detail);
 

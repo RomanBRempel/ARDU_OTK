@@ -1534,8 +1534,19 @@ public sealed partial class MainPage : Page
             // смещениями и правильным масштабом законно получает отказ
             // «Accels inconsistent». Зелёный значок рядом с таким отказом —
             // прямая ложь, поэтому значок повторяет причину дословно.
-            _firmwareImuComplaint = FindCalibrationComplaint(readiness.Blockers, "accel", "imu", "gyro");
-            _firmwareMagComplaint = FindCalibrationComplaint(readiness.Blockers, "compass", "mag");
+            //
+            // 🔴 Ответ проверки кладётся в ту же копилку, что и живая речь
+            // борта: разбор один на оба источника. Отдельная ветка для
+            // блокировщиков означала бы второе правило рядом с первым, и панель
+            // отвечала бы по-разному на одно и то же слово прошивки — смотря
+            // каким путём оно пришло.
+            foreach (var blocker in readiness.Blockers)
+            {
+                _boardMessages.Add(new StatusTextEvent(MavSeverity.Error, blocker, DateTimeOffset.UtcNow));
+            }
+
+            // Проверка отработала — теперь зелёному есть на что опереться.
+            _prearmRan = true;
             RenderCalibrationState();
 
             foreach (var blocker in readiness.Blockers)
@@ -2133,14 +2144,15 @@ public sealed partial class MainPage : Page
 
     private void OnLinkChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() =>
     {
-        // 🔴 Жалоба прошивки живёт не дольше соединения, в котором прозвучала.
-        // Это ответ конкретного борта на конкретной проверке готовности, а не
-        // свойство стенда: после отключения проверять нечего, после нового
-        // подключения на стапеле может стоять уже другая плата. Пережив
-        // соединение, жалоба продолжала перекрывать вывод по параметрам, и
-        // панель калибровки требовала работы от борта, которого нет.
-        _firmwareImuComplaint = string.Empty;
-        _firmwareMagComplaint = string.Empty;
+        // 🔴 Речь борта и подтверждение проверкой живут не дольше соединения,
+        // в котором прозвучали. Это ответ конкретного борта, а не свойство
+        // стенда: после отключения проверять нечего, после нового подключения
+        // на стапеле может стоять уже другая плата. Пережив соединение, жалоба
+        // продолжала перекрывать вывод по параметрам, и панель калибровки
+        // требовала работы от борта, которого нет; пережившее соединение
+        // подтверждение точно так же красило бы зелёным чужую плату.
+        _boardMessages.Clear();
+        _prearmRan = false;
 
         RenderAll();
 
@@ -2358,6 +2370,16 @@ public sealed partial class MainPage : Page
                 VehicleMessages.RemoveAt(VehicleMessages.Count - 1);
             }
 
+            // Панели калибровки судят по этой же речи, поэтому она копится
+            // отдельно от строк разметки: там текст уже смешан с временем и
+            // важностью, а разбору нужен исходник.
+            _boardMessages.Add(message);
+            while (_boardMessages.Count > 300)
+            {
+                _boardMessages.RemoveAt(0);
+            }
+
+            RenderCalibrationState();
             RenderVehicleMessagesHint(_services.IsLinkConnected);
         });
 
@@ -2728,11 +2750,27 @@ public sealed partial class MainPage : Page
     /// «нет данных», а не «всё в порядке»: непрочитанное и проверенное — разные
     /// вещи, и зелёная панель без чтения была бы выдуманным результатом.
     /// </remarks>
-    /// <summary>Жалоба прошивки на инерциальные датчики; пусто — жалоб не было.</summary>
-    private string _firmwareImuComplaint = string.Empty;
+    /// <summary>
+    /// Всё, что борт сказал на этом соединении, — исходник для разбора жалоб.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Панель судит по живой речи борта, а не только по ответу проверки
+    /// готовности. Прошивка рассылает предполётные претензии сама, всё время
+    /// пока борт обезврежен; ждать, пока оператор нажмёт «Ребут и проверка»,
+    /// чтобы показать уже сказанное, — значит держать зелёный на панели,
+    /// под которой борт в этот момент вслух отказывается взводиться.
+    /// </remarks>
+    private readonly List<StatusTextEvent> _boardMessages = [];
 
-    /// <summary>Жалоба прошивки на компасы.</summary>
-    private string _firmwareMagComplaint = string.Empty;
+    /// <summary>
+    /// Проверка готовности отработала на этом соединении.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Без неё зелёного не бывает. Молчание борта — не подтверждение:
+    /// предполётные проверки могли ни разу не выполниться, и тогда «жалоб
+    /// не было» означает «никто не спрашивал», а не «всё в порядке».
+    /// </remarks>
+    private bool _prearmRan;
 
     /// <summary>
     /// Слова, которыми прошивка говорит именно о калибровке.
@@ -2749,30 +2787,80 @@ public sealed partial class MainPage : Page
     private static readonly string[] CalibrationWords =
         ["calibrat", "inconsistent", "offsets", "mag field", "not learned"];
 
-    /// <summary>
-    /// Первая предполётная жалоба, которая говорит о калибровке названного датчика.
-    /// </summary>
+    /// <summary>Говорит ли строка о калибровке названного датчика.</summary>
     /// <remarks>
     /// Требуются оба признака сразу: имя датчика и слово о калибровке. По
     /// одному имени панель ловила любой отказ, где датчик просто упомянут.
     /// </remarks>
-    private static string FindCalibrationComplaint(IEnumerable<string> blockers, params string[] sensorWords)
+    private static bool IsCalibrationComplaint(string text, params string[] sensorWords) =>
+        sensorWords.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase))
+        && CalibrationWords.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Упоминает ли строка датчик вообще — безотносительно калибровки.</summary>
+    private static bool MentionsSensor(string text, params string[] sensorWords) =>
+        sensorWords.Any(word => text.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Слова инерциального блока.</summary>
+    private static readonly string[] ImuWords = ["accel", "imu", "gyro"];
+
+    /// <summary>
+    /// Сводит признаки из таблицы параметров и слово прошивки в один вердикт.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Три состояния разведены по силе свидетельства, а не по удобству:
+    /// <list type="bullet">
+    /// <item><b>красный</b> — есть основание требовать калибровку: либо прошивка
+    /// прямо о ней сказала, либо признаки в параметрах её требуют. Слово
+    /// прошивки идёт первым: она вдобавок сравнивает экземпляры между собой и
+    /// меряет поле, чего в параметрах не видно;</item>
+    /// <item><b>зелёный</b> — только когда сошлись оба: и параметры за, и
+    /// предполётная проверка отработала без претензий к этому датчику. Это и
+    /// есть «уверены»;</item>
+    /// <item><b>серый</b> — всё остальное. Таблицы нет; или проверка не
+    /// запускалась; или прошивка сказала про датчик что-то, что калибровкой не
+    /// закрывается, — неисправность, обстановка, незаконченная калибровка. Во
+    /// всех этих случаях ручаться не за что, и молчаливый зелёный был бы
+    /// подделкой уверенности.</item>
+    /// </list>
+    /// </remarks>
+    private static CalibrationVerdict Combine(
+        CalibrationVerdict byParameters,
+        string calibrationComplaint,
+        string doubt,
+        bool confirmed)
     {
-        foreach (var blocker in blockers)
+        if (calibrationComplaint.Length != 0)
         {
-            var aboutSensor = sensorWords.Any(
-                word => blocker.Contains(word, StringComparison.OrdinalIgnoreCase));
-
-            var aboutCalibration = CalibrationWords.Any(
-                word => blocker.Contains(word, StringComparison.OrdinalIgnoreCase));
-
-            if (aboutSensor && aboutCalibration)
-            {
-                return blocker;
-            }
+            return CalibrationVerdict.Needed("прошивка: " + calibrationComplaint);
         }
 
-        return string.Empty;
+        if (byParameters is { Known: true, Required: true })
+        {
+            return byParameters;
+        }
+
+        if (!byParameters.Known)
+        {
+            return byParameters;
+        }
+
+        if (doubt.Length != 0)
+        {
+            return CalibrationVerdict.NotConfirmed(
+                byParameters.Detail + ". Но прошивка сообщила о датчике: " + doubt
+              + " — пока это не разобрано, за калибровку поручиться нельзя");
+        }
+
+        if (!confirmed)
+        {
+            return CalibrationVerdict.NotConfirmed(
+                byParameters.Detail
+              + ". Предполётная проверка на этом соединении не выполнялась: подтвердить некому. "
+              + "Нажмите «Ребут и проверка» — до неё зелёный был бы обещанием, а не фактом");
+        }
+
+        return CalibrationVerdict.Done(
+            byParameters.Detail + "; предполётная проверка к калибровке этого датчика претензий не имеет");
     }
 
     private void RenderCalibrationState()
@@ -2791,18 +2879,49 @@ public sealed partial class MainPage : Page
             plain = map;
         }
 
-        ApplyCalibrationCard(
-            Override(CalibrationStatus.Imu(plain), _firmwareImuComplaint), ImuCalCard, ImuCalText);
+        // Инерциальный блок разбирается по словам: готового классификатора
+        // претензий к акселерометрам, в отличие от компасных, у нас нет.
+        var imuTexts = _boardMessages
+            .Select(static m => m.Text)
+            .Where(t => MentionsSensor(t, ImuWords))
+            .ToArray();
+
+        var imuComplaint = imuTexts.FirstOrDefault(t => IsCalibrationComplaint(t, ImuWords)) ?? string.Empty;
+        var imuDoubt = imuComplaint.Length != 0
+            ? string.Empty
+            : imuTexts.FirstOrDefault() ?? string.Empty;
 
         ApplyCalibrationCard(
-            Override(CalibrationStatus.Mag(plain), _firmwareMagComplaint), MagCalCard, MagCalText);
+            Combine(CalibrationStatus.Imu(plain), imuComplaint, imuDoubt, _prearmRan),
+            ImuCalCard,
+            ImuCalText);
+
+        // 🔴 Компасные претензии разбирает AcceptanceChecks, а не совпадение по
+        // словам. Там уже разведены «снимается калибровкой», «причина в
+        // обстановке», «неисправность», «нужна перезагрузка» и «калибровка
+        // идёт» — а это ровно то различие, ради которого панель и существует.
+        // Второй разбор тех же строк рядом с первым неизбежно разошёлся бы с
+        // ним, и панель начала бы противоречить журналу приёмки.
+        var compass = AcceptanceChecks.ClassifyCompassComplaints(_boardMessages);
+
+        var magComplaint = compass
+            .Where(static c => c.Kind == CompassComplaintKind.Calibration)
+            .Select(static c => c.Text)
+            .FirstOrDefault() ?? string.Empty;
+
+        // Всё прочее, что борт сказал про компас, зелёный не даёт: неисправный
+        // датчик, магнитная обстановка стапеля и незаконченная калибровка — это
+        // не «калибровка не нужна», это «судить рано».
+        var magDoubt = magComplaint.Length != 0
+            ? string.Empty
+            : compass.Select(static c => $"{c.Text} ({AcceptanceChecks.DescribeKind(c.Kind)})")
+                     .FirstOrDefault() ?? string.Empty;
+
+        ApplyCalibrationCard(
+            Combine(CalibrationStatus.Mag(plain), magComplaint, magDoubt, _prearmRan),
+            MagCalCard,
+            MagCalText);
     }
-
-    /// <summary>Жалоба прошивки перекрывает вывод по параметрам.</summary>
-    private static CalibrationVerdict Override(CalibrationVerdict verdict, string complaint) =>
-        complaint.Length == 0
-            ? verdict
-            : CalibrationVerdict.Needed("прошивка: " + complaint);
 
     /// <summary>
     /// Красит значок калибровки. Подробности уходят в подсказку: на приборах
@@ -2812,9 +2931,13 @@ public sealed partial class MainPage : Page
     {
         ToolTipService.SetToolTip(card, verdict.Detail);
 
+        // 🔴 Серый — это «не знаем», и он один на две причины: данных нет и
+        // данные есть, но подтвердить их некому. Слово разное, цвет один:
+        // оператору важно, можно ли ручаться, а не откуда взялась неясность.
+        // Откуда — сказано в подсказке.
         if (!verdict.Known)
         {
-            text.Text = "нет данных";
+            text.Text = verdict.Unconfirmed ? "не подтверждено" : "нет данных";
             text.Foreground = InkDim;
             card.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
             return;
