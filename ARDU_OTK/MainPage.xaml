@@ -892,52 +892,19 @@
                                     Text="—" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="1">
-                                <TextBlock
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource AppCaptionTextStyle}"
-                                    Text="Напряжение" />
-                                <TextBlock
-                                    x:Name="HudVoltageText"
-                                    FontFamily="Consolas"
-                                    FontSize="{ThemeResource AppNumericFontSize}"
-                                    FontWeight="SemiBold"
-                                    Text="—" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Grid.Column="1">
-                                <TextBlock
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource AppCaptionTextStyle}"
-                                    Text="Ток" />
-                                <TextBlock
-                                    x:Name="HudCurrentText"
-                                    FontFamily="Consolas"
-                                    FontSize="{ThemeResource AppNumericFontSize}"
-                                    FontWeight="SemiBold"
-                                    Text="—" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Grid.Column="2">
-                                <TextBlock
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource AppCaptionTextStyle}"
-                                    Text="Режим" />
-                                <TextBlock
-                                    x:Name="HudModeText"
-                                    FontSize="{ThemeResource AppNumericFontSize}"
-                                    FontWeight="SemiBold"
-                                    Text="—"
-                                    TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-
                             <!--
+                                Скорости стоят сразу под положением, а питание
+                                уходит строкой ниже: крен, тангаж, курс и обе
+                                скорости — это показания полёта, их читают одним
+                                взглядом. Напряжение и ток к ним не относятся, и
+                                разрывать ими группу нельзя.
+
                                 Воздушная скорость приходит из VFR_HUD и на
                                 стенде почти всегда нулевая. Прочерк вместо
                                 нуля был бы враньём: ноль здесь означает, что
                                 трубка молчит, и это надо видеть.
                             -->
-                            <StackPanel Grid.Row="2">
+                            <StackPanel Grid.Row="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource AppCaptionTextStyle}"
@@ -950,7 +917,7 @@
                                     Text="—" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="2" Grid.Column="1">
+                            <StackPanel Grid.Row="1" Grid.Column="1">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource AppCaptionTextStyle}"
@@ -963,7 +930,7 @@
                                     Text="—" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="2" Grid.Column="2">
+                            <StackPanel Grid.Row="1" Grid.Column="2">
                                 <TextBlock
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource AppCaptionTextStyle}"
@@ -974,6 +941,45 @@
                                     FontSize="{ThemeResource AppNumericFontSize}"
                                     FontWeight="SemiBold"
                                     Text="—" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2">
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
+                                    Text="Напряжение" />
+                                <TextBlock
+                                    x:Name="HudVoltageText"
+                                    FontFamily="Consolas"
+                                    FontSize="{ThemeResource AppNumericFontSize}"
+                                    FontWeight="SemiBold"
+                                    Text="—" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="1">
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
+                                    Text="Ток" />
+                                <TextBlock
+                                    x:Name="HudCurrentText"
+                                    FontFamily="Consolas"
+                                    FontSize="{ThemeResource AppNumericFontSize}"
+                                    FontWeight="SemiBold"
+                                    Text="—" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="2">
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource AppCaptionTextStyle}"
+                                    Text="Режим" />
+                                <TextBlock
+                                    x:Name="HudModeText"
+                                    FontSize="{ThemeResource AppNumericFontSize}"
+                                    FontWeight="SemiBold"
+                                    Text="—"
+                                    TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Grid>
                         </Grid>

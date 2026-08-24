@@ -811,6 +811,27 @@ public sealed partial class MainPage : Page
 
             AppendLog(MavSeverity.Info, $"Повторная сверка: расхождений {after.Differences.Count}.");
 
+            // 🔴 Совпадение с эталоном по именам — это ещё не годное изделие.
+            // Сверка приводит к эталону записанные значения, а положение борт
+            // считает тем оценщиком, который у него реально поднялся: плата,
+            // сошедшаяся с эталоном по всем именам, может работать на резервном
+            // DCM и говорить об этом строкой «not using configured AHRS type».
+            // Без этого шага строка уходила в журнал сырой — без ожидания,
+            // разбора и попытки устранения, — и приёмка заканчивалась
+            // «сверено», хотя борт к полёту не готов.
+            CompareStateText.Text = "Проверка оценщика положения…";
+            var estimator = await _session.EnsureEstimatorRunningAsync(progress, ct).ConfigureAwait(true);
+
+            AppendLog(
+                estimator.IsWarning ? MavSeverity.Warning : estimator.Ok ? MavSeverity.Info : MavSeverity.Error,
+                estimator.Message);
+
+            await RecordCheckAsync(
+                "acceptance.estimator",
+                "Оценщик положения",
+                estimator.Ok ? (estimator.IsWarning ? CheckOutcome.Inconclusive : CheckOutcome.Pass) : CheckOutcome.Fail,
+                estimator.Message).ConfigureAwait(true);
+
             await CompareScriptsAsync(reference, ct).ConfigureAwait(true);
         }
         catch (OperationCanceledException)

@@ -17,7 +17,7 @@
   ".github/skills/README.md": {
     "mtime": 1786369600.8314822,
     "ast_hash": "f00c9d8718eab97f57cd260836f7d06c",
-    "semantic_hash": "f00c9d8718eab97f57cd260836f7d06c"
+    "semantic_hash": ""
   },
   ".github/skills/premium-frontend-ui/SKILL.md": {
     "mtime": 1786960476.8942351,
@@ -175,14 +175,14 @@
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1786962878.8010383,
-    "ast_hash": "ad5680edc475627dd8cb4f35987cb000",
-    "semantic_hash": ""
+    "mtime": 1786970642.2721646,
+    "ast_hash": "490937f8568391a2b861e1d6d3c8b0a4",
+    "semantic_hash": "490937f8568391a2b861e1d6d3c8b0a4"
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1786962852.8602693,
-    "ast_hash": "2b63096f26c380f0edb0b7156120a0c2",
-    "semantic_hash": ""
+    "mtime": 1787576722.7130246,
+    "ast_hash": "e879f2472ce9015ee20c6ded35f22aa4",
+    "semantic_hash": "e879f2472ce9015ee20c6ded35f22aa4"
   },
   "ARDU_OTK/MainWindow.xaml": {
     "mtime": 1786629472.359893,
@@ -455,9 +455,9 @@
     "semantic_hash": "965e3008890ce316f20d8e50e27fda73"
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
-    "mtime": 1786942916.70203,
-    "ast_hash": "43565c38fdf9dc77125b519ab0ff8a43",
-    "semantic_hash": "43565c38fdf9dc77125b519ab0ff8a43"
+    "mtime": 1787576740.5636046,
+    "ast_hash": "eece5a8a65098da265ceabb1bbb17e93",
+    "semantic_hash": "eece5a8a65098da265ceabb1bbb17e93"
   },
   "ARDU_OTK/Services/UiScale.cs": {
     "mtime": 1786688409.5670724,
@@ -538,5 +538,10 @@
     "mtime": 1786688391.9033988,
     "ast_hash": "ca1ec0fb8227d7186642ac9872539585",
     "semantic_hash": "ca1ec0fb8227d7186642ac9872539585"
+  },
+  "ARDU_OTK/Services/Fc/EstimatorReadiness.cs": {
+    "mtime": 1787576633.1601243,
+    "ast_hash": "84bdae40fb3bf9655ddc16a6f2d11a14",
+    "semantic_hash": "84bdae40fb3bf9655ddc16a6f2d11a14"
   }
 }

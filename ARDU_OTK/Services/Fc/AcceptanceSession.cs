@@ -1093,13 +1093,30 @@ public sealed class AcceptanceSession : IAsyncDisposable
         // изделия: калибруется барометр, поднимается AHRS, инициализируются
         // датчики. Проверка, выполненная в этот момент, забраковала бы каждое
         // изделие подряд, и по протоколу это выглядело бы как настоящий отказ.
-        PrearmReport report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
+        // 🔴 Подъём оценщика — та же природа, что и инициализация: пока EKF не
+        // стал активным, положение считает резервный DCM, и прошивка честно
+        // жалуется. Отчёт, снятый в этот момент, назвал бы причиной отказа
+        // штатное состояние загрузки.
+        var (report, estimatorWait) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
 
         var blockers = report.Messages
             .Select(static m => m.Text.Replace("PreArm:", string.Empty, StringComparison.OrdinalIgnoreCase).Trim())
             .Where(static t => t.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
+        if (EstimatorReadiness.HasEstimatorComplaint(report.Messages))
+        {
+            // Претензия пережила ожидание — значит это факт об изделии, и
+            // оператору нужен разбор, а не английская строка.
+            var diagnosis = await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
+
+            blockers =
+            [
+                .. blockers,
+                $"оценщик положения не стал активным за {Seconds(estimatorWait)} с: {diagnosis.Detail}",
+            ];
+        }
 
         if (blockers.Length > 0)
         {
@@ -1126,6 +1143,215 @@ public sealed class AcceptanceSession : IAsyncDisposable
             Array.Empty<string>(),
             "Предполётные проверки не назвали ни одной причины отказа: борт готов быть взведённым.");
     }
+
+    // --- Шаг 7. Оценщик положения ------------------------------------------
+
+    /// <summary>Сколько ждать, пока назначенный оценщик станет активным после загрузки.</summary>
+    /// <remarks>
+    /// 🔴 Ожидание обязательно и не может быть свёрнуто в одну проверку. EKF
+    /// поднимается не мгновенно: до этого положение считает резервный DCM, и
+    /// прошивка честно говорит <c>not using configured AHRS type</c>. Проверка,
+    /// выполненная в этот момент, забраковала бы исправное изделие — ровно так
+    /// же, как проверка сразу после <c>HEARTBEAT</c> забраковала бы его за
+    /// «System not initialised».
+    /// </remarks>
+    private static readonly TimeSpan EstimatorSettleTimeout = TimeSpan.FromSeconds(45);
+
+    /// <summary>Пауза между опросами, пока оценщик поднимается.</summary>
+    private static readonly TimeSpan EstimatorPollInterval = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Убеждается, что борт считает положение тем оценщиком, который ему
+    /// назначен, и устраняет причину, если она устранима записью.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Шаг существует потому, что сверка приводит к эталону <b>записанные
+    /// значения</b>, а не <b>работающее состояние</b>. Плата, совпавшая с
+    /// эталоном по всем именам, может считать положение резервным оценщиком:
+    /// перенесённая конфигурация описывает состав железа эталона, а калибровка
+    /// акселерометров намеренно не переносится и на целевой плате может
+    /// отсутствовать. Без этого шага изделие уходит со стенда «сверенным», но
+    /// не готовым к полёту, а оператор видит английскую строку без разбора.
+    /// </para>
+    /// <para>
+    /// Устраняется только то, что устранимо записью и подтверждается обратным
+    /// чтением. Молча менять <c>AHRS_EKF_TYPE</c> шаг не имеет права: это
+    /// сверенный с эталоном параметр, и подмена увела бы изделие от эталона
+    /// втихую.
+    /// </para>
+    /// </remarks>
+    public async Task<StepResult> EnsureEstimatorRunningAsync(IProgress<string>? progress, CancellationToken ct)
+    {
+        EnsureConnected();
+
+        progress?.Report("Проверка оценщика положения…");
+        var (report, waited) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
+
+        if (!EstimatorReadiness.HasEstimatorComplaint(report.Messages))
+        {
+            return waited > TimeSpan.Zero
+                ? StepResult.Pass(
+                    $"Оценщик положения: назначенный оценщик стал активным через {Seconds(waited)} с после загрузки. "
+                  + "Претензия снялась сама — это штатное время подъёма, а не дефект изделия.")
+                : StepResult.Pass("Оценщик положения: борт считает положение назначенным оценщиком, претензий нет.");
+        }
+
+        progress?.Report("Оценщик не поднялся — разбираю причину…");
+
+        var diagnosis = await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
+        var preamble = $"Оценщик положения не стал активным за {Seconds(waited)} с. ";
+
+        if (diagnosis.FixParameter is null)
+        {
+            return StepResult.Fail(preamble + diagnosis.Detail);
+        }
+
+        progress?.Report($"Устраняю: {diagnosis.FixParameter} = {Number(diagnosis.FixValue)}…");
+
+        var written = await WriteVerifiedAsync(diagnosis.FixParameter, diagnosis.FixValue, ct).ConfigureAwait(false);
+        if (!written.Ok)
+        {
+            return StepResult.Fail(preamble + diagnosis.Detail + " Устранить не удалось: " + written.Message);
+        }
+
+        var reboot = await RebootAsync(progress, ct).ConfigureAwait(false);
+        if (!reboot.Ok)
+        {
+            return StepResult.Fail(
+                preamble + diagnosis.Detail + $" Записано {diagnosis.FixParameter} = {Number(diagnosis.FixValue)}, "
+              + "но борт не вернулся после перезагрузки — подтвердить нечем.");
+        }
+
+        progress?.Report("Повторная проверка оценщика после перезагрузки…");
+        var (after, waitedAgain) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
+
+        var applied = $"{preamble}{diagnosis.Detail} Записано {diagnosis.FixParameter} = "
+                    + $"{Number(diagnosis.FixValue)}, борт перезагружен. ";
+
+        return EstimatorReadiness.HasEstimatorComplaint(after.Messages)
+            ? StepResult.Fail(
+                applied + $"Претензия держится и после перезагрузки (ждали ещё {Seconds(waitedAgain)} с) — "
+                + "причина не в этом параметре, разберите вручную.")
+            : StepResult.Pass(applied + "Претензия снята: борт считает положение назначенным оценщиком.");
+    }
+
+    /// <summary>
+    /// Ждёт, пока претензия к оценщику уйдёт, и возвращает последний отчёт с
+    /// потраченным временем.
+    /// </summary>
+    private async Task<(PrearmReport Report, TimeSpan Waited)> WaitForEstimatorAsync(
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        var report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
+        var waited = TimeSpan.Zero;
+
+        while (EstimatorReadiness.HasEstimatorComplaint(report.Messages) && waited < EstimatorSettleTimeout)
+        {
+            progress?.Report(
+                $"Назначенный оценщик ещё не активен, жду ({Seconds(waited)} из {Seconds(EstimatorSettleTimeout)} с)…");
+
+            await Task.Delay(EstimatorPollInterval, ct).ConfigureAwait(false);
+            waited += EstimatorPollInterval;
+
+            report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
+        }
+
+        return (report, waited);
+    }
+
+    /// <summary>Снимает с борта то, по чему разбирается претензия к оценщику.</summary>
+    private async Task<EstimatorDiagnosis> DiagnoseEstimatorAsync(PrearmReport report, CancellationToken ct)
+    {
+        var typeValue = await TryReadAsync(EstimatorReadiness.TypeParameter, ct).ConfigureAwait(false);
+        if (typeValue is null)
+        {
+            return new EstimatorDiagnosis(
+                EstimatorFaultKind.Unknown,
+                $"Борт жалуется на оценщик, но не отдаёт {EstimatorReadiness.TypeParameter}: "
+              + "судить о назначенном оценщике не по чему.");
+        }
+
+        var ekfType = (int)Math.Round(typeValue.Value);
+        var enableName = EstimatorReadiness.EnableParameterFor(ekfType);
+
+        double? enableValue = enableName is null
+            ? null
+            : await TryReadAsync(enableName, ct).ConfigureAwait(false);
+
+        var imuMask = ekfType == 3
+            ? await TryReadAsync(EstimatorReadiness.ImuMaskParameter, ct).ConfigureAwait(false)
+            : null;
+
+        var accelIds = new List<uint>(EstimatorReadiness.AccelIdParameters.Length);
+        foreach (var name in EstimatorReadiness.AccelIdParameters)
+        {
+            var id = await TryReadAsync(name, ct).ConfigureAwait(false);
+            accelIds.Add(id is null ? 0u : (uint)Math.Max(0, Math.Round(id.Value)));
+        }
+
+        // Прочие претензии того же отчёта — не шум: оценщик не поднимается
+        // поверх неисправного или некалиброванного датчика, и тогда причина
+        // названа именно ими.
+        var others = report.Messages
+            .Select(static m => EstimatorReadiness.StripPrefixes(m.Text))
+            .Where(static t => t.Length > 0 && !EstimatorReadiness.IsEstimatorComplaint(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return EstimatorReadiness.Diagnose(ekfType, enableName, enableValue, imuMask, accelIds, others);
+    }
+
+    /// <summary>
+    /// Пишет одно имя и подтверждает независимым обратным чтением.
+    /// </summary>
+    /// <remarks>
+    /// Тип берётся с борта тем же чтением, что и текущее значение: запись
+    /// целого как вещественного молча теряет значение.
+    /// </remarks>
+    private async Task<StepResult> WriteVerifiedAsync(string name, double value, CancellationToken ct)
+    {
+        try
+        {
+            var current = await _link.ReadParamAsync(name, ct).ConfigureAwait(false);
+
+            await _link.WriteParamAsync(name, ReferenceParamFile.ToBoardFloat(value), current.Type, ct)
+                .ConfigureAwait(false);
+
+            var readBack = await _link.ReadParamAsync(name, ct).ConfigureAwait(false);
+
+            return ReferenceParamFile.ValuesEqual(value, readBack)
+                ? StepResult.Pass($"{name} = {Number(value)} записано и подтверждено обратным чтением.")
+                : StepResult.Fail(
+                    $"{name}: борт принял запись, но обратное чтение вернуло {Number(readBack.Value)} "
+                  + $"вместо {Number(value)}.");
+        }
+        catch (VehicleLinkException ex)
+        {
+            return StepResult.Fail($"{name}: запись не прошла — {ex.Message}");
+        }
+    }
+
+    /// <summary>Читает параметр, отличая незнакомое борту имя от значения.</summary>
+    private async Task<double?> TryReadAsync(string name, CancellationToken ct)
+    {
+        try
+        {
+            var value = await _link.ReadParamAsync(name, ct).ConfigureAwait(false);
+            return value.Value;
+        }
+        catch (VehicleLinkException)
+        {
+            return null;
+        }
+    }
+
+    private static string Seconds(TimeSpan span) =>
+        ((int)Math.Round(span.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+
+    private static string Number(double value) =>
+        value.ToString("0.###", CultureInfo.InvariantCulture);
 
     // --- Служебное ---------------------------------------------------------
 
