@@ -804,10 +804,12 @@ public sealed partial class MainPage : Page
             var after = await _session.CompareAsync(expected, roles, progress, ct, detail).ConfigureAwait(true);
             await LoadCompassIdentityAsync().ConfigureAwait(true);
 
-            ShowCompare(after, after.IsClean
+            var compareVerdict = after.IsClean
                 ? "Борт совпал с эталоном по всем контролируемым параметрам."
                 : $"Осталось расхождений: {after.Differences.Count}. Исправьте записью или примите как есть — "
-                  + "до этого калибровки заблокированы.");
+                  + "до этого калибровки заблокированы.";
+
+            ShowCompare(after, compareVerdict);
 
             AppendLog(MavSeverity.Info, $"Повторная сверка: расхождений {after.Differences.Count}.");
 
@@ -831,6 +833,14 @@ public sealed partial class MainPage : Page
                 "Оценщик положения",
                 estimator.Ok ? (estimator.IsWarning ? CheckOutcome.Inconclusive : CheckOutcome.Pass) : CheckOutcome.Fail,
                 estimator.Message).ConfigureAwait(true);
+
+            // 🔴 Строка состояния возвращается к итогу сверки. Иначе на панели
+            // навсегда остаётся ход последнего шага — «разбираю причину…», — и
+            // законченная приёмка выглядит как оборванная: оператор ждёт
+            // продолжения, которого не будет.
+            CompareStateText.Text = estimator.Ok
+                ? compareVerdict
+                : "Оценщик положения не поднялся — причина в журнале операций. " + compareVerdict;
 
             await CompareScriptsAsync(reference, ct).ConfigureAwait(true);
         }

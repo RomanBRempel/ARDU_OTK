@@ -1097,7 +1097,7 @@ public sealed class AcceptanceSession : IAsyncDisposable
         // стал активным, положение считает резервный DCM, и прошивка честно
         // жалуется. Отчёт, снятый в этот момент, назвал бы причиной отказа
         // штатное состояние загрузки.
-        var (report, estimatorWait) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
+        var (report, estimatorWait, estimatorFault) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
 
         var blockers = report.Messages
             .Select(static m => m.Text.Replace("PreArm:", string.Empty, StringComparison.OrdinalIgnoreCase).Trim())
@@ -1105,17 +1105,16 @@ public sealed class AcceptanceSession : IAsyncDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (EstimatorReadiness.HasEstimatorComplaint(report.Messages))
+        if (estimatorFault is not null)
         {
-            // Претензия пережила ожидание — значит это факт об изделии, и
-            // оператору нужен разбор, а не английская строка.
-            var diagnosis = await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
+            // Претензия не снялась — значит это факт об изделии, и оператору
+            // нужен разбор, а не английская строка. Разбор уже сделан при
+            // ожидании: второй проход по тем же именам ничего не добавит.
+            var since = estimatorWait > TimeSpan.Zero
+                ? $"оценщик положения не стал активным за {Seconds(estimatorWait)} с: "
+                : "оценщик положения не активен: ";
 
-            blockers =
-            [
-                .. blockers,
-                $"оценщик положения не стал активным за {Seconds(estimatorWait)} с: {diagnosis.Detail}",
-            ];
+            blockers = [.. blockers, since + estimatorFault.Detail];
         }
 
         if (blockers.Length > 0)
@@ -1155,10 +1154,18 @@ public sealed class AcceptanceSession : IAsyncDisposable
     /// же, как проверка сразу после <c>HEARTBEAT</c> забраковала бы его за
     /// «System not initialised».
     /// </remarks>
-    private static readonly TimeSpan EstimatorSettleTimeout = TimeSpan.FromSeconds(45);
+    /// <remarks>
+    /// 🔴 Ожидание тратится только на то, чего ожидание способно изменить. Если
+    /// причина уже названа состоянием борта — выключенный флаг, отсутствующий
+    /// блок, претензия к датчику оценщика, — ждать нечего: разбор идёт на
+    /// первом же опросе, и шаг выходит сразу. Полный срок выстаивается лишь
+    /// тогда, когда состояние борта претензию не объясняет, то есть подъём
+    /// действительно может ещё идти.
+    /// </remarks>
+    private static readonly TimeSpan EstimatorSettleTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>Пауза между опросами, пока оценщик поднимается.</summary>
-    private static readonly TimeSpan EstimatorPollInterval = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan EstimatorPollInterval = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// Убеждается, что борт считает положение тем оценщиком, который ему
@@ -1186,7 +1193,7 @@ public sealed class AcceptanceSession : IAsyncDisposable
         EnsureConnected();
 
         progress?.Report("Проверка оценщика положения…");
-        var (report, waited) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
+        var (report, waited, found) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
 
         if (!EstimatorReadiness.HasEstimatorComplaint(report.Messages))
         {
@@ -1197,10 +1204,14 @@ public sealed class AcceptanceSession : IAsyncDisposable
                 : StepResult.Pass("Оценщик положения: борт считает положение назначенным оценщиком, претензий нет.");
         }
 
-        progress?.Report("Оценщик не поднялся — разбираю причину…");
+        var diagnosis = found ?? await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
 
-        var diagnosis = await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
-        var preamble = $"Оценщик положения не стал активным за {Seconds(waited)} с. ";
+        // Срок называется только тогда, когда его действительно выстояли:
+        // «не стал активным за 0 с» — это про раннюю развязку, а не про
+        // ожидание, и оператора такая формулировка сбивает.
+        var preamble = waited > TimeSpan.Zero
+            ? $"Оценщик положения не стал активным за {Seconds(waited)} с. "
+            : "Оценщик положения не активен. ";
 
         if (diagnosis.FixParameter is null)
         {
@@ -1224,7 +1235,7 @@ public sealed class AcceptanceSession : IAsyncDisposable
         }
 
         progress?.Report("Повторная проверка оценщика после перезагрузки…");
-        var (after, waitedAgain) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
+        var (after, waitedAgain, _) = await WaitForEstimatorAsync(progress, ct).ConfigureAwait(false);
 
         var applied = $"{preamble}{diagnosis.Detail} Записано {diagnosis.FixParameter} = "
                     + $"{Number(diagnosis.FixValue)}, борт перезагружен. ";
@@ -1237,20 +1248,46 @@ public sealed class AcceptanceSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// Ждёт, пока претензия к оценщику уйдёт, и возвращает последний отчёт с
-    /// потраченным временем.
+    /// Ждёт, пока претензия к оценщику уйдёт, и возвращает последний отчёт,
+    /// потраченное время и разбор, если он уже сделан.
     /// </summary>
-    private async Task<(PrearmReport Report, TimeSpan Waited)> WaitForEstimatorAsync(
+    /// <remarks>
+    /// 🔴 Разбор идёт на первом же опросе с претензией, а не после ожидания.
+    /// Названная состоянием борта причина — выключенный флаг, отсутствующий
+    /// инерциальный блок, претензия к датчику оценщика — ожиданием не
+    /// снимается, и выстаивать полный срок значит держать оператора у стенда
+    /// за уже готовым ответом. Ждём только неопознанное: там подъём
+    /// действительно может ещё идти.
+    /// </remarks>
+    private async Task<(PrearmReport Report, TimeSpan Waited, EstimatorDiagnosis? Diagnosis)> WaitForEstimatorAsync(
         IProgress<string>? progress,
         CancellationToken ct)
     {
         var report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
         var waited = TimeSpan.Zero;
+        EstimatorDiagnosis? diagnosis = null;
 
-        while (EstimatorReadiness.HasEstimatorComplaint(report.Messages) && waited < EstimatorSettleTimeout)
+        while (EstimatorReadiness.HasEstimatorComplaint(report.Messages))
         {
+            if (diagnosis is null)
+            {
+                progress?.Report("Оценщик не активен — разбираю причину…");
+                diagnosis = await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false);
+
+                if (diagnosis.Kind != EstimatorFaultKind.Unknown)
+                {
+                    return (report, waited, diagnosis);
+                }
+            }
+
+            if (waited >= EstimatorSettleTimeout)
+            {
+                break;
+            }
+
             progress?.Report(
-                $"Назначенный оценщик ещё не активен, жду ({Seconds(waited)} из {Seconds(EstimatorSettleTimeout)} с)…");
+                $"Причина состоянием борта не объясняется — жду подъёма "
+              + $"({Seconds(waited)} из {Seconds(EstimatorSettleTimeout)} с)…");
 
             await Task.Delay(EstimatorPollInterval, ct).ConfigureAwait(false);
             waited += EstimatorPollInterval;
@@ -1258,7 +1295,14 @@ public sealed class AcceptanceSession : IAsyncDisposable
             report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
         }
 
-        return (report, waited);
+        if (!EstimatorReadiness.HasEstimatorComplaint(report.Messages))
+        {
+            return (report, waited, null);
+        }
+
+        // Претензия пережила ожидание — разбор повторяется по последнему
+        // отчёту: за это время борт мог назвать новые причины.
+        return (report, waited, await DiagnoseEstimatorAsync(report, ct).ConfigureAwait(false));
     }
 
     /// <summary>Снимает с борта то, по чему разбирается претензия к оценщику.</summary>
