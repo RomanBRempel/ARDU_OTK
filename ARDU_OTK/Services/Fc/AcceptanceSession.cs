@@ -1162,10 +1162,15 @@ public sealed class AcceptanceSession : IAsyncDisposable
     /// тогда, когда состояние борта претензию не объясняет, то есть подъём
     /// действительно может ещё идти.
     /// </remarks>
-    private static readonly TimeSpan EstimatorSettleTimeout = TimeSpan.FromSeconds(20);
+    /// <remarks>
+    /// 🔴 Срок считается по часам, а не суммой пауз. Каждый опрос сам занимает
+    /// окно <see cref="PrearmWindow"/>, и прежний счёт по паузам занижал
+    /// ожидание втрое: «ждём 45 с» означало на стенде почти две минуты.
+    /// </remarks>
+    private static readonly TimeSpan EstimatorSettleTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>Пауза между опросами, пока оценщик поднимается.</summary>
-    private static readonly TimeSpan EstimatorPollInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan EstimatorPollInterval = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Убеждается, что борт считает положение тем оценщиком, который ему
@@ -1264,6 +1269,7 @@ public sealed class AcceptanceSession : IAsyncDisposable
         CancellationToken ct)
     {
         var report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
+        var started = DateTimeOffset.UtcNow;
         var waited = TimeSpan.Zero;
         EstimatorDiagnosis? diagnosis = null;
 
@@ -1276,10 +1282,16 @@ public sealed class AcceptanceSession : IAsyncDisposable
 
                 if (diagnosis.Kind != EstimatorFaultKind.Unknown)
                 {
-                    return (report, waited, diagnosis);
+                    return (report, DateTimeOffset.UtcNow - started, diagnosis);
                 }
+
+                // Разбор идёт по каналу и тоже стоит времени: отсчёт срока
+                // ожидания начинается после него, иначе весь срок уходил бы на
+                // чтение параметров, а на сам подъём не оставалось бы ничего.
+                started = DateTimeOffset.UtcNow;
             }
 
+            waited = DateTimeOffset.UtcNow - started;
             if (waited >= EstimatorSettleTimeout)
             {
                 break;
@@ -1290,9 +1302,9 @@ public sealed class AcceptanceSession : IAsyncDisposable
               + $"({Seconds(waited)} из {Seconds(EstimatorSettleTimeout)} с)…");
 
             await Task.Delay(EstimatorPollInterval, ct).ConfigureAwait(false);
-            waited += EstimatorPollInterval;
 
             report = await WaitForInitialisationAsync(progress, ct).ConfigureAwait(false);
+            waited = DateTimeOffset.UtcNow - started;
         }
 
         if (!EstimatorReadiness.HasEstimatorComplaint(report.Messages))
