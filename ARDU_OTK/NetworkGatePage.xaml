@@ -46,29 +46,40 @@
                     <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Подключение стенда" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Стенд ещё не подключён к сети ОТК. Пользователи и эталоны приходят пакетом от администратора через папку обмена ARDU_OTK.Exchange на Google Диске. Установите «Google Диск для компьютера», дождитесь синхронизации папки и примите пакет."
+                        Text="Стенд ещё не подключён к сети ОТК. Пользователи и эталоны приходят пакетом от администратора через интернет; устанавливать ничего не нужно. Введите код сети — его сообщает администратор."
                         TextWrapping="Wrap" />
 
-                    <StackPanel Spacing="4">
-                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Папка обмена" />
-                        <Grid ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="ExchangeDirBox" PlaceholderText="например, G:\Мой диск\ARDU_OTK.Exchange" />
-                            <Button
-                                Grid.Column="1"
-                                Click="OnBrowseClick"
-                                Content="Выбрать…" />
-                        </Grid>
+                    <TextBox
+                        x:Name="CodeBox"
+                        Header="Код сети"
+                        PlaceholderText="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Click="OnConnectClick"
+                            Content="Подключиться"
+                            Style="{StaticResource AccentButtonStyle}" />
+                        <Button
+                            Click="OnImportFileClick"
+                            Content="Принять пакет из файла…"
+                            ToolTipService.ToolTip="Для стенда без интернета: файл пакета приносит администратор" />
                     </StackPanel>
 
-                    <Button
-                        x:Name="AcceptButton"
-                        Click="OnAcceptClick"
-                        Content="Принять пакет сети"
-                        Style="{StaticResource AccentButtonStyle}" />
+                    <!--
+                        🔴 Эталоны станции выносятся до подключения. Экран входа
+                        закрывает всё остальное, а эталон, который живёт только
+                        на этой станции, должен попасть к администратору, чтобы
+                        войти в сеть. Без этой кнопки эталон оказался бы
+                        заперт за экраном, который он же и должен пройти.
+                    -->
+                    <MenuFlyoutSeparator />
+                    <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Эталоны этой станции" />
+                    <TextBlock
+                        x:Name="LocalReferencesText"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        TextWrapping="Wrap" />
+                    <Button Click="OnExportLocalClick" Content="Сохранить эталоны этой станции в файлы…" />
 
                     <!--
                         Заведение сети — только на компьютере, где лежит ключ
@@ -85,13 +96,13 @@
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                             Style="{StaticResource AppCaptionTextStyle}"
-                            Text="Заводится один раз. Первый пакет сети с вами как администратором будет выпущен в папку обмена; все эталоны этого стенда войдут в сеть."
+                            Text="Заводится один раз. Вы станете администратором; все эталоны этого стенда войдут в сеть с первым пакетом."
                             TextWrapping="Wrap" />
                         <TextBox x:Name="AdminLoginBox" Header="Логин" />
                         <TextBox x:Name="AdminNameBox" Header="ФИО" />
                         <PasswordBox x:Name="AdminPasswordBox" Header="Пароль (не короче 8 знаков)" />
                         <PasswordBox x:Name="AdminPasswordRepeatBox" Header="Пароль ещё раз" />
-                        <Button Click="OnCreateClick" Content="Завести сеть и выпустить первый пакет" />
+                        <Button Click="OnCreateClick" Content="Завести сеть" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -124,7 +135,7 @@
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource AppCaptionTextStyle}"
                         TextWrapping="Wrap" />
-                    <Button Click="OnRefreshClick" Content="Проверить папку обмена" />
+                    <Button Click="OnRefreshClick" Content="Проверить обновление пакета" />
                 </StackPanel>
             </Border>
         </StackPanel>

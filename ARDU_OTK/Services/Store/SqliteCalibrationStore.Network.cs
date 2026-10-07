@@ -14,13 +14,17 @@ namespace ARDU_OTK.Services.Store;
 /// <summary>Чем стенд связан с сетью ОТК.</summary>
 /// <param name="NetworkId"><c>null</c> — стенд ещё не принял ни одного пакета сети.</param>
 /// <param name="Serial">Номер последнего принятого (у администратора — выпущенного) пакета.</param>
-/// <param name="ExchangeDir">Папка обмена, из которой стенд берёт пакет.</param>
+/// <param name="NetworkCode">
+/// Код сети, которым зашифрован пакет (<see cref="NetworkSeal"/>). Хранится
+/// открыто: он защищает пакет в публичном репозитории, а всё, что под ним
+/// лежит, стенд после приёма и так держит в своём реестре.
+/// </param>
 public sealed record NetworkState(
     Guid? NetworkId,
     long Serial,
     DateTimeOffset? IssuedUtc,
     string IssuedBy,
-    string ExchangeDir)
+    string NetworkCode)
 {
     /// <summary>Стенд подключён к сети: работать на нём можно.</summary>
     public bool IsJoined => NetworkId.HasValue;
@@ -44,7 +48,7 @@ public sealed partial class SqliteCalibrationStore
     private const string SettingNetworkSerial = "network.serial";
     private const string SettingNetworkIssuedUtc = "network.issuedUtc";
     private const string SettingNetworkIssuedBy = "network.issuedBy";
-    private const string SettingNetworkExchangeDir = "network.exchangeDir";
+    private const string SettingNetworkCode = "network.code";
 
     /// <summary>Состояние подключения стенда к сети.</summary>
     public async Task<NetworkState> GetNetworkStateAsync(CancellationToken ct = default)
@@ -64,8 +68,8 @@ public sealed partial class SqliteCalibrationStore
         }
     }
 
-    /// <summary>Запоминает папку обмена.</summary>
-    public async Task SetExchangeDirAsync(string exchangeDir, CancellationToken ct = default)
+    /// <summary>Запоминает код сети.</summary>
+    public async Task SetNetworkCodeAsync(string networkCode, CancellationToken ct = default)
     {
         ThrowIfDisposed();
 
@@ -76,7 +80,7 @@ public sealed partial class SqliteCalibrationStore
             var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
             await using (transaction.ConfigureAwait(false))
             {
-                await UpsertSettingAsync(connection, transaction, SettingNetworkExchangeDir, exchangeDir,
+                await UpsertSettingAsync(connection, transaction, SettingNetworkCode, networkCode,
                     FormatUtc(DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
                 await CommitAsync(transaction, ct).ConfigureAwait(false);
             }
@@ -468,7 +472,7 @@ public sealed partial class SqliteCalibrationStore
             && long.TryParse(serial, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : 0,
         values.TryGetValue(SettingNetworkIssuedUtc, out var issued) ? ParseUtc(issued) : null,
         values.TryGetValue(SettingNetworkIssuedBy, out var by) ? by : string.Empty,
-        values.TryGetValue(SettingNetworkExchangeDir, out var dir) ? dir : string.Empty);
+        values.TryGetValue(SettingNetworkCode, out var code) ? code : string.Empty);
 
     private static async Task<Dictionary<string, string>> ReadSettingsAsync(
         SqliteConnection connection, SqliteTransaction? transaction, string prefix, CancellationToken ct)

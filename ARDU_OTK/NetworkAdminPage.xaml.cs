@@ -60,8 +60,9 @@ public sealed partial class NetworkAdminPage : Page
         {
             var state = await _network.GetStateAsync().ConfigureAwait(true);
             IssueStateText.Text = state.Serial > 0
-                ? $"Последний выпуск — №{state.Serial} от {state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm} ({state.IssuedBy}). Папка обмена: {state.ExchangeDir}."
-                : $"Пакет ещё не выпускался. Папка обмена: {state.ExchangeDir}.";
+                ? $"Последний выпуск — №{state.Serial} от {state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm} ({state.IssuedBy})."
+                : "Пакет ещё не выпускался.";
+            NetworkCodeBox.Text = FormatCode(state.NetworkCode);
 
             var users = await _network.ListUsersAsync().ConfigureAwait(true);
             UsersList.ItemsSource = users.Select(static u => new NetworkUserRow(u)).ToList();
@@ -71,7 +72,11 @@ public sealed partial class NetworkAdminPage : Page
             Show("Сеть не прочитана: " + ex.Message, InfoBarSeverity.Error);
         }
 
-        IssueButton.IsEnabled = NetworkService.HasSigningKey;
+        IssueButton.IsEnabled = NetworkService.HasSigningKey && NetworkService.HasGitHubToken;
+        IssueFileButton.IsEnabled = NetworkService.HasSigningKey;
+        TokenStateText.Text = NetworkService.HasGitHubToken
+            ? "Токен сохранён на этом компьютере. Новый токен заменит прежний."
+            : "Токен не задан — выложить пакет в GitHub нельзя, только сохранить в файл.";
         KeyStateText.Text = NetworkService.HasSigningKey
             ? $"Ключ на этом компьютере: {NetworkSigningKeyStore.KeyPath}."
             : "На этом компьютере ключа нет — выпускать пакет сети отсюда нельзя.";
@@ -131,12 +136,46 @@ public sealed partial class NetworkAdminPage : Page
         }
     }
 
-    private async void OnIssueClick(object sender, RoutedEventArgs e)
+    private async void OnIssueClick(object sender, RoutedEventArgs e) => await IssueAsync(saveTo: null).ConfigureAwait(true);
+
+    private async void OnIssueFileClick(object sender, RoutedEventArgs e)
     {
-        IssueButton.IsEnabled = false;
+        var picker = new Windows.Storage.Pickers.FileSavePicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(
+            picker,
+            WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+        picker.SuggestedFileName = "network";
+        picker.FileTypeChoices.Add("Пакет сети ОТК", new List<string> { ".otknet" });
+
+        if (await picker.PickSaveFileAsync() is { } file)
+        {
+            await IssueAsync(file.Path).ConfigureAwait(true);
+        }
+    }
+
+    private async void OnSaveTokenClick(object sender, RoutedEventArgs e)
+    {
         try
         {
-            var result = await _network.IssueAsync().ConfigureAwait(true);
+            NetworkService.SaveGitHubToken(TokenBox.Password);
+            TokenBox.Password = string.Empty;
+            Show("Токен GitHub сохранён.", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            Show("Токен не сохранён: " + ex.Message, InfoBarSeverity.Error);
+        }
+
+        await ReloadAsync().ConfigureAwait(true);
+    }
+
+    private async Task IssueAsync(string? saveTo)
+    {
+        IssueButton.IsEnabled = false;
+        IssueFileButton.IsEnabled = false;
+        try
+        {
+            var result = await _network.IssueAsync(saveTo).ConfigureAwait(true);
             Show(result.Message, result.Failed ? InfoBarSeverity.Error : InfoBarSeverity.Success);
         }
         catch (Exception ex)
@@ -178,6 +217,10 @@ public sealed partial class NetworkAdminPage : Page
             Show("Копия ключа не сохранена: " + ex.Message, InfoBarSeverity.Error);
         }
     }
+
+    /// <summary>Код группами по 4 — так его диктуют и вводят.</summary>
+    private static string FormatCode(string code) =>
+        string.Join('-', Enumerable.Range(0, code.Length / 4).Select(i => code.Substring(i * 4, 4)));
 
     private void ClearForm()
     {

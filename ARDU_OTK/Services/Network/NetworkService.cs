@@ -2,6 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ARDU_OTK.Services.Store;
 using ARDU_OTK.Shared.Network;
@@ -9,19 +16,19 @@ using ARDU_OTK.Shared.Security;
 
 namespace ARDU_OTK.Services.Network;
 
-/// <summary>Итог обращения к папке обмена — для сообщения оператору.</summary>
+/// <summary>Итог обращения к пакету сети — для сообщения оператору.</summary>
 public sealed record NetworkRefreshResult(bool Applied, bool Failed, string Message);
 
 /// <summary>
-/// Сеть ОТК на стенде: приём пакета из папки обмена, вход пользователя,
-/// а у администратора — ведение пользователей и выпуск пакета.
+/// Сеть ОТК на стенде: приём пакета, вход пользователя, а у администратора —
+/// ведение пользователей и выпуск пакета.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Папка обмена — обычный каталог на диске. Его синхронизирует «Google Диск для
-/// компьютера», но стенду это неизвестно и не важно: подойдут и сетевая папка,
-/// и флешка. Доверие к пакету даёт подпись (<see cref="NetworkPackageFile"/>),
-/// а не канал доставки.
+/// Пакет лежит в публичном репозитории GitHub (<see cref="NetworkSource"/>).
+/// Станция читает его анонимно: ни учётной записи, ни токена ей не нужно.
+/// Доверие даёт подпись администратора, закрытость — код сети. Токен GitHub
+/// есть только у администратора и нужен только для выпуска.
 /// </para>
 /// <para>
 /// 🔴 Каждое обращение к хранилищу — через <see cref="Task.Run(Func{Task})"/>:
@@ -31,12 +38,13 @@ public sealed record NetworkRefreshResult(bool Applied, bool Failed, string Mess
 /// </remarks>
 public sealed class NetworkService
 {
-    /// <summary>Имя служебной папки на Google Диске.</summary>
-    public const string ExchangeFolderName = "ARDU_OTK.Exchange";
-
     private const int MaxFailedLogins = 5;
 
     private static readonly TimeSpan LoginLockout = TimeSpan.FromSeconds(30);
+
+    private static readonly HttpClient Http = CreateHttp();
+
+    private static readonly byte[] TokenEntropy = "ARDU_OTK.github-token.v1"u8.ToArray();
 
     private readonly SqliteCalibrationStore _store;
 
@@ -58,77 +66,72 @@ public sealed class NetworkService
     /// <summary>На этом компьютере лежит ключ подписи администратора сети.</summary>
     public static bool HasSigningKey => NetworkSigningKeyStore.Exists;
 
+    /// <summary>На этом компьютере сохранён токен GitHub для выпуска пакета.</summary>
+    public static bool HasGitHubToken => File.Exists(TokenPath);
+
+    private static string TokenPath => Path.Combine(Path.GetDirectoryName(NetworkSigningKeyStore.KeyPath)!, "github-token.bin");
+
     public Task<NetworkState> GetStateAsync() => Task.Run(() => _store.GetNetworkStateAsync());
 
-    /// <summary>
-    /// Папки обмена, которые удалось найти на этом компьютере: синхронизируемый
-    /// «Google Диск для компьютера» монтируется отдельной буквой диска либо
-    /// живёт в профиле пользователя.
-    /// </summary>
-    public static IReadOnlyList<string> FindExchangeDirs()
+    // ── Приём пакета ─────────────────────────────────────────────────────
+
+    /// <summary>Первое подключение стенда: скачать пакет и открыть его кодом сети.</summary>
+    public Task<NetworkRefreshResult> ConnectAsync(string code) => Task.Run(async () =>
     {
-        var roots = new List<string>();
-        foreach (var drive in DriveInfo.GetDrives())
+        if (NetworkSeal.NormalizeCode(code) is null)
         {
-            try
-            {
-                if (drive.IsReady)
-                {
-                    roots.Add(Path.Combine(drive.RootDirectory.FullName, "Мой диск"));
-                    roots.Add(Path.Combine(drive.RootDirectory.FullName, "My Drive"));
-                }
-            }
-            catch (IOException)
-            {
-                // Отключённый сетевой диск — не повод прерывать поиск.
-            }
+            return Fail("Код сети набран неверно: 24 знака, латинские буквы и цифры.");
         }
 
-        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        roots.Add(Path.Combine(profile, "Google Drive"));
-        roots.Add(Path.Combine(profile, "Google Drive", "Мой диск"));
-        roots.Add(Path.Combine(profile, "Google Drive", "My Drive"));
-        roots.Add(Path.Combine(profile, "Мой диск"));
-        roots.Add(Path.Combine(profile, "My Drive"));
+        var (text, error) = await DownloadAsync().ConfigureAwait(false);
+        return text is null ? Fail(error!) : await ApplySealedAsync(text, code).ConfigureAwait(false);
+    });
 
-        return roots
-            .Select(static root => Path.Combine(root, ExchangeFolderName))
-            .Where(Directory.Exists)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Проверяет пакет в папке обмена и, если он новее принятого, применяет его.
-    /// </summary>
-    public Task<NetworkRefreshResult> RefreshAsync(string exchangeDir) => Task.Run(async () =>
+    /// <summary>Проверка обновления пакета подключённым стендом.</summary>
+    public Task<NetworkRefreshResult> RefreshAsync() => Task.Run(async () =>
     {
-        if (string.IsNullOrWhiteSpace(exchangeDir) || !Directory.Exists(exchangeDir))
+        var state = await _store.GetNetworkStateAsync().ConfigureAwait(false);
+        if (state.NetworkCode.Length == 0)
         {
-            return new NetworkRefreshResult(false, true, $"Папка обмена не найдена: «{exchangeDir}».");
+            return Fail("Код сети на этом стенде не сохранён: примите пакет из файла с кодом сети.");
         }
 
-        var path = Path.Combine(exchangeDir, NetworkPackageFile.FileName);
-        if (!File.Exists(path))
+        var (text, error) = await DownloadAsync().ConfigureAwait(false);
+        return text is null ? Fail(error!) : await ApplySealedAsync(text, state.NetworkCode).ConfigureAwait(false);
+    });
+
+    /// <summary>
+    /// Приём пакета из файла — для стенда без интернета.
+    /// </summary>
+    /// <param name="code">Код сети; пусто — взять сохранённый на стенде.</param>
+    public Task<NetworkRefreshResult> ImportFileAsync(string path, string? code) => Task.Run(async () =>
+    {
+        if (string.IsNullOrWhiteSpace(code))
         {
-            return new NetworkRefreshResult(false, true,
-                $"В папке «{exchangeDir}» нет пакета сети ({NetworkPackageFile.FileName}). "
-              + "Если Google Диск ещё синхронизирует папку — подождите и проверьте снова.");
+            code = (await _store.GetNetworkStateAsync().ConfigureAwait(false)).NetworkCode;
+        }
+
+        return await ApplySealedAsync(await File.ReadAllTextAsync(path).ConfigureAwait(false), code).ConfigureAwait(false);
+    });
+
+    private async Task<NetworkRefreshResult> ApplySealedAsync(string sealedText, string? code)
+    {
+        var signed = NetworkSeal.TryOpen(sealedText, code, out var sealError);
+        if (signed is null)
+        {
+            return Fail("Пакет сети не открыт: " + sealError);
         }
 
         var state = await _store.GetNetworkStateAsync().ConfigureAwait(false);
-        var check = NetworkPackageFile.Verify(
-            await File.ReadAllTextAsync(path).ConfigureAwait(false), NetworkTrust.Production, state.ToAccepted());
+        var check = NetworkPackageFile.Verify(signed, NetworkTrust.Production, state.ToAccepted());
 
         switch (check.Status)
         {
             case NetworkPackageStatus.Rejected:
-                return new NetworkRefreshResult(false, true, "Пакет сети отвергнут: " + check.Reason);
+                return Fail("Пакет сети отвергнут: " + check.Reason);
 
             case NetworkPackageStatus.NotNewer:
-                await _store.SetExchangeDirAsync(exchangeDir).ConfigureAwait(false);
-                return new NetworkRefreshResult(false, false,
-                    $"Новых пакетов нет: принят выпуск №{state.Serial}.");
+                return new NetworkRefreshResult(false, false, $"Новых пакетов нет: принят выпуск №{state.Serial}.");
         }
 
         var snapshot = check.Snapshot!;
@@ -145,13 +148,12 @@ public sealed class NetworkService
             }
             catch (Exception ex) when (ex is InvalidDataException or ArgumentException)
             {
-                return new NetworkRefreshResult(false, true,
-                    $"Пакет сети №{snapshot.Serial} не принят: эталон «{reference.Name}» негоден — {ex.Message}");
+                return Fail($"Пакет сети №{snapshot.Serial} не принят: эталон «{reference.Name}» негоден — {ex.Message}");
             }
         }
 
         var report = await _store.ApplyNetworkSnapshotAsync(snapshot, drafts).ConfigureAwait(false);
-        await _store.SetExchangeDirAsync(exchangeDir).ConfigureAwait(false);
+        await _store.SetNetworkCodeAsync(NetworkSeal.NormalizeCode(code)!).ConfigureAwait(false);
 
         // Сессия могла устареть: пользователя отключили или сменили ему роль.
         if (Session is { } current)
@@ -170,7 +172,33 @@ public sealed class NetworkService
         }
 
         return new NetworkRefreshResult(true, false, message);
-    });
+    }
+
+    /// <summary>Скачивает пакет из репозитория анонимно.</summary>
+    private static async Task<(string? Text, string? Error)> DownloadAsync()
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, NetworkSource.ContentsUrl);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.raw"));
+            using var response = await Http.SendAsync(request).ConfigureAwait(false);
+
+            return response.StatusCode switch
+            {
+                HttpStatusCode.OK => (await response.Content.ReadAsStringAsync().ConfigureAwait(false), null),
+                HttpStatusCode.NotFound => (null, "Пакет сети ещё не выпущен: администратор выпускает его в разделе «Сеть»."),
+                HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests =>
+                    (null, "GitHub временно ограничил запросы с этого адреса. Повторите через час или примите пакет из файла."),
+                _ => (null, $"GitHub ответил {(int)response.StatusCode}. Повторите позже или примите пакет из файла."),
+            };
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return (null, "Нет связи с GitHub: " + ex.Message + ". Стенд работает по последнему принятому пакету.");
+        }
+    }
+
+    // ── Вход ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Вход по паролю либо по PIN.
@@ -225,11 +253,10 @@ public sealed class NetworkService
     // ── Администратор ────────────────────────────────────────────────────
 
     /// <summary>
-    /// Заводит новую сеть на компьютере администратора и сразу выпускает первый
-    /// пакет в папку обмена.
+    /// Заводит новую сеть на компьютере администратора: код сети, первого
+    /// администратора, и — если токен GitHub уже задан — первый пакет.
     /// </summary>
-    public async Task<NetworkRefreshResult> CreateNetworkAsync(
-        string exchangeDir, string login, string displayName, string password)
+    public async Task<NetworkRefreshResult> CreateNetworkAsync(string login, string displayName, string password)
     {
         if (!HasSigningKey)
         {
@@ -247,12 +274,16 @@ public sealed class NetworkService
         await Task.Run(async () =>
         {
             await _store.CreateNetworkAsync(admin).ConfigureAwait(false);
-            await _store.SetExchangeDirAsync(exchangeDir).ConfigureAwait(false);
+            await _store.SetNetworkCodeAsync(NetworkSeal.NormalizeCode(NetworkSeal.GenerateCode())!).ConfigureAwait(false);
         }).ConfigureAwait(false);
 
         Session = admin;
         SessionChanged?.Invoke(this, EventArgs.Empty);
-        return await IssueAsync().ConfigureAwait(false);
+
+        return HasGitHubToken
+            ? await IssueAsync(saveTo: null).ConfigureAwait(false)
+            : new NetworkRefreshResult(false, false,
+                "Сеть заведена. Задайте токен GitHub в разделе «Сеть» и выпустите первый пакет.");
     }
 
     public Task<IReadOnlyList<NetworkUser>> ListUsersAsync() => Task.Run(() => _store.ListNetworkUsersAsync());
@@ -297,41 +328,127 @@ public sealed class NetworkService
     }
 
     /// <summary>
-    /// Выпускает пакет сети в папку обмена.
+    /// Выпускает пакет сети: в репозиторий GitHub (если задан токен) и, по
+    /// желанию, в файл для стендов без интернета.
     /// </summary>
     /// <remarks>
-    /// Файл пишется рядом под временным именем и подменяется целиком: стенд,
-    /// читающий папку в эту секунду, обязан увидеть либо старый пакет, либо
-    /// новый, но не половину нового.
+    /// Номер выпуска фиксируется, только если пакет хоть куда-то записан:
+    /// невыложенный пакет номера не тратит.
     /// </remarks>
-    public Task<NetworkRefreshResult> IssueAsync() => Task.Run(async () =>
+    public Task<NetworkRefreshResult> IssueAsync(string? saveTo) => Task.Run(async () =>
     {
         RequireAdmin();
+
+        if (!HasGitHubToken && saveTo is null)
+        {
+            return Fail("Токен GitHub не задан: выложить пакет некуда. Задайте токен либо сохраните пакет в файл.");
+        }
 
         using var key = NetworkSigningKeyStore.Load()
             ?? throw new InvalidOperationException("На этом компьютере нет ключа администратора сети.");
 
         var state = await _store.GetNetworkStateAsync().ConfigureAwait(false);
-        if (!Directory.Exists(state.ExchangeDir))
+        var snapshot = await _store.PrepareNetworkSnapshotAsync(Session!.DisplayName).ConfigureAwait(false);
+        var sealedText = NetworkSeal.Seal(NetworkPackageFile.Sign(snapshot, key), state.NetworkCode);
+
+        var done = new List<string>();
+        string? failure = null;
+
+        if (saveTo is not null)
         {
-            return new NetworkRefreshResult(false, true, $"Папка обмена не найдена: «{state.ExchangeDir}».");
+            await File.WriteAllTextAsync(saveTo, sealedText).ConfigureAwait(false);
+            done.Add("в файл " + saveTo);
         }
 
-        var snapshot = await _store.PrepareNetworkSnapshotAsync(Session!.DisplayName).ConfigureAwait(false);
-        var text = NetworkPackageFile.Sign(snapshot, key);
+        if (HasGitHubToken)
+        {
+            failure = await PublishAsync(sealedText, snapshot.Serial).ConfigureAwait(false);
+            if (failure is null)
+            {
+                done.Add("в репозиторий " + NetworkSource.Repository);
+            }
+        }
 
-        var target = Path.Combine(state.ExchangeDir, NetworkPackageFile.FileName);
-        var temp = target + ".tmp";
-        await File.WriteAllTextAsync(temp, text).ConfigureAwait(false);
-        File.Move(temp, target, overwrite: true);
+        if (done.Count == 0)
+        {
+            return Fail("Пакет не выпущен: " + failure);
+        }
 
         await _store.CommitNetworkIssueAsync(snapshot).ConfigureAwait(false);
-        return new NetworkRefreshResult(true, false,
-            $"Выпущен пакет сети №{snapshot.Serial}: пользователей {snapshot.Users.Count}, "
-          + $"эталонов {snapshot.References.Count(static r => r.RetiredUtc is null)} действующих "
-          + $"и {snapshot.References.Count(static r => r.RetiredUtc is not null)} в архиве. "
-          + "Стенды примут его при следующей проверке папки.");
+        var message = $"Выпущен пакет сети №{snapshot.Serial} ({string.Join(" и ", done)}): "
+            + $"пользователей {snapshot.Users.Count}, эталонов {snapshot.References.Count(static r => r.RetiredUtc is null)} "
+            + $"действующих и {snapshot.References.Count(static r => r.RetiredUtc is not null)} в архиве.";
+        return failure is null
+            ? new NetworkRefreshResult(true, false, message + " Стенды примут его при следующем входе.")
+            : new NetworkRefreshResult(true, true, message + " Но в GitHub не выложен: " + failure);
     });
+
+    /// <summary>Выкладывает пакет в репозиторий через GitHub Contents API.</summary>
+    /// <returns>Причина отказа либо <c>null</c>.</returns>
+    private static async Task<string?> PublishAsync(string sealedText, long serial)
+    {
+        var token = Encoding.UTF8.GetString(
+            ProtectedData.Unprotect(await File.ReadAllBytesAsync(TokenPath).ConfigureAwait(false), TokenEntropy, DataProtectionScope.CurrentUser));
+
+        try
+        {
+            // Замена существующего файла требует его текущий sha.
+            string? sha = null;
+            using (var get = Authorized(HttpMethod.Get, token))
+            using (var response = await Http.SendAsync(get).ConfigureAwait(false))
+            {
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                    sha = json.RootElement.GetProperty("sha").GetString();
+                }
+                else if (response.StatusCode != HttpStatusCode.NotFound)
+                {
+                    return Explain(response.StatusCode);
+                }
+            }
+
+            using var put = Authorized(HttpMethod.Put, token);
+            put.Content = JsonContent.Create(new Dictionary<string, string?>
+            {
+                ["message"] = $"Пакет сети №{serial}",
+                ["content"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(sealedText)),
+                ["sha"] = sha,
+            });
+            using var result = await Http.SendAsync(put).ConfigureAwait(false);
+            return result.IsSuccessStatusCode ? null : Explain(result.StatusCode);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return "нет связи с GitHub: " + ex.Message;
+        }
+
+        static string Explain(HttpStatusCode status) => status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound
+            ? $"GitHub отказал ({(int)status}): токен недействителен либо не имеет права Contents: Read and write на {NetworkSource.Repository}."
+            : $"GitHub ответил {(int)status}.";
+    }
+
+    private static HttpRequestMessage Authorized(HttpMethod method, string token)
+    {
+        var request = new HttpRequestMessage(method, NetworkSource.ContentsUrl);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+        request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+        return request;
+    }
+
+    /// <summary>
+    /// Сохраняет токен GitHub, зашифрованный DPAPI под учётной записью
+    /// Windows. В программу токен не зашивается: установщик лежит в открытых
+    /// релизах, и токен из него достал бы кто угодно.
+    /// </summary>
+    public static void SaveGitHubToken(string token)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        Directory.CreateDirectory(Path.GetDirectoryName(TokenPath)!);
+        File.WriteAllBytes(TokenPath, ProtectedData.Protect(
+            Encoding.UTF8.GetBytes(token.Trim()), TokenEntropy, DataProtectionScope.CurrentUser));
+    }
 
     /// <summary>Сохраняет резервную копию ключа подписи, зашифрованную паролем.</summary>
     public static async Task ExportKeyBackupAsync(string path, string password)
@@ -352,5 +469,16 @@ public sealed class NetworkService
         {
             throw new InvalidOperationException("Действие доступно только администратору сети.");
         }
+    }
+
+    private static NetworkRefreshResult Fail(string message) => new(false, true, message);
+
+    private static HttpClient CreateHttp()
+    {
+        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+
+        // GitHub API отвергает запросы без User-Agent.
+        http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ARDU_OTK", "1.0"));
+        return http;
     }
 }

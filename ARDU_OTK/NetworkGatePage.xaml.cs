@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ARDU_OTK.Services;
@@ -15,10 +17,9 @@ namespace ARDU_OTK;
 /// пользователя.
 /// </summary>
 /// <remarks>
-/// При каждом открытии подключённый стенд сам заглядывает в папку обмена и
-/// принимает новый пакет, если он есть. Недоступная папка вход не блокирует:
-/// стенд работает по последнему принятому пакету — обмен редкий, а цех не
-/// должен стоять из-за того, что Google Диск сегодня не синхронизировался.
+/// При каждом открытии подключённый стенд сам проверяет, нет ли нового
+/// пакета. Отсутствие связи вход не блокирует: стенд работает по последнему
+/// принятому пакету — обмен редкий, и цех не должен стоять из-за интернета.
 /// </remarks>
 public sealed partial class NetworkGatePage : Page
 {
@@ -40,9 +41,9 @@ public sealed partial class NetworkGatePage : Page
             await _services.InitializeAsync().ConfigureAwait(true);
             _state = await Network.GetStateAsync().ConfigureAwait(true);
 
-            if (_state.IsJoined && _state.ExchangeDir.Length > 0)
+            if (_state.IsJoined && _state.NetworkCode.Length > 0)
             {
-                var result = await Network.RefreshAsync(_state.ExchangeDir).ConfigureAwait(true);
+                var result = await Network.RefreshAsync().ConfigureAwait(true);
                 if (result.Applied || result.Failed)
                 {
                     Show(result.Message + (result.Failed ? " Вход — по последнему принятому пакету." : string.Empty),
@@ -57,10 +58,10 @@ public sealed partial class NetworkGatePage : Page
             Show("Реестр стенда недоступен: " + ex.Message, InfoBarSeverity.Error);
         }
 
-        Render();
+        await RenderAsync().ConfigureAwait(true);
     }
 
-    private void Render()
+    private async Task RenderAsync()
     {
         BusyRing.IsActive = false;
         BusyRing.Visibility = Visibility.Collapsed;
@@ -72,44 +73,95 @@ public sealed partial class NetworkGatePage : Page
         if (!joined)
         {
             CreatePanel.Visibility = NetworkService.HasSigningKey ? Visibility.Visible : Visibility.Collapsed;
-            if (ExchangeDirBox.Text.Length == 0)
+            try
             {
-                ExchangeDirBox.Text = _state?.ExchangeDir is { Length: > 0 } saved
-                    ? saved
-                    : NetworkService.FindExchangeDirs().FirstOrDefault() ?? string.Empty;
+                var local = await _services.LoadReferencesAsync().ConfigureAwait(true);
+                LocalReferencesText.Text = local.Count == 0
+                    ? "На этой станции эталонов нет."
+                    : $"На этой станции эталонов: {local.Count} ({string.Join(", ", local.Select(static r => r.Name))}). "
+                      + "Если какой-то из них должен войти в сеть — сохраните его в файл и передайте администратору до подключения. "
+                      + "Подключение их не удалит: эталоны, которых нет в пакете сети, уходят в архив, а когда администратор "
+                      + "выпустит их в сеть, вернутся в работу с прежней историей прогонов.";
+            }
+            catch (Exception ex)
+            {
+                LocalReferencesText.Text = "Эталоны станции не прочитаны: " + ex.Message;
             }
 
             return;
         }
 
         NetworkInfoText.Text = _state!.Serial > 0
-            ? $"Пакет сети №{_state.Serial} от {_state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm}, выпустил {_state.IssuedBy}. Папка обмена: {_state.ExchangeDir}."
+            ? $"Пакет сети №{_state.Serial} от {_state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm}, выпустил {_state.IssuedBy}."
             : "Сеть заведена, пакет ещё не выпущен.";
         LoginBox.Focus(FocusState.Programmatic);
     }
 
-    private async void OnBrowseClick(object sender, RoutedEventArgs e)
+    private async void OnConnectClick(object sender, RoutedEventArgs e)
     {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
+        await RunAsync(async () =>
+        {
+            var result = await Network.ConnectAsync(CodeBox.Text).ConfigureAwait(true);
+            Show(result.Message, result.Failed ? InfoBarSeverity.Error : InfoBarSeverity.Success);
+        }).ConfigureAwait(true);
+    }
+
+    private async void OnImportFileClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker();
 
         // Приложение unpackaged: пикеру обязательно нужно окно-владелец.
         WinRT.Interop.InitializeWithWindow.Initialize(
             picker,
             WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
-        picker.FileTypeFilter.Add("*");
+        picker.FileTypeFilter.Add(".otknet");
 
-        if (await picker.PickSingleFolderAsync() is { } folder)
+        if (await picker.PickSingleFileAsync() is not { } file)
         {
-            ExchangeDirBox.Text = folder.Path;
+            return;
         }
-    }
 
-    private async void OnAcceptClick(object sender, RoutedEventArgs e)
-    {
         await RunAsync(async () =>
         {
-            var result = await Network.RefreshAsync(ExchangeDirBox.Text.Trim()).ConfigureAwait(true);
+            var result = await Network.ImportFileAsync(file.Path, CodeBox.Text).ConfigureAwait(true);
             Show(result.Message, result.Failed ? InfoBarSeverity.Error : InfoBarSeverity.Success);
+        }).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Сохраняет все действующие эталоны станции файлами выгрузки — тем же
+    /// форматом, что принимает «Эталоны → Принять из файла» у администратора.
+    /// </summary>
+    private async void OnExportLocalClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        WinRT.Interop.InitializeWithWindow.Initialize(
+            picker,
+            WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow));
+        picker.FileTypeFilter.Add("*");
+
+        if (await picker.PickSingleFolderAsync() is not { } folder)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            var references = await _services.LoadReferencesAsync().ConfigureAwait(true);
+            var written = new List<string>();
+            foreach (var reference in references)
+            {
+                var scripts = await Task.Run(() => _services.Store.GetReferenceScriptsAsync(reference.Id)).ConfigureAwait(true);
+                var package = ReferencePackage.FromReference(reference, scripts, "станция " + Environment.MachineName);
+                var path = Path.Combine(folder.Path, SafeFileName(reference.Name) + ReferencePackage.FileExtension);
+                await File.WriteAllTextAsync(path, package.ToJson()).ConfigureAwait(true);
+                written.Add(Path.GetFileName(path));
+            }
+
+            Show(written.Count == 0
+                    ? "На станции нет действующих эталонов — сохранять нечего."
+                    : $"Сохранено в {folder.Path}: {string.Join(", ", written)}. Передайте файлы администратору сети.",
+                written.Count == 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         }).ConfigureAwait(true);
     }
 
@@ -123,8 +175,7 @@ public sealed partial class NetworkGatePage : Page
 
         await RunAsync(async () =>
         {
-            var result = await Network.CreateNetworkAsync(
-                ExchangeDirBox.Text.Trim(), AdminLoginBox.Text, AdminNameBox.Text, AdminPasswordBox.Password)
+            var result = await Network.CreateNetworkAsync(AdminLoginBox.Text, AdminNameBox.Text, AdminPasswordBox.Password)
                 .ConfigureAwait(true);
             Show(result.Message, result.Failed ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         }).ConfigureAwait(true);
@@ -163,7 +214,7 @@ public sealed partial class NetworkGatePage : Page
     {
         await RunAsync(async () =>
         {
-            var result = await Network.RefreshAsync(_state?.ExchangeDir ?? string.Empty).ConfigureAwait(true);
+            var result = await Network.RefreshAsync().ConfigureAwait(true);
             Show(result.Message, result.Failed ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         }).ConfigureAwait(true);
     }
@@ -194,7 +245,14 @@ public sealed partial class NetworkGatePage : Page
             Show("Реестр стенда недоступен: " + ex.Message, InfoBarSeverity.Error);
         }
 
-        Render();
+        await RenderAsync().ConfigureAwait(true);
+    }
+
+    private static string SafeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var safe = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
+        return safe.Length == 0 ? "эталон" : safe;
     }
 
     private void Show(string message, InfoBarSeverity severity)
