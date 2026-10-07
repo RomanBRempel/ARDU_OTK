@@ -36,6 +36,8 @@ public sealed partial class NetworkGatePage : Page
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        _ = CheckUpdatesAsync();
+
         try
         {
             await _services.InitializeAsync().ConfigureAwait(true);
@@ -95,6 +97,43 @@ public sealed partial class NetworkGatePage : Page
             ? $"Пакет сети №{_state.Serial} от {_state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm}, выпустил {_state.IssuedBy}."
             : "Сеть заведена, пакет ещё не выпущен.";
         LoginBox.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>
+    /// Проверяет и скачивает обновление в фоне. Ошибка сети — не повод
+    /// мешать входу: стенд работает и без обновлений.
+    /// </summary>
+    private async Task CheckUpdatesAsync()
+    {
+        var updates = _services.Updates;
+        try
+        {
+            if (updates.State != UpdateState.ReadyToApply)
+            {
+                await updates.CheckAndDownloadAsync().ConfigureAwait(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogFatal("Проверка обновлений на экране входа", ex);
+            return;
+        }
+
+        if (updates.State == UpdateState.ReadyToApply)
+        {
+            UpdateBar.Message = $"Версия {updates.PendingVersion} скачана (сейчас {updates.CurrentVersion}). "
+                + "Установите её до входа: в ней могут быть исправления подключения к сети.";
+            UpdateBar.IsOpen = true;
+        }
+    }
+
+    private void OnUpdateClick(object sender, RoutedEventArgs e)
+    {
+        if (!_services.Updates.ApplyAndRestart())
+        {
+            UpdateBar.Severity = InfoBarSeverity.Warning;
+            UpdateBar.Message = "Установить сейчас нельзя: стенд занят. Повторите после завершения работы.";
+        }
     }
 
     private async void OnConnectClick(object sender, RoutedEventArgs e)

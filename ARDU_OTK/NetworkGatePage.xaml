@@ -28,6 +28,23 @@
                 IsClosable="True"
                 IsOpen="False" />
 
+            <!--
+                🔴 Обновление — до входа. Экран входа закрывает всё приложение,
+                и проверка обновлений, оставленная за ним (в настройках),
+                запирала станцию навсегда: ошибку в самом экране входа нечем
+                было бы исправить, кроме ручной переустановки на каждой станции.
+            -->
+            <InfoBar
+                x:Name="UpdateBar"
+                IsClosable="True"
+                IsOpen="False"
+                Severity="Informational"
+                Title="Есть новая версия">
+                <InfoBar.ActionButton>
+                    <Button Click="OnUpdateClick" Content="Обновить и перезапустить" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
             <ProgressRing
                 x:Name="BusyRing"
                 HorizontalAlignment="Left"
