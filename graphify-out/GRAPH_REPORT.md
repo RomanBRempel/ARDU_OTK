@@ -1,4 +1,4 @@
-# Graph Report - ARDU_OTK  (2026-10-03)
+# Graph Report - ARDU_OTK  (2026-10-07)
 
 ## Corpus Check
 - 95 files · ~192,133 words
@@ -6,12 +6,12 @@
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 3, .ico 1, .manifest 1)
 
 ## Summary
-- 2525 nodes · 5576 edges · 146 communities (117 shown, 29 thin omitted)
-- Extraction: 92% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 412 edges (avg confidence: 0.82)
+- 2525 nodes · 5582 edges · 146 communities (117 shown, 29 thin omitted)
+- Extraction: 92% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 412 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c40239bf`
+- Built from commit: `b7a398a8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -151,7 +151,6 @@
 - ScriptComparison
 - AutopilotVersionMessage
 - .OnScopeChanged
-- .ApplyOneScriptAsync
 - OsdReferenceChoice
 - WinUI App Skill Interface Metadata (openai.yaml)
 - Apache License 2.0 (winui-app skill)
@@ -209,7 +208,7 @@
 ## Communities (146 total, 29 thin omitted)
 
 ### Community 0 - "CompassIdentity"
-Cohesion: 0.13
+Cohesion: 0.15
 Nodes (6): CompassIdentity, NeverWriteNames, MagAxis, X, Y, Z
 
 ### Community 1 - "SqliteCalibrationStore"
@@ -218,7 +217,7 @@ Nodes (12): SerialPortCatalog, AppPaths, BackupsDirectory, DatabaseFilePath, Dat
 
 ### Community 2 - "AcceptanceSession"
 Cohesion: 0.15
-Nodes (10): AcceptanceSession, FirmwareBanner, IsConnected, LastBoard, LiveState, Messages, PortName, ArmReadiness (+2 more)
+Nodes (11): AcceptanceSession, FirmwareBanner, IsConnected, LastBoard, LiveState, Messages, PortName, ArmReadiness (+3 more)
 
 ### Community 3 - "RunRow"
 Cohesion: 0.07
@@ -277,11 +276,11 @@ Cohesion: 0.10
 Nodes (18): ExpectedCompassSlotRow, AmbiguousVisibility, DeviceText, EmptyVisibility, IsExternal, IsPresent, Kind, KindText (+10 more)
 
 ### Community 20 - "ReferenceScript"
-Cohesion: 0.20
-Nodes (5): ReferenceScript, Caption, FileName, ScriptDifference, ScriptTransfer
+Cohesion: 0.18
+Nodes (4): ReferenceScript, Caption, FileName, ScriptTransfer
 
 ### Community 21 - "graph_freshness.py"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (15): compare(), corpus_on_disk(), describe(), emit_hook(), force_utf8_streams(), git(), health_report(), is_corpus_path() (+7 more)
 
 ### Community 22 - "Page"
@@ -313,7 +312,7 @@ Cohesion: 0.14
 Nodes (13): AcceptanceStepRow, Detail, DetailVisibility, FailVisibility, PassVisibility, PendingVisibility, RunningVisibility, Title (+5 more)
 
 ### Community 30 - "MavBusType"
-Cohesion: 0.22
+Cohesion: 0.18
 Nodes (9): MavBusType, DroneCan, I2C, Msp, Serial, Sitl, Spi, Unknown (+1 more)
 
 ### Community 31 - "CalibrationReference"
@@ -389,7 +388,7 @@ Cohesion: 0.24
 Nodes (11): Accessibility, Input, and Localization, Automation Properties and Accessible Naming, Mouse, Touch, Pen, and Keyboard Input Parity, Localization and RTL Readiness, Narrator Support, Acrylic for Transient Surfaces, Mica for Long-Lived Base Layers, Styling, Theming, Materials, and Icons (+3 more)
 
 ### Community 52 - "PrearmReport"
-Cohesion: 0.20
+Cohesion: 0.18
 Nodes (4): PrearmReport, CompassMessages, EstimatorDiagnosis, EstimatorReadiness
 
 ### Community 53 - ".RenderCalibrationState"
@@ -597,8 +596,8 @@ Cohesion: 0.22
 Nodes (7): WinUI Reference Sections Index, WinUI App Structure, Connected Animation, Motion, Animations, and Polish, CommunityToolkit/Windows Repository, Microsoft Learn Windows Apps Docs, WinUI Gallery (microsoft/WinUI-Gallery)
 
 ### Community 108 - "ParameterDifference"
-Cohesion: 0.40
-Nodes (4): ParameterDifference, ParameterTransferPlan, IsClean, Writable
+Cohesion: 0.50
+Nodes (3): ParameterTransferPlan, IsClean, Writable
 
 ### Community 109 - "CalibrationLogRow"
 Cohesion: 0.22
@@ -661,8 +660,8 @@ Cohesion: 0.09
 Nodes (11): RefreshHistoryButton, CompassCalibrationPage, Checks, History, LoadHistory, LogEntries, Mismatches, RewriteFromReference (+3 more)
 
 ### Community 136 - "ScriptComparison"
-Cohesion: 0.33
-Nodes (6): ScriptComparison, ContentDiffers, ExtraOnBoard, Match, MissingOnBoard, Unreadable
+Cohesion: 0.17
+Nodes (8): ReferenceCaption, ScriptComparison, ContentDiffers, ExtraOnBoard, Match, MissingOnBoard, Unreadable, ScriptDifference
 
 ### Community 137 - "AutopilotVersionMessage"
 Cohesion: 0.40
@@ -708,7 +707,7 @@ Nodes (5): AzimuthBox, OperatorBox, ReferenceFileBox, UnitIdBox, TextBox
 
 ## Knowledge Gaps
 - **635 isolated node(s):** `net10.0-windows10.0.26100.0`, `Microsoft.Windows.SDK.BuildTools (10.0.28000.2526)`, `Microsoft.WindowsAppSDK (2.3.1)`, `Velopack (1.2.0)`, `Microsoft.Data.Sqlite (10.0.10)` (+630 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 881 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 878 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
@@ -716,15 +715,15 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `winui-app Skill (WinUI 3 / Windows App SDK)` and `Corrupted Binary Asset (UTF-8 Mojibake Re-encoding)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
+- **Why does `MainPage` connect `MainPage` to `AcceptanceSession`, `CheckResult`, `RunRow`, `Page`, `Task`, `.BuildTiles`, `system`, `.RunAcceptanceAsync`, `.RenderAll`, `CalibrationReference`, `ParameterDifferenceRow`, `.RenderCalibrationState`, `ParameterEnums`, `CompassRow`, `ScriptDifferenceRow`, `Grid`, `StatusTextEvent`, `.RenderWatched`, `WorkstationSettings`, `CalibrationLogRow`, `AppServices`?**
+  _High betweenness centrality (0.195) - this node is a cross-community bridge._
+- **Are the 7 inferred relationships involving `SerialVehicleLink` (e.g. with `.ApplyParametersAsync()` and `.ApplyScriptsAsync()`) actually correct?**
+  _`SerialVehicleLink` has 7 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `net10.0-windows10.0.26100.0`, `Microsoft.Windows.SDK.BuildTools (10.0.28000.2526)`, `Microsoft.WindowsAppSDK (2.3.1)` to the rest of the system?**
+  _635 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `SqliteCalibrationStore` be split into smaller, more focused modules?**
+  _Cohesion score 0.0866601752677702 - nodes in this community are weakly interconnected._
 - **What is the exact relationship between `Unpackaged Self-Contained Deployment Model` and `EnableMsixTooling=true Retained For XAML/PRI Asset Targets`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `premium-frontend-ui Skill` and `winui-app Skill`?**
-  _Edge tagged AMBIGUOUS (relation: semantically_similar_to) - confidence is low._
-- **What is the exact relationship between `C#-First Folder Split (Pages, Controls, ViewModels, Services, Styles, Assets)` and `Explicit Deployment Model Before Build Steps`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `Navy + Green Brand Palette (shared app color identity)` and `Quadcopter Rotor Glyph (four white rotor rings on rounded dark-blue square)`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `ARDU OTK Splash Screen Image (scale-200)` and `UAV Quality-Control (ОТК) Domain Semantics Encoded in Logo`?**
-  _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **What is the exact relationship between `MSIX scale-200 Asset Naming Convention` and `Navy Gradient Rounded-Square Backplate`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
+- **Why does `AppServices` connect `AppServices` to `SqliteCalibrationStore`, `AcceptanceSession`, `RunRow`, `AcceptanceChecks`, `ScriptComparison`, `SerialVehicleLink`, `ReferenceEditorPage`, `.ApplyOneScriptAsync`, `Task`, `MainPage`, `system`, `ReferenceScript`, `OsdPage`, `SettingsPage`, `UpdateService`, `StatusTextEvent`, `Page`, `ReferencesPage`, `WorkstationSettings`?**
+  _High betweenness centrality (0.175) - this node is a cross-community bridge._
