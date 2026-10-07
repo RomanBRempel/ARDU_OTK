@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Общее для стенда и сервера ОТК: контракты API синхронизации и правила
+    проверки секретов.
+
+    🔴 Библиотека существует затем, чтобы у стенда и сервера был один
+    экземпляр каждой истины. Формат хеша PIN, состав роли, форма пакета
+    синхронизации, описанные дважды, расходятся молча: стенд перестаёт
+    пускать оператора по PIN без связи, и выясняется это в цеху, а не на
+    сборке. Поэтому библиотека без зависимостей от WinUI и ASP.NET — её
+    подключают оба.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ARDU_OTK.Shared</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DPAPI для ключа подписи администратора; используется только на Windows. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -76,6 +76,12 @@ public sealed record CalibrationReference(
     DateTimeOffset? RetiredUtc,
     int RunCount)
 {
+    /// <summary>
+    /// Ключ эталона в сети ОТК; <c>null</c> — эталон заведён на этом стенде и
+    /// администратором сети не выпускался.
+    /// </summary>
+    public Guid? NetworkId { get; init; }
+
     /// <summary>Эталон выведен из обращения: выбрать его для нового прогона нельзя.</summary>
     public bool IsRetired => RetiredUtc.HasValue;
 

@@ -44,7 +44,7 @@ public sealed class CalibrationStoreException : Exception
 /// повторов и таймаутов.
 /// </para>
 /// </remarks>
-public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
+public sealed partial class SqliteCalibrationStore : ICalibrationStore, IDisposable
 {
     /// <summary>Версия схемы, которую понимает эта сборка.</summary>
     /// <remarks>
@@ -55,9 +55,11 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     /// <c>Run.ReferenceId</c>. v4 добавила отступления технолога от умолчаний по
     /// ролям параметров (<see cref="ParameterRoleMap"/>): что эталон контролирует
     /// и что показывает оператору. v5 добавила скрипты изделия
-    /// (<see cref="ReferenceScript"/>) — их пути и содержимое.
+    /// (<see cref="ReferenceScript"/>) — их пути и содержимое. v7 подключила
+    /// стенд к сети ОТК: ключ эталона в сети (<c>Reference.NetworkId</c>) и
+    /// пользователи сети (<c>NetworkUser</c>).
     /// </remarks>
-    public const int SchemaVersion = 6;
+    public const int SchemaVersion = 7;
 
     // Формат меток времени: UTC, фиксированная ширина. Такой текст сравнивается
     // и сортируется лексикографически ровно как хронологически — на этом держатся
@@ -69,7 +71,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
     private const string VerdictAborted = "aborted";
 
     /// <summary>Литерал версии схемы. Обязан совпадать с <see cref="SchemaVersion"/>: PRAGMA не принимает параметр.</summary>
-    private const string SetSchemaVersionSql = "PRAGMA user_version = 6;";
+    private const string SetSchemaVersionSql = "PRAGMA user_version = 7;";
 
     /// <summary>
     /// Эталоны изделий и настройки рабочего места — текущая, третья версия.
@@ -113,7 +115,10 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             Firmware              TEXT    NOT NULL DEFAULT '',
             CreatedBy             TEXT    NOT NULL,
             CreatedUtc            TEXT    NOT NULL,
-            RetiredUtc            TEXT
+            RetiredUtc            TEXT,
+            -- Ключ эталона в сети ОТК. NULL — эталон заведён на этом стенде до
+            -- подключения к сети либо ещё не выпущен администратором.
+            NetworkId             TEXT
         );
 
         -- Настройки рабочего места: азимут стапеля, оператор, последний эталон.
@@ -139,8 +144,22 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             UNIQUE (ReferenceId, ScriptPath)
         );
 
+        -- Пользователи сети ОТК — реплика из последнего принятого пакета сети.
+        -- Пишет её только приём пакета (и редактор пользователей у администратора).
+        CREATE TABLE IF NOT EXISTS NetworkUser (
+            Id              TEXT    PRIMARY KEY,
+            Login           TEXT    NOT NULL,
+            LoginNormalized TEXT    NOT NULL UNIQUE,
+            DisplayName     TEXT    NOT NULL,
+            Role            TEXT    NOT NULL,
+            IsActive        INTEGER NOT NULL,
+            PasswordHash    TEXT,
+            PinHash         TEXT
+        );
+
         CREATE INDEX IF NOT EXISTS IX_Reference_Active ON Reference(NameNormalized) WHERE RetiredUtc IS NULL;
         CREATE INDEX IF NOT EXISTS IX_ReferenceScript ON ReferenceScript(ReferenceId, ScriptPath);
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_Reference_NetworkId ON Reference(NetworkId) WHERE NetworkId IS NOT NULL;
         """;
 
     /// <summary>
@@ -861,7 +880,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                p.ParamHash, p.ParamCount, p.HeadingVsJigDeg, p.InterCompassSpreadDeg,
                p.TransferMotorComp, p.CreatedBy, p.CreatedUtc, p.RetiredUtc,
                (SELECT COUNT(*) FROM Run r WHERE r.ReferenceId = p.Id) AS RunCount,
-               p.ParamRoles, p.Firmware
+               p.ParamRoles, p.Firmware, p.NetworkId
         FROM Reference p
         """;
 
@@ -1067,60 +1086,9 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
                 await ThrowIfNameTakenAsync(connection, transaction, normalized, excludeId: null, name, ct)
                     .ConfigureAwait(false);
 
-                await ExecuteAsync(
-                    connection,
-                    transaction,
-                    """
-                    INSERT INTO Reference (
-                        Name, NameNormalized, Description, SourceName, ParamFormat,
-                        ParamText, ParamHash, ParamCount, HeadingVsJigDeg,
-                        InterCompassSpreadDeg, TransferMotorComp, ParamRoles, Firmware,
-                        CreatedBy, CreatedUtc)
-                    VALUES (
-                        $name, $normalized, $description, $sourceName, $format,
-                        $text, $hash, $paramCount, $heading,
-                        $spread, $motorComp, $paramRoles, $firmware, $createdBy, $created);
-                    """,
-                    ct,
-                    ("$name", name),
-                    ("$normalized", normalized),
-                    ("$description", draft.Description?.Trim() ?? string.Empty),
-                    ("$sourceName", draft.Parameters.SourceName ?? string.Empty),
-                    ("$format", draft.Parameters.Format ?? string.Empty),
-                    ("$text", draft.Parameters.Text),
-                    ("$hash", draft.Parameters.Hash ?? string.Empty),
-                    ("$paramCount", (long)draft.Parameters.ParamCount),
-                    ("$heading", draft.HeadingVsJigDeg),
-                    ("$spread", draft.InterCompassSpreadDeg),
-                    ("$motorComp", draft.TransferMotorComp ? 1L : 0L),
-                    ("$paramRoles", roleOverrides),
-                    ("$firmware", draft.Firmware ?? string.Empty),
-                    ("$createdBy", draft.CreatedBy?.Trim() ?? string.Empty),
-                    ("$created", nowUtc)).ConfigureAwait(false);
-
-                var referenceId = Convert.ToInt64(
-                    await ScalarAsync(connection, transaction, "SELECT last_insert_rowid();", ct).ConfigureAwait(false),
-                    CultureInfo.InvariantCulture);
-
-                // Скрипты ложатся той же транзакцией: эталон, у которого
-                // параметры записались, а скрипты нет, описывал бы изделие,
-                // которого не существует.
-                foreach (var script in draft.Scripts ?? Array.Empty<ReferenceScript>())
-                {
-                    await ExecuteAsync(
-                        connection,
-                        transaction,
-                        """
-                        INSERT INTO ReferenceScript (ReferenceId, ScriptPath, ScriptText, ScriptHash, ByteCount)
-                        VALUES ($referenceId, $path, $text, $hash, $bytes);
-                        """,
-                        ct,
-                        ("$referenceId", referenceId),
-                        ("$path", script.Path),
-                        ("$text", script.Text),
-                        ("$hash", script.Hash),
-                        ("$bytes", (long)script.ByteCount)).ConfigureAwait(false);
-                }
+                var referenceId = await InsertReferenceAsync(
+                    connection, transaction, draft, name, normalized, roleOverrides, nowUtc, networkId: null, ct)
+                    .ConfigureAwait(false);
 
                 await CommitAsync(transaction, ct).ConfigureAwait(false);
                 return referenceId;
@@ -1130,6 +1098,80 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>
+    /// Вставляет эталон и его скрипты в открытую транзакцию. Проверки имени и
+    /// заготовки — на вызывающем.
+    /// </summary>
+    private static async Task<long> InsertReferenceAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        NewCalibrationReference draft,
+        string name,
+        string normalized,
+        string roleOverrides,
+        string createdUtc,
+        Guid? networkId,
+        CancellationToken ct)
+    {
+        await ExecuteAsync(
+            connection,
+            transaction,
+            """
+            INSERT INTO Reference (
+                Name, NameNormalized, Description, SourceName, ParamFormat,
+                ParamText, ParamHash, ParamCount, HeadingVsJigDeg,
+                InterCompassSpreadDeg, TransferMotorComp, ParamRoles, Firmware,
+                CreatedBy, CreatedUtc, NetworkId)
+            VALUES (
+                $name, $normalized, $description, $sourceName, $format,
+                $text, $hash, $paramCount, $heading,
+                $spread, $motorComp, $paramRoles, $firmware, $createdBy, $created, $networkId);
+            """,
+            ct,
+            ("$name", name),
+            ("$normalized", normalized),
+            ("$description", draft.Description?.Trim() ?? string.Empty),
+            ("$sourceName", draft.Parameters.SourceName ?? string.Empty),
+            ("$format", draft.Parameters.Format ?? string.Empty),
+            ("$text", draft.Parameters.Text),
+            ("$hash", draft.Parameters.Hash ?? string.Empty),
+            ("$paramCount", (long)draft.Parameters.ParamCount),
+            ("$heading", draft.HeadingVsJigDeg),
+            ("$spread", draft.InterCompassSpreadDeg),
+            ("$motorComp", draft.TransferMotorComp ? 1L : 0L),
+            ("$paramRoles", roleOverrides),
+            ("$firmware", draft.Firmware ?? string.Empty),
+            ("$createdBy", draft.CreatedBy?.Trim() ?? string.Empty),
+            ("$created", createdUtc),
+            ("$networkId", networkId?.ToString())).ConfigureAwait(false);
+
+        var referenceId = Convert.ToInt64(
+            await ScalarAsync(connection, transaction, "SELECT last_insert_rowid();", ct).ConfigureAwait(false),
+            CultureInfo.InvariantCulture);
+
+        // Скрипты ложатся той же транзакцией: эталон, у которого
+        // параметры записались, а скрипты нет, описывал бы изделие,
+        // которого не существует.
+        foreach (var script in draft.Scripts ?? Array.Empty<ReferenceScript>())
+        {
+            await ExecuteAsync(
+                connection,
+                transaction,
+                """
+                INSERT INTO ReferenceScript (ReferenceId, ScriptPath, ScriptText, ScriptHash, ByteCount)
+                VALUES ($referenceId, $path, $text, $hash, $bytes);
+                """,
+                ct,
+                ("$referenceId", referenceId),
+                ("$path", script.Path),
+                ("$text", script.Text),
+                ("$hash", script.Hash),
+                ("$bytes", (long)script.ByteCount)).ConfigureAwait(false);
+        }
+
+        return referenceId;
     }
 
     /// <summary>
@@ -1457,7 +1499,10 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         CreatedBy: reader.GetString(11),
         CreatedUtc: ParseUtc(reader.GetString(12)),
         RetiredUtc: reader.IsDBNull(13) ? null : ParseUtc(reader.GetString(13)),
-        RunCount: reader.GetInt32(14));
+        RunCount: reader.GetInt32(14))
+    {
+        NetworkId = reader.IsDBNull(17) ? null : Guid.Parse(reader.GetString(17)),
+    };
 
     /// <summary>Только те поля эталона, которые нужны проверкам правки.</summary>
     private static async Task<(string Name, double HeadingVsJigDeg, double InterCompassSpreadDeg,
@@ -1699,6 +1744,7 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
             3 => MigrateV3ToV4Sql,
             4 => MigrateV4ToV5Sql,
             5 => MigrateV5ToV6Sql,
+            6 => MigrateV6ToV7Sql,
             _ => throw new CalibrationStoreException(
                 $"Миграция схемы с версии {fromVersion} не реализована в этой сборке. " +
                 "Хранилище оставлено на последней исправной версии."),
@@ -1884,6 +1930,35 @@ public sealed class SqliteCalibrationStore : ICalibrationStore, IDisposable
         ALTER TABLE Reference ADD COLUMN Firmware TEXT NOT NULL DEFAULT '';
 
         PRAGMA user_version = 6;
+        """;
+
+    /// <summary>
+    /// v6 → v7: подключение стенда к сети ОТК — ключ эталона в сети и
+    /// пользователи сети.
+    /// </summary>
+    /// <remarks>
+    /// Существующие эталоны получают <c>NetworkId = NULL</c>: это честное
+    /// «заведён на стенде до сети». Связь с эталоном сети появляется только
+    /// при приёме пакета — по совпадению имени и хеша параметров.
+    /// 🔴 Литерал заморожен в форме версии 7 — см. <see cref="MigrateV1ToV2Sql"/>.
+    /// </remarks>
+    private const string MigrateV6ToV7Sql = """
+        ALTER TABLE Reference ADD COLUMN NetworkId TEXT;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_Reference_NetworkId ON Reference(NetworkId) WHERE NetworkId IS NOT NULL;
+
+        CREATE TABLE IF NOT EXISTS NetworkUser (
+            Id              TEXT    PRIMARY KEY,
+            Login           TEXT    NOT NULL,
+            LoginNormalized TEXT    NOT NULL UNIQUE,
+            DisplayName     TEXT    NOT NULL,
+            Role            TEXT    NOT NULL,
+            IsActive        INTEGER NOT NULL,
+            PasswordHash    TEXT,
+            PinHash         TEXT
+        );
+
+        PRAGMA user_version = 7;
         """;
 
     private static async Task VerifyIntegrityAsync(SqliteConnection connection, CancellationToken ct)

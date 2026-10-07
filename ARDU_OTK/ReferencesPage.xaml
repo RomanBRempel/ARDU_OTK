@@ -64,11 +64,13 @@
                         Click="OnEditClick"
                         Content="Изменить"
                         IsEnabled="{x:Bind CanEdit}"
-                        Tag="{x:Bind Id}" />
+                        Tag="{x:Bind Id}"
+                        Visibility="{x:Bind ManageVisibility}" />
                     <Button
                         Click="OnCloneClick"
                         Content="Клонировать"
                         Tag="{x:Bind Id}"
+                        Visibility="{x:Bind ManageVisibility}"
                         ToolTipService.ToolTip="Завести новый эталон по этому образцу: параметры и скрипты те же, допуски и раскладку можно менять" />
                     <Button
                         Click="OnExportClick"
@@ -78,7 +80,8 @@
                     <Button
                         Click="OnRetireClick"
                         Content="{x:Bind RetireActionText}"
-                        Tag="{x:Bind Id}" />
+                        Tag="{x:Bind Id}"
+                        Visibility="{x:Bind ManageVisibility}" />
                 </StackPanel>
             </Grid>
         </DataTemplate>
@@ -101,6 +104,7 @@
             <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Эталоны" />
 
             <StackPanel
+                x:Name="ManagePanel"
                 Grid.Column="1"
                 Orientation="Horizontal"
                 Spacing="8">

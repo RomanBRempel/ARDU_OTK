@@ -19,7 +19,7 @@ namespace ARDU_OTK;
 /// </remarks>
 public sealed class ReferenceRow
 {
-    public ReferenceRow(CalibrationReference reference)
+    public ReferenceRow(CalibrationReference reference, bool canManage)
     {
         ArgumentNullException.ThrowIfNull(reference);
 
@@ -49,14 +49,23 @@ public sealed class ReferenceRow
         // прежним значениям, и правка сделала бы реестр ложным. Кнопка не
         // прячется, а гаснет — исчезнувшая кнопка выглядит как недоработка, а
         // погашенная объясняет правило подсказкой.
-        CanEdit = !reference.HasRuns && !reference.IsRetired;
+        //
+        // 🔴 Эталон, выпущенный в сеть, не правится вовсе — даже до первого
+        // прогона: его копии уже лежат на стендах, и правка здесь разошлась
+        // бы с ними под тем же именем. Другие допуски — это клон, новый эталон.
+        CanEdit = canManage && !reference.HasRuns && !reference.IsRetired && reference.NetworkId is null;
+
+        // Заводить, править и выводить эталоны может только администратор
+        // сети: на остальных стендах эталоны — реплика его пакета.
+        ManageVisibility = canManage ? Visibility.Visible : Visibility.Collapsed;
 
         IsRetired = reference.IsRetired;
         RetireActionText = reference.IsRetired ? "Вернуть" : "В архив";
 
         StateText = reference.IsRetired
             ? "в архиве"
-            : reference.HasRuns ? "заморожен прогонами" : "правится";
+            : reference.NetworkId is not null ? "в сети"
+            : reference.HasRuns ? "заморожен прогонами" : "не выпущен в сеть";
 
         StateBadgeVisibility = Visibility.Visible;
     }
@@ -70,6 +79,8 @@ public sealed class ReferenceRow
     public string UsageText { get; }
 
     public bool CanEdit { get; }
+
+    public Visibility ManageVisibility { get; }
 
     public bool IsRetired { get; }
 
@@ -107,6 +118,8 @@ public sealed partial class ReferencesPage : Page
     {
         InitializeComponent();
         Loaded += OnLoaded;
+
+        ManagePanel.Visibility = _services.Network.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public ObservableCollection<ReferenceRow> Rows { get; } = new();
@@ -162,7 +175,7 @@ public sealed partial class ReferencesPage : Page
             Rows.Clear();
             foreach (var reference in shown)
             {
-                Rows.Add(new ReferenceRow(reference));
+                Rows.Add(new ReferenceRow(reference, _services.Network.IsAdmin));
             }
 
             CountText.Text = Rows.Count == 0

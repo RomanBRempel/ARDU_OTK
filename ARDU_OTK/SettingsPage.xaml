@@ -91,12 +91,13 @@
                             x:Name="OperatorBox"
                             HorizontalAlignment="Left"
                             MinWidth="260"
+                            IsReadOnly="True"
                             PlaceholderText="фамилия"
                             TextChanged="OnOperatorChanged" />
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                             Style="{StaticResource AppCaptionTextStyle}"
-                            Text="Подставляется в прогон и в подпись заводимых эталонов."
+                            Text="Вошедший пользователь сети. Подставляется в прогон и в подпись заводимых эталонов; сменить — выйти и войти другим пользователем."
                             TextWrapping="Wrap" />
                     </StackPanel>
 

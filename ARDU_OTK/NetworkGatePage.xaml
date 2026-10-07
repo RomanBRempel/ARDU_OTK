@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="ARDU_OTK.NetworkGatePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Loaded="OnLoaded"
+    mc:Ignorable="d">
+
+    <!--
+        Вход в стенд. Пока стенд не принял пакет сети, здесь только подключение
+        к сети: работать по местным эталонам под произвольным именем нельзя,
+        иначе контроль распространения обходился бы переустановкой приложения.
+    -->
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="560"
+            Padding="32"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="20">
+
+            <TextBlock Style="{StaticResource AppTitleTextStyle}" Text="Сеть ОТК" />
+
+            <InfoBar
+                x:Name="GateBar"
+                IsClosable="True"
+                IsOpen="False" />
+
+            <ProgressRing
+                x:Name="BusyRing"
+                HorizontalAlignment="Left"
+                IsActive="True" />
+
+            <!-- Подключение: новая установка ещё не приняла ни одного пакета. -->
+            <Border
+                x:Name="ConnectPanel"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="Collapsed">
+                <StackPanel Spacing="14">
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Подключение стенда" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Стенд ещё не подключён к сети ОТК. Пользователи и эталоны приходят пакетом от администратора через папку обмена ARDU_OTK.Exchange на Google Диске. Установите «Google Диск для компьютера», дождитесь синхронизации папки и примите пакет."
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Папка обмена" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ExchangeDirBox" PlaceholderText="например, G:\Мой диск\ARDU_OTK.Exchange" />
+                            <Button
+                                Grid.Column="1"
+                                Click="OnBrowseClick"
+                                Content="Выбрать…" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Button
+                        x:Name="AcceptButton"
+                        Click="OnAcceptClick"
+                        Content="Принять пакет сети"
+                        Style="{StaticResource AccentButtonStyle}" />
+
+                    <!--
+                        Заведение сети — только на компьютере, где лежит ключ
+                        подписи администратора. На стенде оператора панели нет:
+                        сеть, заведённая без ключа, не могла бы выпустить пакет,
+                        который примут остальные.
+                    -->
+                    <StackPanel
+                        x:Name="CreatePanel"
+                        Spacing="10"
+                        Visibility="Collapsed">
+                        <MenuFlyoutSeparator />
+                        <TextBlock Style="{StaticResource AppBodyStrongTextStyle}" Text="Новая сеть (компьютер администратора)" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            Style="{StaticResource AppCaptionTextStyle}"
+                            Text="Заводится один раз. Первый пакет сети с вами как администратором будет выпущен в папку обмена; все эталоны этого стенда войдут в сеть."
+                            TextWrapping="Wrap" />
+                        <TextBox x:Name="AdminLoginBox" Header="Логин" />
+                        <TextBox x:Name="AdminNameBox" Header="ФИО" />
+                        <PasswordBox x:Name="AdminPasswordBox" Header="Пароль (не короче 8 знаков)" />
+                        <PasswordBox x:Name="AdminPasswordRepeatBox" Header="Пароль ещё раз" />
+                        <Button Click="OnCreateClick" Content="Завести сеть и выпустить первый пакет" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Вход: стенд подключён, пользователи — из принятого пакета. -->
+            <Border
+                x:Name="LoginPanel"
+                Padding="20"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Visibility="Collapsed">
+                <StackPanel Spacing="14">
+                    <TextBlock Style="{StaticResource AppSubtitleTextStyle}" Text="Вход" />
+                    <TextBox x:Name="LoginBox" Header="Логин" />
+                    <PasswordBox
+                        x:Name="SecretBox"
+                        Header="Пароль или PIN"
+                        KeyDown="OnSecretKeyDown" />
+                    <Button
+                        x:Name="LoginButton"
+                        Click="OnLoginClick"
+                        Content="Войти"
+                        Style="{StaticResource AccentButtonStyle}" />
+
+                    <MenuFlyoutSeparator />
+                    <TextBlock
+                        x:Name="NetworkInfoText"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        TextWrapping="Wrap" />
+                    <Button Click="OnRefreshClick" Content="Проверить папку обмена" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

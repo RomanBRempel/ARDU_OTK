@@ -94,6 +94,14 @@
     <PackageReference Include="System.Management" Version="10.0.10" />
   </ItemGroup>
 
+  <!--
+    Общее с сервером и тестами: роли, хеши паролей и PIN, формат и подпись
+    пакета сети ОТК.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\ARDU_OTK.Shared\ARDU_OTK.Shared.csproj" />
+  </ItemGroup>
+
   <!-- Publish Properties -->
   <PropertyGroup>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>

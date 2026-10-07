@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ARDU_OTK.Services.Fc;
 using ARDU_OTK.Services.Fc.Mavlink;
+using ARDU_OTK.Services.Network;
 using ARDU_OTK.Services.Store;
 
 namespace ARDU_OTK.Services;
@@ -37,6 +38,7 @@ public sealed class AppServices
         Paths.EnsureCreated();
 
         Store = new SqliteCalibrationStore(Paths, Updates.CurrentVersion ?? "0.0.0-dev");
+        Network = new NetworkService(Store);
 
         Updates.IsBusy = () =>
         {
@@ -61,6 +63,15 @@ public sealed class AppServices
 
     public SqliteCalibrationStore Store { get; }
 
+    /// <summary>Сеть ОТК: пакет администратора, вход пользователя.</summary>
+    public NetworkService Network { get; }
+
+    /// <summary>
+    /// Идёт процедура либо открыт прогон: стенд нельзя ни обновлять, ни
+    /// передавать другому пользователю.
+    /// </summary>
+    public bool IsBusy => _procedureRunning || Store.HasOpenRun;
+
     /// <summary>
     /// Готовит хранилище и закрывает прогоны, брошенные предыдущим запуском
     /// процесса, — в том числе прерванные обновлением.
@@ -73,14 +84,21 @@ public sealed class AppServices
     /// в журнале Windows остаётся только stowed exception. Проверено бисекцией:
     /// тот же код через <see cref="Task.Run(Func{Task})"/> отрабатывает штатно.
     /// Не «упрощать», убирая обёртку.
+    /// <para>
+    /// Выполняется один раз за процесс: хранилище нужно и экрану входа, и
+    /// рабочему экрану, а уборка брошенных прогонов при повторе закрыла бы
+    /// прогон, начатый уже в этом запуске.
+    /// </para>
     /// </remarks>
-    public Task InitializeAsync(CancellationToken ct = default) => Task.Run(
+    public Task InitializeAsync(CancellationToken ct = default) => _initialization ??= Task.Run(
         async () =>
         {
             await Store.InitializeAsync(ct).ConfigureAwait(false);
             await Store.SweepAbandonedRunsAsync(ct).ConfigureAwait(false);
         },
         ct);
+
+    private Task? _initialization;
 
     /// <summary>Выполняет серийную калибровку компаса на подключённом борту.</summary>
     public async Task<CalibrationRunResult> RunCompassCalibrationAsync(
@@ -271,8 +289,17 @@ public sealed class AppServices
         Task.Run(() => Store.ListReferencesAsync());
 
     /// <inheritdoc cref="InitializeAsync"/>
-    public Task<WorkstationSettings> LoadSettingsAsync() =>
-        Task.Run(() => Store.GetWorkstationSettingsAsync());
+    /// <remarks>
+    /// 🔴 Оператор — это вошедший пользователь сети, а не текст из настроек.
+    /// Свободное поле «Оператор» позволяло подписать прогон любым именем;
+    /// подстановка здесь, в единственной точке чтения настроек, доводит
+    /// настоящую учётку до прогона, автора эталона и выгрузки разом.
+    /// </remarks>
+    public async Task<WorkstationSettings> LoadSettingsAsync()
+    {
+        var settings = await Task.Run(() => Store.GetWorkstationSettingsAsync()).ConfigureAwait(false);
+        return Network.Session is { } user ? settings with { DefaultOperator = user.DisplayName } : settings;
+    }
 
     /// <inheritdoc cref="InitializeAsync"/>
     public Task SaveSettingsAsync(WorkstationSettings settings) =>

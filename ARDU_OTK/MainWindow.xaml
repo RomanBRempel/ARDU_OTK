@@ -33,6 +33,7 @@
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="True"
+            IsPaneVisible="False"
             IsSettingsVisible="True"
             PaneDisplayMode="LeftCompact"
             SelectionChanged="OnNavSelectionChanged">
@@ -94,7 +95,35 @@
                         <FontIcon Glyph="&#xE81C;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+
+                <!--
+                    Администрирование сети — только администратору. Пункт
+                    скрыт для остальных ради порядка в меню; запрет же
+                    проверяется в самих действиях (NetworkService).
+                -->
+                <NavigationViewItem
+                    x:Name="NetworkItem"
+                    Content="Сеть"
+                    Tag="network"
+                    Visibility="Collapsed">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE716;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem
+                    x:Name="SessionItem"
+                    Content="Выйти"
+                    SelectsOnInvoked="False"
+                    Tag="logout"
+                    Tapped="OnLogoutTapped">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xF3B1;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
 
             <Frame x:Name="RootFrame" />
         </NavigationView>

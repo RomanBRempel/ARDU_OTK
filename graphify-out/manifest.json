@@ -1,27 +1,27 @@
 {
   ".claude/settings.json": {
-    "mtime": 1791267224.912357,
-    "seen": 1791353710.6044495,
+    "mtime": 1786688978.1181037,
+    "seen": 1791380663.543585,
     "ast_hash": "04d934fadd44a1d6952bd2ef9369dd08",
     "semantic_hash": "04d934fadd44a1d6952bd2ef9369dd08"
   },
   ".github/skills/premium-frontend-ui/.skill-meta.json": {
-    "mtime": 1791267224.9187417,
-    "seen": 1791353710.6044567,
+    "mtime": 1786960476.924434,
+    "seen": 1791380663.543585,
     "ast_hash": "c56293da68fd15f8031510bfe966d226",
     "semantic_hash": "c56293da68fd15f8031510bfe966d226"
   },
   ".github/skills/winui-app/.skill-meta.json": {
-    "mtime": 1791267224.9218042,
-    "seen": 1791353710.6044583,
+    "mtime": 1786960485.2847648,
+    "seen": 1791380663.543585,
     "ast_hash": "dac327a3e93348391ec483d7792e71f4",
     "semantic_hash": "dac327a3e93348391ec483d7792e71f4"
   },
   ".github/skills/README.md": {
-    "mtime": 1791267224.9183238,
-    "seen": 1791353710.6045642,
+    "mtime": 1787576206.682706,
+    "seen": 1791380663.543585,
     "ast_hash": "1579b832a002823fa2e1cc3bc22bc029",
-    "semantic_hash": ""
+    "semantic_hash": "1579b832a002823fa2e1cc3bc22bc029"
   },
   ".github/skills/premium-frontend-ui/SKILL.md": {
     "mtime": 1791267224.9218042,
@@ -162,182 +162,182 @@
     "semantic_hash": "ab7e034ff9c4abbf44ffdf120d8f756b"
   },
   ".github/skills/ardupilot-firmware/.skill-meta.json": {
-    "mtime": 1791267224.9184303,
-    "seen": 1791353710.6044545,
+    "mtime": 1786369600.80307,
+    "seen": 1791380663.543585,
     "ast_hash": "6f85f7ef95caf043b8d89eeb18670fd5",
     "semantic_hash": "6f85f7ef95caf043b8d89eeb18670fd5"
   },
   "ARDU_OTK.slnx": {
-    "mtime": 1791267224.9248452,
-    "seen": 1791353710.6044638,
-    "ast_hash": "f7848e5d70591a85f38a3f4700518214",
-    "semantic_hash": ""
+    "mtime": 1791383418.9057257,
+    "seen": 1791383695.414179,
+    "ast_hash": "d2b887428086ab3c3dc28ef0ed8df1de",
+    "semantic_hash": "d2b887428086ab3c3dc28ef0ed8df1de"
   },
   "ARDU_OTK/ARDU_OTK.csproj": {
-    "mtime": 1791267224.9251037,
-    "seen": 1791353710.6044655,
-    "ast_hash": "d6808e29ed7d6a991888f1d983750027",
-    "semantic_hash": "d6808e29ed7d6a991888f1d983750027"
+    "mtime": 1791382877.631952,
+    "seen": 1791383695.414179,
+    "ast_hash": "33aa1c8e0bc86bdf137f3ea4d525c62e",
+    "semantic_hash": "33aa1c8e0bc86bdf137f3ea4d525c62e"
   },
   "ARDU_OTK/App.xaml": {
-    "mtime": 1791267224.9251037,
-    "seen": 1791353710.6044686,
-    "ast_hash": "f84a4fdb2967520793364f8e92c7db9e",
-    "semantic_hash": ""
+    "mtime": 1786688439.6047575,
+    "seen": 1791380663.543585,
+    "ast_hash": "120524cc314a91167b4e1bdad9c0e63f",
+    "semantic_hash": "120524cc314a91167b4e1bdad9c0e63f"
   },
   "ARDU_OTK/App.xaml.cs": {
-    "mtime": 1791267224.9251037,
-    "seen": 1791353710.60447,
-    "ast_hash": "034372b865f3d01057baa9baec30bd36",
-    "semantic_hash": ""
+    "mtime": 1786688417.0179703,
+    "seen": 1791380663.543585,
+    "ast_hash": "3542be23cdf3332a0f03e3b5503efd12",
+    "semantic_hash": "3542be23cdf3332a0f03e3b5503efd12"
   },
   "ARDU_OTK/CompassCalibrationPage.xaml": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044729,
+    "mtime": 1786510979.8233924,
+    "seen": 1791380663.543585,
     "ast_hash": "e1dd7d470f2da23ef1c407bf5bb54b02",
     "semantic_hash": "e1dd7d470f2da23ef1c407bf5bb54b02"
   },
   "ARDU_OTK/CompassCalibrationPage.xaml.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044743,
+    "mtime": 1786437139.3982658,
+    "seen": 1791380663.543585,
     "ast_hash": "a35eb2e7f60b3b8acbbca6ec12a32688",
     "semantic_hash": "a35eb2e7f60b3b8acbbca6ec12a32688"
   },
   "ARDU_OTK/CompassCalibrationRows.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.604476,
+    "mtime": 1786437021.2487473,
+    "seen": 1791380663.543585,
     "ast_hash": "9d28714c315a05cd32c0293c38a14ed4",
     "semantic_hash": "9d28714c315a05cd32c0293c38a14ed4"
   },
   "ARDU_OTK/MainPage.xaml": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044772,
+    "mtime": 1786970642.2721646,
+    "seen": 1791380663.543585,
     "ast_hash": "490937f8568391a2b861e1d6d3c8b0a4",
     "semantic_hash": "490937f8568391a2b861e1d6d3c8b0a4"
   },
   "ARDU_OTK/MainPage.xaml.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044784,
+    "mtime": 1787838716.9627545,
+    "seen": 1791380663.543585,
     "ast_hash": "a93c1617adac28e9100a4b5a4cf9e27c",
     "semantic_hash": "a93c1617adac28e9100a4b5a4cf9e27c"
   },
   "ARDU_OTK/MainWindow.xaml": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044798,
-    "ast_hash": "76d7a14dabb54de8b6499b162ce76e69",
-    "semantic_hash": "76d7a14dabb54de8b6499b162ce76e69"
+    "mtime": 1791383154.748583,
+    "seen": 1791383695.4151883,
+    "ast_hash": "3c35cf5633c50c7674713f8480e8728f",
+    "semantic_hash": "3c35cf5633c50c7674713f8480e8728f"
   },
   "ARDU_OTK/MainWindow.xaml.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044812,
-    "ast_hash": "148f419c10f1b5e4db2d60bade8867d0",
-    "semantic_hash": "148f419c10f1b5e4db2d60bade8867d0"
+    "mtime": 1791383478.4343538,
+    "seen": 1791383695.4151883,
+    "ast_hash": "f7e71d17df7638cdb097413f3d594bb9",
+    "semantic_hash": "f7e71d17df7638cdb097413f3d594bb9"
   },
   "ARDU_OTK/Program.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044931,
+    "mtime": 1786381373.6752894,
+    "seen": 1791380663.543585,
     "ast_hash": "015dc1d5d8320afe8003656e405bb9b0",
     "semantic_hash": "015dc1d5d8320afe8003656e405bb9b0"
   },
   "ARDU_OTK/Properties/launchSettings.json": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044943,
-    "ast_hash": "cbe808dfb455636284964668dfa96cba",
-    "semantic_hash": ""
+    "mtime": 1786366543.909098,
+    "seen": 1791380663.543585,
+    "ast_hash": "996d2f0d107677d93701ee62fc9cd2de",
+    "semantic_hash": "996d2f0d107677d93701ee62fc9cd2de"
   },
   "ARDU_OTK/Services/AppServices.cs": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.6045113,
-    "ast_hash": "2a673a7565182c18cdd8e12b59f88258",
-    "semantic_hash": "2a673a7565182c18cdd8e12b59f88258"
+    "mtime": 1791383165.1001165,
+    "seen": 1791383695.4151883,
+    "ast_hash": "33c1292c67a0f69a5ffbb6b1a167ddd8",
+    "semantic_hash": "33c1292c67a0f69a5ffbb6b1a167ddd8"
   },
   "ARDU_OTK/Services/Fc/Abstractions.cs": {
-    "mtime": 1791267224.933022,
-    "seen": 1791353710.6045148,
+    "mtime": 1786478100.1526194,
+    "seen": 1791380663.543585,
     "ast_hash": "744fc2a9e7f470e7e1f642a63737a406",
     "semantic_hash": "744fc2a9e7f470e7e1f642a63737a406"
   },
   "ARDU_OTK/Services/Fc/AcceptanceChecks.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045163,
+    "mtime": 1786370769.1876404,
+    "seen": 1791380663.543585,
     "ast_hash": "e0b4da9d3d2073d8fb4a621adc1654bd",
     "semantic_hash": "e0b4da9d3d2073d8fb4a621adc1654bd"
   },
   "ARDU_OTK/Services/Fc/ArduPilotModes.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045191,
+    "mtime": 1786391173.797637,
+    "seen": 1791380663.543585,
     "ast_hash": "4524e0e172d22279f23f5d9690619f39",
     "semantic_hash": "4524e0e172d22279f23f5d9690619f39"
   },
   "ARDU_OTK/Services/Fc/CalibrationContracts.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045206,
+    "mtime": 1786436883.4712667,
+    "seen": 1791380663.543585,
     "ast_hash": "7a98bdbf3ad2fccac0e0701b96e039e3",
     "semantic_hash": "7a98bdbf3ad2fccac0e0701b96e039e3"
   },
   "ARDU_OTK/Services/Fc/CompassIdentity.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045232,
+    "mtime": 1786942900.7211397,
+    "seen": 1791380663.543585,
     "ast_hash": "c97e33cc40a8fe90ac00d4eeef8a42e6",
     "semantic_hash": "c97e33cc40a8fe90ac00d4eeef8a42e6"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkProtocol.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045294,
+    "mtime": 1786519614.8025274,
+    "seen": 1791380663.543585,
     "ast_hash": "caa8a853156b972d6fc322c1a4c25043",
     "semantic_hash": "caa8a853156b972d6fc322c1a4c25043"
   },
   "ARDU_OTK/Services/Fc/Mavlink/SerialVehicleLink.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045306,
+    "mtime": 1786606952.6982079,
+    "seen": 1791380663.543585,
     "ast_hash": "3e5960cce41f70c341f2c202cb7d593d",
     "semantic_hash": "3e5960cce41f70c341f2c202cb7d593d"
   },
   "ARDU_OTK/Services/Fc/ReferenceParamFile.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045363,
+    "mtime": 1786370817.8250935,
+    "seen": 1791380663.543585,
     "ast_hash": "43b2ba2fda2fa9279bbea64064a3d2bb",
     "semantic_hash": "43b2ba2fda2fa9279bbea64064a3d2bb"
   },
   "ARDU_OTK/Services/Fc/SerialCompassCalibrationJob.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.604538,
+    "mtime": 1786436943.8551483,
+    "seen": 1791380663.543585,
     "ast_hash": "8802296f8dc7c79c09e33ea9390b9151",
     "semantic_hash": "8802296f8dc7c79c09e33ea9390b9151"
   },
   "ARDU_OTK/Services/Fc/SerialPortCatalog.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045392,
+    "mtime": 1786390820.9511878,
+    "seen": 1791380663.543585,
     "ast_hash": "4e639fa84aaba8ddcea86fa184ab5923",
     "semantic_hash": "4e639fa84aaba8ddcea86fa184ab5923"
   },
   "ARDU_OTK/Services/Store/AppPaths.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045406,
+    "mtime": 1786370796.2183642,
+    "seen": 1791380663.543585,
     "ast_hash": "ca6f0fc05480a1eaa6fa3c18b906a5e8",
     "semantic_hash": "ca6f0fc05480a1eaa6fa3c18b906a5e8"
   },
   "ARDU_OTK/Services/Store/SqliteCalibrationStore.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045463,
-    "ast_hash": "4aa53ca52292ae7a788840df3095cf7d",
-    "semantic_hash": "4aa53ca52292ae7a788840df3095cf7d"
+    "mtime": 1791382750.5353458,
+    "seen": 1791383695.4151883,
+    "ast_hash": "fdd3dcc0f6363125159a7c214ce67879",
+    "semantic_hash": "fdd3dcc0f6363125159a7c214ce67879"
   },
   "ARDU_OTK/Services/UpdateService.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045513,
+    "mtime": 1786366905.5435104,
+    "seen": 1791380663.543585,
     "ast_hash": "7cccf6cb849f532fadd0f02baca204d5",
     "semantic_hash": "7cccf6cb849f532fadd0f02baca204d5"
   },
   "ARDU_OTK/SettingsPage.xaml": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.604554,
-    "ast_hash": "05828322d57e17707120d38ff65c97e5",
-    "semantic_hash": "05828322d57e17707120d38ff65c97e5"
+    "mtime": 1791383200.4839423,
+    "seen": 1791383695.4151883,
+    "ast_hash": "848734aebf4755807daac2d9c0785579",
+    "semantic_hash": "848734aebf4755807daac2d9c0785579"
   },
   "ARDU_OTK/SettingsPage.xaml.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045554,
+    "mtime": 1786699607.3914435,
+    "seen": 1791380663.543585,
     "ast_hash": "4497dadbfce0771f0a2b5630026cfbfa",
     "semantic_hash": "4497dadbfce0771f0a2b5630026cfbfa"
   },
@@ -402,16 +402,16 @@
     "semantic_hash": "245615d2721cd5cafa36fcb7f3a50773"
   },
   "CLAUDE.md": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6046116,
+    "mtime": 1786447440.1632638,
+    "seen": 1791380663.543585,
     "ast_hash": "65c5bfd154a83a4d3bfee4bd7d51d451",
-    "semantic_hash": ""
+    "semantic_hash": "65c5bfd154a83a4d3bfee4bd7d51d451"
   },
   "README.md": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6046128,
-    "ast_hash": "3c28cec98fae10611adb6715b2e3de19",
-    "semantic_hash": ""
+    "mtime": 1791383575.9550743,
+    "seen": 1791383695.4151883,
+    "ast_hash": "d86b616f6608a4b28c39b2dea800db30",
+    "semantic_hash": "d86b616f6608a4b28c39b2dea800db30"
   },
   "ARDU_OTK/Assets/LockScreenLogo.scale-200.png": {
     "mtime": 1791267224.9263058,
@@ -462,195 +462,381 @@
     "semantic_hash": "94dfd2f40f4f7639f76c3d4600d504ff"
   },
   ".vscode/launch.json": {
-    "mtime": 1791267224.9242184,
-    "seen": 1791353710.6044602,
+    "mtime": 1786425404.9324703,
+    "seen": 1791380663.543585,
     "ast_hash": "68fefb0dc72c0ce13277cc02edea22be",
     "semantic_hash": "68fefb0dc72c0ce13277cc02edea22be"
   },
   ".vscode/tasks.json": {
-    "mtime": 1791267224.9248452,
-    "seen": 1791353710.6044624,
+    "mtime": 1786425349.2567232,
+    "seen": 1791380663.543585,
     "ast_hash": "198f5ffac472a31d62cd9645afdb68dd",
     "semantic_hash": "198f5ffac472a31d62cd9645afdb68dd"
   },
   "ARDU_OTK/Services/Fc/CompassParameterSnapshot.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045249,
-    "ast_hash": "ad79deedc606dce8357b9efa6bc020fc",
-    "semantic_hash": ""
+    "mtime": 1786433895.7390566,
+    "seen": 1791380663.543585,
+    "ast_hash": "3b8ce30fe33d0e31cab26ce527f57252",
+    "semantic_hash": "3b8ce30fe33d0e31cab26ce527f57252"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.6044958,
+    "mtime": 1786960805.118895,
+    "seen": 1791380663.543585,
     "ast_hash": "1d9347030e3ef4bd7f90bdb706b4d624",
     "semantic_hash": "1d9347030e3ef4bd7f90bdb706b4d624"
   },
   "ARDU_OTK/ReferenceEditorPage.xaml.cs": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.604497,
+    "mtime": 1786960882.1309972,
+    "seen": 1791380663.543585,
     "ast_hash": "50bd8855c3c9a8f8b70dbd00c8e57ec3",
     "semantic_hash": "50bd8855c3c9a8f8b70dbd00c8e57ec3"
   },
   "ARDU_OTK/ReferenceRows.cs": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.6044986,
+    "mtime": 1786960749.3542273,
+    "seen": 1791380663.543585,
     "ast_hash": "beb2a99d1a13a53a5f862952dd3a1b4c",
     "semantic_hash": "beb2a99d1a13a53a5f862952dd3a1b4c"
   },
   "ARDU_OTK/Services/Store/CalibrationReference.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045423,
-    "ast_hash": "ba4b20f4649a145de594551177aaeed1",
-    "semantic_hash": "ba4b20f4649a145de594551177aaeed1"
+    "mtime": 1791382748.7168996,
+    "seen": 1791383695.4151883,
+    "ast_hash": "89e7d80646e3ca128e394462e26a0a18",
+    "semantic_hash": "89e7d80646e3ca128e394462e26a0a18"
   },
   "ARDU_OTK/Services/Fc/ParameterControl.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.604533,
+    "mtime": 1786943173.4793541,
+    "seen": 1791380663.543585,
     "ast_hash": "9b8add367d8d451038793441c77baf3f",
     "semantic_hash": "9b8add367d8d451038793441c77baf3f"
   },
   "ARDU_OTK/Services/Fc/Mavlink/MavlinkFtp.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.604528,
+    "mtime": 1786604339.0005147,
+    "seen": 1791380663.543585,
     "ast_hash": "e0216b93bf8f2131f9aadcfdbc78a011",
     "semantic_hash": "e0216b93bf8f2131f9aadcfdbc78a011"
   },
   "ARDU_OTK/Services/Store/ReferenceScript.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045449,
+    "mtime": 1786606939.9898908,
+    "seen": 1791380663.543585,
     "ast_hash": "2ee46194df466bf92eaab9f257332a3d",
     "semantic_hash": "2ee46194df466bf92eaab9f257332a3d"
   },
   "tools/graph_freshness.py": {
-    "mtime": 1791267224.9803572,
-    "seen": 1791353710.604563,
-    "ast_hash": "a2239a79d96267761d861d3ba9010204",
-    "semantic_hash": "a2239a79d96267761d861d3ba9010204"
+    "mtime": 1791380067.3560922,
+    "seen": 1791380663.543585,
+    "ast_hash": "de1ab02184a7b5a88daac7f839efdaad",
+    "semantic_hash": "de1ab02184a7b5a88daac7f839efdaad"
   },
   ".github/workflows/graph-freshness.yml": {
-    "mtime": 1791267224.9228756,
-    "seen": 1791353710.6046066,
+    "mtime": 1786446084.1827207,
+    "seen": 1791380663.543585,
     "ast_hash": "c21c7f43bca8c1ae57e9cb6ea8615a10",
-    "semantic_hash": ""
+    "semantic_hash": "c21c7f43bca8c1ae57e9cb6ea8615a10"
   },
   "ARDU_OTK/Services/Fc/ParameterTransfer.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045353,
+    "mtime": 1786453918.4120576,
+    "seen": 1791380663.543585,
     "ast_hash": "240cd94917c7caa8483d8e75888cc807",
     "semantic_hash": "240cd94917c7caa8483d8e75888cc807"
   },
   "ARDU_OTK/AcceptanceRows.cs": {
-    "mtime": 1791267224.9251037,
-    "seen": 1791353710.604467,
+    "mtime": 1786609969.5312805,
+    "seen": 1791380663.543585,
     "ast_hash": "965e3008890ce316f20d8e50e27fda73",
     "semantic_hash": "965e3008890ce316f20d8e50e27fda73"
   },
   "ARDU_OTK/Services/Fc/AcceptanceSession.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045177,
+    "mtime": 1787839652.8308196,
+    "seen": 1791380663.543585,
     "ast_hash": "81a6482a503d348ecbc4cba44cbf975f",
     "semantic_hash": "81a6482a503d348ecbc4cba44cbf975f"
   },
   "ARDU_OTK/Services/UiScale.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045475,
+    "mtime": 1786688409.5670724,
+    "seen": 1791380663.543585,
     "ast_hash": "6f0f1f45e4d7f8e70d5f4c718b06b079",
     "semantic_hash": "6f0f1f45e4d7f8e70d5f4c718b06b079"
   },
   "ARDU_OTK/Services/Fc/ParameterEnums.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.604534,
-    "ast_hash": "464d660ff29786ee7930f32d57bd0906",
-    "semantic_hash": ""
+    "mtime": 1786511416.170723,
+    "seen": 1791380663.543585,
+    "ast_hash": "233f5e24e78205f81e1b867d4998e2d8",
+    "semantic_hash": "233f5e24e78205f81e1b867d4998e2d8"
   },
   "ARDU_OTK/ChannelOrder.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.604471,
+    "mtime": 1786519424.8079908,
+    "seen": 1791380663.543585,
     "ast_hash": "39ff11bd70a91cdd8f7d7d902e02bcc9",
     "semantic_hash": "39ff11bd70a91cdd8f7d7d902e02bcc9"
   },
   "ARDU_OTK/Services/Fc/CalibrationStatus.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.6045218,
+    "mtime": 1786943003.589868,
+    "seen": 1791380663.543585,
     "ast_hash": "5c3fcda85c28bf8dacb3478d0b4aaa69",
     "semantic_hash": "5c3fcda85c28bf8dacb3478d0b4aaa69"
   },
   "ARDU_OTK/Services/WorkstationLocator.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045527,
+    "mtime": 1786519851.6630213,
+    "seen": 1791380663.543585,
     "ast_hash": "4a4ec86c206db0d94ab703b850c06a82",
     "semantic_hash": "4a4ec86c206db0d94ab703b850c06a82"
   },
   "ARDU_OTK/ReferencesPage.xaml": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.6045003,
-    "ast_hash": "4ecaf1a37c648747aa2c75edbba4ca1f",
-    "semantic_hash": "4ecaf1a37c648747aa2c75edbba4ca1f"
+    "mtime": 1791383192.0022879,
+    "seen": 1791383695.4151883,
+    "ast_hash": "74f30fc78c518ba44aca7273d5fbcf29",
+    "semantic_hash": "74f30fc78c518ba44aca7273d5fbcf29"
   },
   "ARDU_OTK/ReferencesPage.xaml.cs": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.6045015,
-    "ast_hash": "efafc5fbb9f8e0418f5d4209287b2816",
-    "semantic_hash": "efafc5fbb9f8e0418f5d4209287b2816"
+    "mtime": 1791383200.4839423,
+    "seen": 1791383695.4151883,
+    "ast_hash": "27106a61f56d9c30c3cc44844ae12047",
+    "semantic_hash": "27106a61f56d9c30c3cc44844ae12047"
   },
   "ARDU_OTK/RunsPage.xaml": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.6045027,
+    "mtime": 1786530365.304884,
+    "seen": 1791380663.543585,
     "ast_hash": "0532b47749d2981dd850114f1fc43b1b",
     "semantic_hash": "0532b47749d2981dd850114f1fc43b1b"
   },
   "ARDU_OTK/RunsPage.xaml.cs": {
-    "mtime": 1791267224.9283571,
-    "seen": 1791353710.604504,
+    "mtime": 1786530398.667115,
+    "seen": 1791380663.543585,
     "ast_hash": "a0aba54b969f5070cf2deae7fee3f489",
     "semantic_hash": "a0aba54b969f5070cf2deae7fee3f489"
   },
   "ARDU_OTK/Services/Store/ReferencePackage.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045432,
+    "mtime": 1786632862.3490336,
+    "seen": 1791380663.543585,
     "ast_hash": "c850b86dcb36a8275f0787a8583a166e",
     "semantic_hash": "c850b86dcb36a8275f0787a8583a166e"
   },
   "ARDU_OTK/OsdPage.xaml": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.604483,
+    "mtime": 1786633151.8102973,
+    "seen": 1791380663.543585,
     "ast_hash": "d902987140e41d5aa860011cf16e70b4",
     "semantic_hash": "d902987140e41d5aa860011cf16e70b4"
   },
   "ARDU_OTK/OsdPage.xaml.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.604484,
+    "mtime": 1786633198.097467,
+    "seen": 1791380663.543585,
     "ast_hash": "8ad58af046ef22e904092f84b35a6678",
     "semantic_hash": "8ad58af046ef22e904092f84b35a6678"
   },
   "ARDU_OTK/OsdRows.cs": {
-    "mtime": 1791267224.9263058,
-    "seen": 1791353710.604491,
+    "mtime": 1786629206.3967812,
+    "seen": 1791380663.543585,
     "ast_hash": "8dc681fc12ba2933a663054318527ae7",
     "semantic_hash": "8dc681fc12ba2933a663054318527ae7"
   },
   "ARDU_OTK/Services/Fc/OsdLayout.cs": {
-    "mtime": 1791267224.9348373,
-    "seen": 1791353710.6045318,
+    "mtime": 1786629157.6647413,
+    "seen": 1791380663.543585,
     "ast_hash": "a0f21ef394e177a2d13f60400521dfb7",
     "semantic_hash": "a0f21ef394e177a2d13f60400521dfb7"
   },
   "ARDU_OTK/Services/UiState.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.604549,
+    "mtime": 1786688365.926106,
+    "seen": 1791380663.543585,
     "ast_hash": "4032e692c99733a906bd7c24edac8d2b",
     "semantic_hash": "4032e692c99733a906bd7c24edac8d2b"
   },
   "ARDU_OTK/Services/UiTheme.cs": {
-    "mtime": 1791267224.9371262,
-    "seen": 1791353710.6045501,
+    "mtime": 1786688391.9033988,
+    "seen": 1791380663.543585,
     "ast_hash": "ca1ec0fb8227d7186642ac9872539585",
     "semantic_hash": "ca1ec0fb8227d7186642ac9872539585"
   },
   "ARDU_OTK/Services/Fc/EstimatorReadiness.cs": {
-    "mtime": 1791267224.9331968,
-    "seen": 1791353710.604526,
+    "mtime": 1787838693.8707144,
+    "seen": 1791380663.543585,
     "ast_hash": "ebe49f1b6656b87b30830f48bcfddd0b",
     "semantic_hash": "ebe49f1b6656b87b30830f48bcfddd0b"
+  },
+  "ARDU_OTK.Server/ARDU_OTK.Server.csproj": {
+    "mtime": 1791379964.1178772,
+    "seen": 1791380663.543585,
+    "ast_hash": "a4a377e6bfea5bf08234e688e2a73e78",
+    "semantic_hash": "a4a377e6bfea5bf08234e688e2a73e78"
+  },
+  "ARDU_OTK.Server/Auth/TokenAuthentication.cs": {
+    "mtime": 1791380054.2149105,
+    "seen": 1791380663.543585,
+    "ast_hash": "a2627119f843d467b31ea0c971bdb700",
+    "semantic_hash": "a2627119f843d467b31ea0c971bdb700"
+  },
+  "ARDU_OTK.Server/Data/ServerStore.cs": {
+    "mtime": 1791379965.233059,
+    "seen": 1791380663.543585,
+    "ast_hash": "e3293afa578f73355df7ff35358a2794",
+    "semantic_hash": "e3293afa578f73355df7ff35358a2794"
+  },
+  "ARDU_OTK.Server/Endpoints/OtkEndpoints.cs": {
+    "mtime": 1791380023.9202948,
+    "seen": 1791380663.543585,
+    "ast_hash": "c9b75809f761a4adeeb82fb2a3fa5582",
+    "semantic_hash": "c9b75809f761a4adeeb82fb2a3fa5582"
+  },
+  "ARDU_OTK.Server/Hosting/AdminCommand.cs": {
+    "mtime": 1791380027.1042018,
+    "seen": 1791380663.543585,
+    "ast_hash": "2879fa4adf9f67a90e527c2421f18a96",
+    "semantic_hash": "2879fa4adf9f67a90e527c2421f18a96"
+  },
+  "ARDU_OTK.Server/Hosting/ServerPaths.cs": {
+    "mtime": 1791380024.9840827,
+    "seen": 1791380663.543585,
+    "ast_hash": "7b03e966f2a3441b15ac65e2dddd6717",
+    "semantic_hash": "7b03e966f2a3441b15ac65e2dddd6717"
+  },
+  "ARDU_OTK.Server/Program.cs": {
+    "mtime": 1791380257.071194,
+    "seen": 1791380663.543585,
+    "ast_hash": "98f3bba75d860eb306ce9f5a437bed8a",
+    "semantic_hash": "98f3bba75d860eb306ce9f5a437bed8a"
+  },
+  "ARDU_OTK.Shared/ARDU_OTK.Shared.csproj": {
+    "mtime": 1791382580.2693262,
+    "seen": 1791383695.414179,
+    "ast_hash": "ff4df1daa40142f36f698bdef6b54626",
+    "semantic_hash": "ff4df1daa40142f36f698bdef6b54626"
+  },
+  "ARDU_OTK.Shared/Contracts/AuthContracts.cs": {
+    "mtime": 1791379829.479991,
+    "seen": 1791380663.543585,
+    "ast_hash": "a0bcab8a914f9d0f2d98a0a6027d0567",
+    "semantic_hash": "a0bcab8a914f9d0f2d98a0a6027d0567"
+  },
+  "ARDU_OTK.Shared/Contracts/ReferenceContracts.cs": {
+    "mtime": 1791379831.6433232,
+    "seen": 1791380663.543585,
+    "ast_hash": "e539aabb423aba680c3865b9f7161353",
+    "semantic_hash": "e539aabb423aba680c3865b9f7161353"
+  },
+  "ARDU_OTK.Shared/Contracts/SyncContracts.cs": {
+    "mtime": 1791379832.72736,
+    "seen": 1791380663.543585,
+    "ast_hash": "be73bea74598a58bee178f5090796c93",
+    "semantic_hash": "be73bea74598a58bee178f5090796c93"
+  },
+  "ARDU_OTK.Shared/Contracts/UserContracts.cs": {
+    "mtime": 1791379830.5695465,
+    "seen": 1791380663.543585,
+    "ast_hash": "f5325fe61c9f0915bbf22eca84066e69",
+    "semantic_hash": "f5325fe61c9f0915bbf22eca84066e69"
+  },
+  "ARDU_OTK.Shared/Security/OtkRoles.cs": {
+    "mtime": 1791379779.850545,
+    "seen": 1791380663.543585,
+    "ast_hash": "53b5639e7614934841b1dddc4db2eed2",
+    "semantic_hash": "53b5639e7614934841b1dddc4db2eed2"
+  },
+  "ARDU_OTK.Shared/Security/SecretHasher.cs": {
+    "mtime": 1791379780.9303443,
+    "seen": 1791380663.543585,
+    "ast_hash": "abdfc3857b37b55a298a26311e231da0",
+    "semantic_hash": "abdfc3857b37b55a298a26311e231da0"
+  },
+  "ARDU_OTK.Shared/Security/SecretPolicy.cs": {
+    "mtime": 1791379782.0088446,
+    "seen": 1791380663.543585,
+    "ast_hash": "c62aac8fcd5d2037cb089dbf7d8f694d",
+    "semantic_hash": "c62aac8fcd5d2037cb089dbf7d8f694d"
+  },
+  "ARDU_OTK.Tests/ARDU_OTK.Tests.csproj": {
+    "mtime": 1791380112.377473,
+    "seen": 1791380663.543585,
+    "ast_hash": "3f7f2d22cc8348c93a24b43f2861caf1",
+    "semantic_hash": "3f7f2d22cc8348c93a24b43f2861caf1"
+  },
+  "ARDU_OTK.Tests/ServerApiTests.cs": {
+    "mtime": 1791380152.891734,
+    "seen": 1791380663.543585,
+    "ast_hash": "2173ee16749a05ec75d86de3568034cd",
+    "semantic_hash": "2173ee16749a05ec75d86de3568034cd"
+  },
+  "ARDU_OTK.Tests/ServerFixture.cs": {
+    "mtime": 1791380113.4463987,
+    "seen": 1791380663.543585,
+    "ast_hash": "7b71252322a51f2f2a8d934483ed99fe",
+    "semantic_hash": "7b71252322a51f2f2a8d934483ed99fe"
+  },
+  "ARDU_OTK.App.Tests/ARDU_OTK.App.Tests.csproj": {
+    "mtime": 1791383244.4423368,
+    "seen": 1791383695.414179,
+    "ast_hash": "733994bf54fa8b391513451a50ca14a8",
+    "semantic_hash": "733994bf54fa8b391513451a50ca14a8"
+  },
+  "ARDU_OTK.App.Tests/NetworkStoreTests.cs": {
+    "mtime": 1791383338.7772038,
+    "seen": 1791383695.414179,
+    "ast_hash": "816b2ac937ea6931803bad1712738198",
+    "semantic_hash": "816b2ac937ea6931803bad1712738198"
+  },
+  "ARDU_OTK.Shared/Network/NetworkPackageFile.cs": {
+    "mtime": 1791382544.8452668,
+    "seen": 1791383695.414179,
+    "ast_hash": "34873baa8db9a463c2d5c4055ac4a61d",
+    "semantic_hash": "34873baa8db9a463c2d5c4055ac4a61d"
+  },
+  "ARDU_OTK.Shared/Network/NetworkSigningKeyStore.cs": {
+    "mtime": 1791382579.1472044,
+    "seen": 1791383695.414179,
+    "ast_hash": "1b238d9e083df5c3db7e773fbf8a6a6f",
+    "semantic_hash": "1b238d9e083df5c3db7e773fbf8a6a6f"
+  },
+  "ARDU_OTK.Shared/Network/NetworkSnapshot.cs": {
+    "mtime": 1791382543.7584982,
+    "seen": 1791383695.414179,
+    "ast_hash": "e860e801ec17ef3c152c8a1af60b801a",
+    "semantic_hash": "e860e801ec17ef3c152c8a1af60b801a"
+  },
+  "ARDU_OTK.Shared/Network/NetworkTrust.cs": {
+    "mtime": 1791382603.779683,
+    "seen": 1791383695.414179,
+    "ast_hash": "7650caaa00d15df7005ef5fa5d6ea5f3",
+    "semantic_hash": "7650caaa00d15df7005ef5fa5d6ea5f3"
+  },
+  "ARDU_OTK.Tests/NetworkPackageTests.cs": {
+    "mtime": 1791382626.6426868,
+    "seen": 1791383695.414179,
+    "ast_hash": "d41e87a19193661cc3cc9346af48ed1f",
+    "semantic_hash": "d41e87a19193661cc3cc9346af48ed1f"
+  },
+  "ARDU_OTK/NetworkAdminPage.xaml": {
+    "mtime": 1791383134.6754591,
+    "seen": 1791383695.4151883,
+    "ast_hash": "a14940b546dba56c4f1856418462b4ca",
+    "semantic_hash": "a14940b546dba56c4f1856418462b4ca"
+  },
+  "ARDU_OTK/NetworkAdminPage.xaml.cs": {
+    "mtime": 1791383135.7572453,
+    "seen": 1791383695.4151883,
+    "ast_hash": "196950f97cd01d6558d3f49bec7131c8",
+    "semantic_hash": "196950f97cd01d6558d3f49bec7131c8"
+  },
+  "ARDU_OTK/NetworkGatePage.xaml": {
+    "mtime": 1791383089.7633877,
+    "seen": 1791383695.4151883,
+    "ast_hash": "21fb6fbe168aaddc700cf5e972577c76",
+    "semantic_hash": "21fb6fbe168aaddc700cf5e972577c76"
+  },
+  "ARDU_OTK/NetworkGatePage.xaml.cs": {
+    "mtime": 1791383090.8522582,
+    "seen": 1791383695.4151883,
+    "ast_hash": "942333890a9e9a554522a18674f390c1",
+    "semantic_hash": "942333890a9e9a554522a18674f390c1"
+  },
+  "ARDU_OTK/Services/Network/NetworkService.cs": {
+    "mtime": 1791383006.9188852,
+    "seen": 1791383695.4151883,
+    "ast_hash": "c3c11ee562cd7842dba3a2c7648879d3",
+    "semantic_hash": "c3c11ee562cd7842dba3a2c7648879d3"
+  },
+  "ARDU_OTK/Services/Store/SqliteCalibrationStore.Network.cs": {
+    "mtime": 1791383380.057443,
+    "seen": 1791383695.4151883,
+    "ast_hash": "fe43c635d9d380ed80f32fb56aaa7afa",
+    "semantic_hash": "fe43c635d9d380ed80f32fb56aaa7afa"
   }
 }

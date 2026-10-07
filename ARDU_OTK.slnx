@@ -1,3 +1,7 @@
 <Solution>
   <Project Path="ARDU_OTK/ARDU_OTK.csproj" />
+  <Project Path="ARDU_OTK.App.Tests/ARDU_OTK.App.Tests.csproj" />
+  <Project Path="ARDU_OTK.Server/ARDU_OTK.Server.csproj" />
+  <Project Path="ARDU_OTK.Shared/ARDU_OTK.Shared.csproj" />
+  <Project Path="ARDU_OTK.Tests/ARDU_OTK.Tests.csproj" />
 </Solution>

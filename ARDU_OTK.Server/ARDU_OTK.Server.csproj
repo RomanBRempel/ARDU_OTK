@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Сервер сети ОТК: учётки, роли, эталоны и журнал работ.
+
+    Точки ОТК физически не связаны между собой, поэтому сервер — веб-шлюз
+    в интернете, к которому каждый стенд ходит исходящим HTTPS. TLS
+    завершает обратный прокси (nginx/Caddy с публичным сертификатом), сам
+    сервер слушает только локальный адрес — см. README.md, раздел «Сервер ОТК».
+
+    Платформа — net10.0 без привязки к Windows: размещать удобнее на Linux
+    в Docker, но запуск службой Windows тоже поддержан (UseWindowsService
+    вне службы ничего не делает).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ARDU_OTK.Server</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ARDU_OTK.Shared\ARDU_OTK.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <!-- Та же причина, что у стенда: транзитивный SQLite несёт известную уязвимость. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ARDU_OTK.Tests" />
+  </ItemGroup>
+
+</Project>
