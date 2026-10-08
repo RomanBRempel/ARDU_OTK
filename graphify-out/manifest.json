@@ -768,10 +768,10 @@
     "semantic_hash": "733994bf54fa8b391513451a50ca14a8"
   },
   "ARDU_OTK.App.Tests/NetworkStoreTests.cs": {
-    "mtime": 1791383338.7772038,
-    "seen": 1791383695.414179,
-    "ast_hash": "816b2ac937ea6931803bad1712738198",
-    "semantic_hash": "816b2ac937ea6931803bad1712738198"
+    "mtime": 1791439004.157204,
+    "seen": 1791439070.8663301,
+    "ast_hash": "ab4584524871aac289ae2e6d9c6cb3a0",
+    "semantic_hash": ""
   },
   "ARDU_OTK.Shared/Network/NetworkPackageFile.cs": {
     "mtime": 1791382544.8452668,
@@ -822,22 +822,22 @@
     "semantic_hash": "73ae09a1cab8d159a9048e3498691cd1"
   },
   "ARDU_OTK/NetworkGatePage.xaml.cs": {
-    "mtime": 1791386653.508059,
-    "seen": 1791386720.598586,
-    "ast_hash": "20d6095b6b4d0ccb24c532ac4857de94",
-    "semantic_hash": "20d6095b6b4d0ccb24c532ac4857de94"
+    "mtime": 1791438993.1146345,
+    "seen": 1791439070.8663301,
+    "ast_hash": "47a833f19cb8f66a83849494df99d8f7",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Network/NetworkService.cs": {
-    "mtime": 1791385254.29046,
-    "seen": 1791385638.7950203,
-    "ast_hash": "d14828d9d1c55fcfff7778c02ef53603",
-    "semantic_hash": "d14828d9d1c55fcfff7778c02ef53603"
+    "mtime": 1791438992.0242004,
+    "seen": 1791439070.8663301,
+    "ast_hash": "c099cee6f4d38f34f9fc66cec05abd0b",
+    "semantic_hash": ""
   },
   "ARDU_OTK/Services/Store/SqliteCalibrationStore.Network.cs": {
-    "mtime": 1791385185.9778526,
-    "seen": 1791385638.7950203,
-    "ast_hash": "b17f2804b7ef142204fa21bc7ca0ad46",
-    "semantic_hash": "b17f2804b7ef142204fa21bc7ca0ad46"
+    "mtime": 1791438979.578715,
+    "seen": 1791439070.8663301,
+    "ast_hash": "96606a743e7c3970573445e413678487",
+    "semantic_hash": ""
   },
   "ARDU_OTK.Shared/Network/NetworkSeal.cs": {
     "mtime": 1791385148.119722,

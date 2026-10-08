@@ -50,6 +50,57 @@ public sealed partial class SqliteCalibrationStore
     private const string SettingNetworkIssuedBy = "network.issuedBy";
     private const string SettingNetworkCode = "network.code";
 
+    /// <summary>
+    /// Логин последнего удачного входа. Ключ вне префикса <c>network.</c>:
+    /// это память рабочего места, а не часть принятого пакета сети.
+    /// </summary>
+    private const string SettingLastLogin = "workstation.lastLogin";
+
+    /// <summary>Логин последнего удачного входа на стенде; пусто — входов не было.</summary>
+    public async Task<string> GetLastLoginAsync(CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            var values = await ReadSettingsAsync(connection, null, SettingLastLogin, ct).ConfigureAwait(false);
+            return values.TryGetValue(SettingLastLogin, out var login) ? login : string.Empty;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Запоминает логин удачного входа. Отдельный ключ, а не поле
+    /// <see cref="WorkstationSettings"/>: настройки сохраняются целиком, и
+    /// страница с устаревшей копией стёрла бы логин при следующем сохранении.
+    /// </summary>
+    public async Task SetLastLoginAsync(string login, CancellationToken ct = default)
+    {
+        ThrowIfDisposed();
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var connection = await OpenConnectionAsync(ct).ConfigureAwait(false);
+            var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(ct).ConfigureAwait(false);
+            await using (transaction.ConfigureAwait(false))
+            {
+                await UpsertSettingAsync(connection, transaction, SettingLastLogin, login?.Trim(),
+                    FormatUtc(DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
+                await CommitAsync(transaction, ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     /// <summary>Состояние подключения стенда к сети.</summary>
     public async Task<NetworkState> GetNetworkStateAsync(CancellationToken ct = default)
     {

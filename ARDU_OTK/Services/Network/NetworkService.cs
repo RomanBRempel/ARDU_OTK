@@ -239,10 +239,14 @@ public sealed class NetworkService
         }
 
         _failedLogins = 0;
+        await _store.SetLastLoginAsync(user!.Login).ConfigureAwait(false);
         Session = user;
         SessionChanged?.Invoke(this, EventArgs.Empty);
         return null;
     });
+
+    /// <summary>Логин последнего удачного входа — подставляется на экране входа.</summary>
+    public Task<string> GetLastLoginAsync() => Task.Run(() => _store.GetLastLoginAsync());
 
     public void Logout()
     {

@@ -96,7 +96,29 @@ public sealed partial class NetworkGatePage : Page
         NetworkInfoText.Text = _state!.Serial > 0
             ? $"Пакет сети №{_state.Serial} от {_state.IssuedUtc?.ToLocalTime():dd.MM.yyyy HH:mm}, выпустил {_state.IssuedBy}."
             : "Сеть заведена, пакет ещё не выпущен.";
-        LoginBox.Focus(FocusState.Programmatic);
+
+        // На стенде обычно работает один и тот же человек: его логин уже
+        // известен, остаётся ввести пароль или PIN.
+        if (LoginBox.Text.Length == 0)
+        {
+            try
+            {
+                LoginBox.Text = await Network.GetLastLoginAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                App.LogFatal("Чтение последнего логина", ex);
+            }
+        }
+
+        if (LoginBox.Text.Length > 0)
+        {
+            SecretBox.Focus(FocusState.Programmatic);
+        }
+        else
+        {
+            LoginBox.Focus(FocusState.Programmatic);
+        }
     }
 
     /// <summary>

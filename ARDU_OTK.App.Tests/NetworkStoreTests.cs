@@ -150,6 +150,20 @@ public sealed class NetworkStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Last_login_survives_settings_save_and_package_apply()
+    {
+        var admin = await AdminWithReferenceAsync("Борт-А", "COMPASS_USE,1");
+        var stand = await StoreAsync("stand");
+        Assert.Equal(string.Empty, await stand.GetLastLoginAsync());
+
+        await stand.SetLastLoginAsync(" admin ");
+        await stand.SaveWorkstationSettingsAsync(await stand.GetWorkstationSettingsAsync());
+        await ApplyAsync(stand, await IssueAsync(admin));
+
+        Assert.Equal("admin", await stand.GetLastLoginAsync());
+    }
+
+    [Fact]
     public async Task Migration_from_v6_keeps_references_and_adds_network_columns()
     {
         var store = await StoreAsync("migrated");
