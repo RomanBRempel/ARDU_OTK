@@ -196,6 +196,14 @@ def health_report(root: Path) -> str | None:
     построен как простой граф, дубликаты в нём исчезли на этапе сборки; поймать
     их можно только по сырой выгрузке .graphify_extract.json, которая не хранится.
 
+    Петли вызовов из AST (relation=calls, _origin=ast) дефектом не считаются.
+    graphify именует узел метода без сигнатуры и связывает вызов по одному
+    имени, без учёта получателя, поэтому перегрузка, зовущая соседнюю
+    перегрузку, вызов одноимённого чужого метода и честная рекурсия дают одну
+    и ту же петлю. Это свойство извлечения, а не порча графа: считай мы их
+    дефектом, тревога горела бы постоянно и перестала бы что-либо значить.
+    Такие петли упоминаются справочно, только рядом с настоящими находками.
+
     Возвращает None, когда всё чисто. Находки не считаются поводом уронить
     сборку: граф остаётся пригодным, но дефект должен быть виден.
     """
@@ -209,7 +217,7 @@ def health_report(root: Path) -> str | None:
     except (OSError, ValueError, KeyError, TypeError):
         return "[граф] graph.json нечитаем или неожиданной структуры — целостность не проверена."
 
-    missing = dangling = loops = 0
+    missing = dangling = loops = call_loops = 0
     pairs = set()
     duplicates = 0
     for link in links:
@@ -220,7 +228,10 @@ def health_report(root: Path) -> str | None:
         if source not in ids or target not in ids:
             dangling += 1
         if source == target:
-            loops += 1
+            if link.get("relation") == "calls" and link.get("_origin") == "ast":
+                call_loops += 1
+            else:
+                loops += 1
         key = (source, target)
         if key in pairs:
             duplicates += 1
@@ -240,8 +251,10 @@ def health_report(root: Path) -> str | None:
     ]
     if not flags:
         return None
+    note = (f" Справочно, не дефект — петель вызовов (перегрузки/рекурсия): {call_loops}."
+            if call_loops else "")
     return ("[граф] ЦЕЛОСТНОСТЬ: " + "; ".join(flags) +
-            ". Граф пригоден, но дефект нужно показать пользователю, а не скрыть.")
+            ". Граф пригоден, но дефект нужно показать пользователю, а не скрыть." + note)
 
 
 def emit_hook(event: str, message: str | None) -> int:
