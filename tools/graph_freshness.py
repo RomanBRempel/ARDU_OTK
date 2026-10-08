@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """Проверка свежести графа знаний относительно рабочего дерева.
 
-Зачем: граф в graphify-out/ — это кэш структуры проекта. Пересборка привязана
-к коммиту (post-commit hook), а цикл работы агента «правка -> чтение графа ->
-правка» границу коммита не пересекает. Без проверки на стороне чтения агент
-молча отвечает по устаревшему кэшу — так, например, созданный после последней
-сборки модуль для агента просто не существует.
+Зачем: граф в graphify-out/ — локальный кэш структуры проекта, в git его нет.
+Кэш обновляется тогда, когда его собираются читать, а не после каждой правки:
+пересборка на каждый коммит тратит время на граф, который до следующей сессии
+никто не откроет, а граф в git превращал каждую правку кода в правку артефакта.
 
-Одна проверка, три точки вызова:
+Точки вызова:
 
-    python tools/graph_freshness.py                    # человек/агент вручную
-    python tools/graph_freshness.py --hook SessionStart  # хук Claude Code
+    python tools/graph_freshness.py                      # человек/агент вручную
+    python tools/graph_freshness.py --hook SessionStart  # хук: проверка + фоновое обновление
     python tools/graph_freshness.py --hook PostToolUse   # хук на Write
-    python tools/graph_freshness.py --ci                 # гейт в CI
+    python tools/graph_freshness.py --refresh            # обновить код графа сейчас
 
-Признак устаревания подбирается под точку вызова. Локально сравниваются mtime
-файлов с временем, записанным в manifest.json. В CI mtime бесполезны — checkout
-проставляет всем файлам время выгрузки, — поэтому сравнивается время последнего
-коммита, тронувшего корпус, с временем последнего коммита, тронувшего граф.
+Признак устаревания — mtime файлов против времени, записанного в manifest.json.
+
+На старте сессии расхождение с кодом закрывается само: запускается фоновый
+`graphify update .` (AST, без LLM). Изменённые документы так не обновить —
+им нужно семантическое извлечение, поэтому о них хук только сообщает.
 
 Коды возврата (кроме режима --hook, который всегда завершается нулём, чтобы
 не блокировать работу):
@@ -30,8 +30,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 # Базовый набор типов корпуса. Это нижняя граница, а не истина в последней
@@ -57,6 +59,16 @@ EXCLUDED_PREFIXES = ("graphify-out/",)
 MTIME_TOLERANCE_SEC = 2.0
 
 UPDATE_HINT = "обновить: /graphify . --update"
+
+# Расширения, которые graphify update пересобирает без LLM (AST). Остальные
+# типы корпуса — документы и изображения — требуют семантического извлечения.
+CODE_SUFFIXES = {".cs", ".py", ".xaml", ".csproj", ".slnx", ".json"}
+
+# Метка идущего фонового обновления. Старше этого срока считается брошенной
+# (процесс убит вместе с машиной) и повторный запуск не блокирует.
+REFRESH_LOCK = "graphify-out/.refresh.lock"
+REFRESH_LOG = "graphify-out/refresh.log"
+REFRESH_LOCK_TTL_SEC = 30 * 60
 
 
 def force_utf8_streams() -> None:
@@ -185,11 +197,71 @@ def compare(root: Path, known: dict[str, float], disk: set[str]) -> tuple[list, 
     return added, removed, changed
 
 
+def graphify_python(root: Path) -> str | None:
+    """Интерпретатор, в котором установлен graphify (записан скиллом при сборке)."""
+    path = root / "graphify-out" / ".graphify_python"
+    try:
+        value = path.read_text(encoding="utf-8-sig").strip()
+    except OSError:
+        return None
+    return value if value and Path(value).is_file() else None
+
+
+def refresh_running(root: Path) -> bool:
+    lock = root / REFRESH_LOCK
+    try:
+        age = time.time() - lock.stat().st_mtime
+    except OSError:
+        return False
+    return age < REFRESH_LOCK_TTL_SEC
+
+
+def refresh_now(root: Path) -> int:
+    """Пересобирает код графа синхронно. Документы не трогает — им нужен LLM."""
+    python = graphify_python(root)
+    if python is None:
+        print("[граф] интерпретатор graphify не найден (graphify-out/.graphify_python). "
+              "Пересобери граф: /graphify .", file=sys.stderr)
+        return 2
+    lock = root / REFRESH_LOCK
+    lock.write_text(str(os.getpid()), encoding="utf-8")
+    try:
+        # PYTHONHASHSEED фиксирует порядок кластеризации: иначе сообщества
+        # переименовываются при каждой пересборке без изменений в коде.
+        env = dict(os.environ, PYTHONHASHSEED="0", PYTHONIOENCODING="utf-8")
+        started = time.time()
+        done = subprocess.run([python, "-m", "graphify", "update", "."], cwd=str(root), env=env)
+        print(f"[граф] {time.strftime('%Y-%m-%d %H:%M:%S')} graphify update завершён "
+              f"с кодом {done.returncode} за {time.time() - started:.0f} с.", flush=True)
+        return done.returncode
+    finally:
+        lock.unlink(missing_ok=True)
+
+
+def start_background_refresh(root: Path) -> bool:
+    """Запускает --refresh отдельным процессом, не дожидаясь его. False — не запущено."""
+    if refresh_running(root) or graphify_python(root) is None:
+        return False
+    flags = 0
+    if os.name == "nt":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+    try:
+        with open(root / REFRESH_LOG, "w", encoding="utf-8") as log:
+            subprocess.Popen(
+                [sys.executable, str(Path(__file__).resolve()), "--refresh"],
+                cwd=str(root), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                creationflags=flags, start_new_session=os.name != "nt",
+            )
+    except OSError:
+        return False
+    return True
+
+
 def health_report(root: Path) -> str | None:
     """Целостность самого графа: висячие концы, петли, дубликаты рёбер.
 
     Считается по graph.json средствами стандартной библиотеки, без импорта
-    graphify: проверка обязана работать и в CI, где graphify не установлен.
+    graphify: хук не должен зависеть от того, в какой Python он поставлен.
     Значения сверены с `graphify diagnose multigraph --json` — совпадают.
 
     Граница: схлопывание параллельных рёбер здесь не видно. graph.json уже
@@ -296,53 +368,13 @@ def written_path(root: Path, payload: dict) -> str | None:
     return None
 
 
-def run_ci(root: Path, known: dict[str, float], limit: int) -> int:
-    """Гейт для CI: состав корпуса плюс сравнение времени коммитов.
-
-    mtime после checkout недостоверны, поэтому «изменённые» определяются не по ним,
-    а по тому, что последний коммит с правкой корпуса новее последнего коммита,
-    тронувшего граф.
-    """
-    disk = corpus_on_disk(root)
-    if disk is None:
-        print("[граф] не удалось перечислить корпус — проверка невозможна.", file=sys.stderr)
-        return 2
-
-    added = sorted(disk - known.keys())
-    removed = sorted(known.keys() - disk)
-
-    graph_ts = (git(root, "log", "-1", "--format=%ct", "--", "graphify-out/graph.json") or "").strip()
-    code_ts = (git(root, "log", "-1", "--format=%ct", "--",
-                   "*.cs", "*.xaml", "*.csproj", "*.slnx") or "").strip()
-    behind = bool(graph_ts and code_ts and int(code_ts) > int(graph_ts))
-
-    # Целостность сообщается всегда, но не влияет на код возврата: дефект графа
-    # надо видеть, а не превращать в блокировку сборки.
-    health = health_report(root)
-
-    if not (added or removed or behind):
-        print(f"[граф] актуален: {len(disk)} файлов покрыто.")
-        if health:
-            print(health)
-        return 0
-
-    if added or removed:
-        print(describe(added, removed, [], limit))
-    if behind:
-        print("[граф] последний коммит с правкой кода новее последнего коммита с графом — "
-              f"граф не пересобран после изменений. {UPDATE_HINT}")
-    if health:
-        print(health)
-    return 1
-
-
 def main() -> int:
     force_utf8_streams()
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("--hook", choices=["SessionStart", "PostToolUse"],
                         help="вывести JSON для хука Claude Code и всегда вернуть 0")
-    parser.add_argument("--ci", action="store_true",
-                        help="режим гейта: состав корпуса и время коммитов вместо mtime")
+    parser.add_argument("--refresh", action="store_true",
+                        help="пересобрать код графа (graphify update .) и выйти")
     parser.add_argument("--quiet", action="store_true",
                         help="молчать, когда граф актуален")
     parser.add_argument("--limit", type=int, default=10,
@@ -350,6 +382,9 @@ def main() -> int:
     args = parser.parse_args()
 
     root = repo_root()
+    if args.refresh:
+        return refresh_now(root)
+
     known = load_manifest(root)
     if isinstance(known, int):
         message = ("[граф] graphify-out/manifest.json отсутствует или нечитаем — "
@@ -358,9 +393,6 @@ def main() -> int:
             return emit_hook(args.hook, message)
         print(message)
         return 2
-
-    if args.ci:
-        return run_ci(root, known, args.limit)
 
     # PostToolUse: интересует ровно один случай — записан файл, которого граф
     # никогда не видел. Он и делает модуль невидимым для последующих вопросов.
@@ -394,6 +426,13 @@ def main() -> int:
         return 0
 
     message = describe(added, removed, changed, args.limit)
+    if args.hook == "SessionStart" and any(
+            Path(p).suffix.lower() in CODE_SUFFIXES for p in added + removed + changed):
+        if refresh_running(root):
+            message += "\n  фоновое обновление графа уже идёт — дождись его или читай файлы напрямую."
+        elif start_background_refresh(root):
+            message += (f"\n  запущено фоновое обновление кода графа (лог: {REFRESH_LOG}); "
+                        "документы обновляются только вручную через /graphify . --update.")
     if health:
         message += "\n" + health
     if args.hook:
