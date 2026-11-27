@@ -398,6 +398,118 @@ public static class ReferenceParamFile
         return true;
     }
 
+    /// <summary>
+    /// Заменяет значение параметра в строках набора, не трогая остальное.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Правится текст, а не пересобирается из словаря. Текст эталона несёт
+    /// то, чего в словаре нет: формат исходника, комментарии происхождения,
+    /// метку прошивки, пометку о недостаче. Пересборка из словаря молча
+    /// стёрла бы всё это, и эталон после правки одного числа перестал бы
+    /// сообщать, откуда он взят.
+    /// </para>
+    /// <para>
+    /// Заменяются все вхождения имени: разбор берёт последнее, и правка только
+    /// его оставила бы в тексте противоречащий ей дубликат.
+    /// </para>
+    /// </remarks>
+    /// <returns>Новые строки; входные не меняются.</returns>
+    /// <exception cref="KeyNotFoundException">Имени в строках нет.</exception>
+    /// <exception cref="ArgumentException">
+    /// Значение не конечно либо дробное для целочисленного типа файла QGroundControl.
+    /// </exception>
+    public static IReadOnlyList<string> SetValue(IReadOnlyList<string> lines, string name, double value)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        if (!double.IsFinite(value) || !float.IsFinite((float)value))
+        {
+            throw new ArgumentException(
+                $"Значение {name} должно быть конечным числом в диапазоне float.", nameof(value));
+        }
+
+        var token = FormatCanonical(value);
+        var format = DetectFormat(lines);
+        var result = new string[lines.Count];
+        var found = false;
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            result[i] = line;
+
+            if (IsSkippable(line)
+                || !TryParseLine(line, format, out var lineName, out _)
+                || !string.Equals(lineName, name, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            found = true;
+            result[i] = format == QGroundControlFormat
+                ? ReplaceQgcValue(line, name, value, token)
+                : ReplaceMissionPlannerValue(line, token);
+        }
+
+        if (!found)
+        {
+            throw new KeyNotFoundException($"Параметра {name} в наборе нет.");
+        }
+
+        return result;
+    }
+
+    private static string ReplaceQgcValue(string line, string name, double value, string token)
+    {
+        var fields = line.Split('\t');
+
+        // Пятая колонка — MAV_PARAM_TYPE. Дробное число в целочисленном
+        // параметре борт округлит при записи, и сверка после записи разойдётся
+        // с эталоном на каждом прогоне.
+        if (int.TryParse(fields[4].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var type)
+            && type is >= 1 and <= 8
+            && Math.Abs(value - Math.Round(value)) > 0)
+        {
+            throw new ArgumentException(
+                $"Параметр {name} целочисленный (тип {type} в файле QGroundControl), дробное значение недопустимо.",
+                nameof(value));
+        }
+
+        fields[3] = token;
+        return string.Join('\t', fields);
+    }
+
+    private static string ReplaceMissionPlannerValue(string line, string token)
+    {
+        // Значение — второе непустое поле. Позиция ищется вручную, чтобы
+        // разделители и хвост строки остались такими, какими их записал ГНС.
+        var i = 0;
+        while (i < line.Length && Array.IndexOf(MissionPlannerSeparators, line[i]) >= 0)
+        {
+            i++;
+        }
+
+        while (i < line.Length && Array.IndexOf(MissionPlannerSeparators, line[i]) < 0)
+        {
+            i++;
+        }
+
+        while (i < line.Length && Array.IndexOf(MissionPlannerSeparators, line[i]) >= 0)
+        {
+            i++;
+        }
+
+        var start = i;
+        while (i < line.Length && Array.IndexOf(MissionPlannerSeparators, line[i]) < 0)
+        {
+            i++;
+        }
+
+        return string.Concat(line.AsSpan(0, start), token, line.AsSpan(i));
+    }
+
     private static bool IsSkippable(string line)
     {
         string trimmed = line.Trim();

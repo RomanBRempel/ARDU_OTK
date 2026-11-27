@@ -112,11 +112,27 @@ public sealed class ParameterRoleRow
     public ParameterRoleRow(
         ParameterRole role,
         double value,
-        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown)
+        ParameterEnums.VehicleClass vehicle = ParameterEnums.VehicleClass.Unknown,
+        bool canEditValue = false,
+        double? sourceValue = null)
     {
         ArgumentNullException.ThrowIfNull(role);
 
         Name = role.Name;
+        Value = value;
+        EditVisibility = canEditValue ? Visibility.Visible : Visibility.Collapsed;
+
+        // Значение, заданное вручную, помечается рядом с самим числом: эталон
+        // после правки уже не равен образцу, и в строке должно быть видно, с
+        // чем именно он расходится.
+        var edited = sourceValue is { } src
+            && ReferenceParamFile.FormatCanonical(src) != ReferenceParamFile.FormatCanonical(value);
+        EditedText = edited
+            ? "Задано вручную, у образца: "
+              + ParameterEnums.Format(role.Name, sourceValue!.Value, vehicle, ReferenceParamFile.FormatCanonical(sourceValue.Value))
+            : string.Empty;
+        EditedVisibility = edited ? Visibility.Visible : Visibility.Collapsed;
+
         Control = role.Control;
         CannotMatch = role.CannotMatch;
         SliderIndex = ToSliderIndex(role.Control);
@@ -148,6 +164,16 @@ public sealed class ParameterRoleRow
     }
 
     public string Name { get; }
+
+    /// <summary>Значение в наборе — для диалога правки.</summary>
+    public double Value { get; }
+
+    /// <summary>Кнопка правки значения: только у эталона, ещё не записанного в реестр.</summary>
+    public Visibility EditVisibility { get; }
+
+    public string EditedText { get; }
+
+    public Visibility EditedVisibility { get; }
 
     public ParameterControl Control { get; }
 

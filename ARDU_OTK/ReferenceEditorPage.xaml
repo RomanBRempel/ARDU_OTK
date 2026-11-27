@@ -94,7 +94,30 @@
                             IsTextSelectionEnabled="True"
                             Style="{StaticResource AppBodyTextStyle}"
                             Text="{x:Bind ValueText}" />
+                        <!--
+                            Правка значения — у самого числа: вопрос «какое
+                            значение должно быть» задают, глядя на это число.
+                            Только у эталона, ещё не записанного в реестр.
+                        -->
+                        <Button
+                            Padding="4,0"
+                            VerticalAlignment="Center"
+                            Click="OnEditValueClick"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Tag="{x:Bind Name}"
+                            ToolTipService.ToolTip="Задать значение в эталоне"
+                            Visibility="{x:Bind EditVisibility}">
+                            <FontIcon FontSize="12" Glyph="&#xE70F;" />
+                        </Button>
                     </StackPanel>
+
+                    <TextBlock
+                        Foreground="{ThemeResource SystemFillColorAttentionBrush}"
+                        Style="{StaticResource AppCaptionTextStyle}"
+                        Text="{x:Bind EditedText}"
+                        TextWrapping="Wrap"
+                        Visibility="{x:Bind EditedVisibility}" />
 
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"

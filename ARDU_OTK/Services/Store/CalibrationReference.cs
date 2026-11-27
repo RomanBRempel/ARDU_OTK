@@ -432,6 +432,71 @@ public sealed record ReferenceParameters(
         return Create(caption, sourcePath: string.Empty, text, parsed);
     }
 
+    /// <summary>Начало строки-записи о ручной правке значения в тексте набора.</summary>
+    public const string ManualEditMarker = "# изменено вручную: ";
+
+    /// <summary>
+    /// Набор, в котором одно значение задано технологом вручную.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 🔴 Четвёртая точка входа параметров, и она идёт через тот же
+    /// <see cref="Create"/>, что и три прочие: правка не может обойти проверку
+    /// пригодности. Значение, обнулившее последний <c>COMPASS_*</c> или
+    /// опустошившее слот, отвергается здесь так же, как негодный файл.
+    /// </para>
+    /// <para>
+    /// Правка записывается комментарием в сам текст — кто, когда, что было и
+    /// что стало. Набор после правки уже не совпадает с образцом, и это обязано
+    /// быть видно в выгрузке через полгода без обращения к базе: иначе
+    /// расхождение «эталон против образца» выглядело бы как ошибка снятия.
+    /// </para>
+    /// <para>
+    /// Вызывать допустимо только до записи эталона в реестр. Параметры
+    /// заведённого эталона неизменяемы: по ним сданы прогоны.
+    /// </para>
+    /// </remarks>
+    /// <param name="name">Имя параметра; должно уже быть в наборе.</param>
+    /// <param name="value">Новое значение.</param>
+    /// <param name="author">Кто правит. Пусто — в записи будет «автор не указан».</param>
+    /// <exception cref="KeyNotFoundException">Имени в наборе нет.</exception>
+    /// <exception cref="ArgumentException">Значение недопустимо для параметра.</exception>
+    /// <exception cref="InvalidDataException">После правки набор непригоден.</exception>
+    public ReferenceParameters WithValue(string name, double value, string author)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        if (!Set.Values.TryGetValue(name, out var old))
+        {
+            throw new KeyNotFoundException($"Параметра {name} в наборе нет.");
+        }
+
+        var canonical = ReferenceParamFile.FormatCanonical(value);
+        if (string.Equals(canonical, ReferenceParamFile.FormatCanonical(old), StringComparison.Ordinal))
+        {
+            return this;
+        }
+
+        var lines = new List<string>(ReferenceParamFile.SetValue(SplitLines(Text), name, value));
+
+        // Хвостовые пустые строки не плодим: запись ложится сразу за набором.
+        while (lines.Count > 0 && lines[^1].Length == 0)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+
+        lines.Add(string.Create(
+            CultureInfo.InvariantCulture,
+            $"{ManualEditMarker}{name}: {ReferenceParamFile.FormatCanonical(old)} → {canonical} "
+          + $"({(string.IsNullOrWhiteSpace(author) ? "автор не указан" : author.Trim())}, "
+          + $"{DateTimeOffset.Now:dd.MM.yyyy HH:mm})"));
+
+        var text = string.Join("\n", lines);
+        var set = ReferenceParamFile.Parse(SourceName, SplitLines(text));
+
+        return Create(SourceName, SourcePath, text, set);
+    }
+
     private static ReferenceParameters Create(
         string sourceName,
         string sourcePath,

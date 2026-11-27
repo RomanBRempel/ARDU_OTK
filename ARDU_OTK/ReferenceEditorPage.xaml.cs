@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ARDU_OTK.Services;
@@ -68,6 +69,26 @@ public sealed partial class ReferenceEditorPage : Page
 
     private CalibrationReference? _editing;
     private ReferenceParameters? _parameters;
+
+    /// <summary>
+    /// Набор, как он пришёл из источника, до ручных правок значений.
+    /// </summary>
+    /// <remarks>
+    /// Нужен, чтобы строка с правленым значением показывала, с чем эталон
+    /// теперь расходится: «задано вручную» без исходного числа не отвечает на
+    /// вопрос, что именно поменяли.
+    /// </remarks>
+    private ReferenceParameters? _sourceParameters;
+
+    /// <summary>
+    /// Значения можно задавать вручную: эталон ещё не записан в реестр.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 Только новый эталон и клон. У заведённого эталона параметры
+    /// неизменяемы — по ним сданы прогоны, и подмена значения сделала бы реестр
+    /// ложным. Путь к другому значению у заведённого эталона — клон.
+    /// </remarks>
+    private bool CanEditValues => _editing is null && !_saving && !_snapshotting;
     private bool _saving;
     private bool _snapshotting;
 
@@ -628,7 +649,12 @@ public sealed partial class ReferenceEditorPage : Page
                 shown.Add(prefix, rows);
             }
 
-            rows.Add(new ParameterRoleRow(role, pair.Value, VehicleClass));
+            double? sourceValue = _sourceParameters is { } source
+                && source.Set.Values.TryGetValue(pair.Key, out var original)
+                    ? original
+                    : null;
+
+            rows.Add(new ParameterRoleRow(role, pair.Value, VehicleClass, CanEditValues, sourceValue));
         }
 
         // Узел, из которого фильтр вычеркнул всё, не показывается вовсе. Пустые
@@ -829,6 +855,96 @@ public sealed partial class ReferenceEditorPage : Page
 
         RefreshRoleCounters();
         UpdateGate();
+    }
+
+    /// <summary>
+    /// Ручное задание значения параметра в эталоне.
+    /// </summary>
+    /// <remarks>
+    /// Правка идёт через <see cref="ReferenceParameters.WithValue"/>, то есть
+    /// через ту же проверку пригодности, что и файл: значение, после которого
+    /// набор негоден, отвергается, а прежний набор остаётся в силе.
+    /// </remarks>
+    private async void OnEditValueClick(object sender, RoutedEventArgs e)
+    {
+        if (!_ready || !CanEditValues || _parameters is null
+            || sender is not FrameworkElement { Tag: string name }
+            || !_parameters.Set.Values.TryGetValue(name, out var current))
+        {
+            return;
+        }
+
+        var input = new TextBox
+        {
+            Header = "Значение",
+            Text = ReferenceParamFile.FormatCanonical(current),
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+        };
+        input.SelectAll();
+
+        var hint = new TextBlock
+        {
+            Text = "Сейчас: " + ParameterEnums.Format(
+                name, current, VehicleClass, ReferenceParamFile.FormatCanonical(current))
+              + Environment.NewLine
+              + "Правка запишется в текст эталона с подписью и временем; набор перестанет совпадать с образцом.",
+            TextWrapping = TextWrapping.Wrap,
+        };
+
+        var error = new TextBlock
+        {
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+        };
+
+        var parameters = _parameters;
+        ReferenceParameters? updated = null;
+
+        var dialog = new ContentDialog
+        {
+            Title = name,
+            Content = new StackPanel { Spacing = 8, Children = { hint, input, error } },
+            PrimaryButtonText = "Задать",
+            CloseButtonText = "Отмена",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            // Десятичная запятая допускается: оператор набирает число на
+            // русской раскладке, а разбор — инвариантный.
+            var token = input.Text.Trim().Replace(',', '.');
+            if (!ReferenceParamFile.TryParseFloat(token, out var value))
+            {
+                error.Text = "Не число. Пример: 12.5";
+                error.Visibility = Visibility.Visible;
+                args.Cancel = true;
+                return;
+            }
+
+            try
+            {
+                updated = parameters.WithValue(name, value, CurrentAuthor());
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidDataException or KeyNotFoundException)
+            {
+                error.Text = ex.Message;
+                error.Visibility = Visibility.Visible;
+                args.Cancel = true;
+            }
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary
+            || updated is null
+            || ReferenceEquals(updated, parameters)
+            || !ReferenceEquals(parameters, _parameters))
+        {
+            return;
+        }
+
+        ApplyParameters(updated, ReferencePathBox.Text, manualEdit: true);
     }
 
     /// <summary>Пересчитывает счётчики, не трогая список.</summary>
@@ -1203,6 +1319,7 @@ public sealed partial class ReferenceEditorPage : Page
     private void ClearParameters()
     {
         _parameters = null;
+        _sourceParameters = null;
         Slots.Clear();
         RoleGroups.Clear();
 
@@ -1223,9 +1340,18 @@ public sealed partial class ReferenceEditorPage : Page
         UpdateGate();
     }
 
-    private void ApplyParameters(ReferenceParameters parameters, string displaySource)
+    private void ApplyParameters(
+        ReferenceParameters parameters,
+        string displaySource,
+        bool manualEdit = false)
     {
         _parameters = parameters;
+
+        // Новый источник — новая точка отсчёта для пометок «задано вручную».
+        if (!manualEdit)
+        {
+            _sourceParameters = parameters;
+        }
 
         ReferencePathBox.Text = displaySource;
 
